@@ -70,8 +70,6 @@ private:
   void buildShaders();
 
   void updateConstants();
-
-  int64_t getElapsedMillis();
 };
 
 }

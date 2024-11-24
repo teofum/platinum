@@ -257,11 +257,4 @@ void Renderer::updateConstants() {
   memcpy(bufferWrite, &viewProjection, m_constantsSize);
 }
 
-int64_t Renderer::getElapsedMillis() {
-  auto now = std::chrono::high_resolution_clock::now();
-  return std::chrono::duration_cast<std::chrono::milliseconds>(
-    now - m_startTime
-  ).count();
-}
-
 }
