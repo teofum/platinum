@@ -1,0 +1,4 @@
+#ifndef PLATINUM_MESH_HPP
+#define PLATINUM_MESH_HPP
+
+#endif //PLATINUM_MESH_HPP

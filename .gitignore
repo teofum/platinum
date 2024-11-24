@@ -1,0 +1,5 @@
+cmake-build-*/
+profile.json
+.DS_Store
+*.metallib
+misc/font/
