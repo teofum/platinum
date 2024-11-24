@@ -4,19 +4,32 @@
 #include <print>
 #include <utils/metal_utils.hpp>
 #include <utils/matrices.hpp>
+#include <utils/utils.hpp>
 
 namespace pt::renderer_studio {
 using metal_utils::operator ""_ns;
 
 Renderer::Renderer(
   MTL::Device* device,
-  MTL::CommandQueue* commandQueue
+  MTL::CommandQueue* commandQueue,
+  Store& store
 ) noexcept
-  : m_device(device), m_commandQueue(commandQueue) {
+  : m_store(store), m_device(device), m_commandQueue(commandQueue) {
   m_rpd = MTL::RenderPassDescriptor::alloc()->init();
   updateClearColor();
 
-  buildBuffers();
+  /*
+   * Build the constants buffer
+   */
+  m_constantsSize = sizeof(float4x4);
+  m_constantsStride = utils::align(m_constantsSize, 256);
+  m_constantsOffset = 0;
+
+  m_constantsBuffer = m_device->newBuffer(
+    m_constantsStride * m_maxFramesInFlight,
+    MTL::ResourceStorageModeShared
+  );
+
   buildShaders();
 }
 
@@ -30,6 +43,7 @@ void Renderer::render(MTL::Texture* renderTarget) noexcept {
   m_aspect = static_cast<float>(renderTarget->width()) /
              static_cast<float>(renderTarget->height());
 
+  buildBuffers();
   updateConstants();
 
   auto cmd = m_commandQueue->commandBuffer();
@@ -45,20 +59,28 @@ void Renderer::render(MTL::Texture* renderTarget) noexcept {
   enc->setCullMode(MTL::CullModeBack);
 
   enc->setViewport(
-    {0.0, 0.0, (double) renderTarget->width(), (double) renderTarget->height(),
-     0.0, 1.0}
+    {
+      0.0, 0.0, (double) renderTarget->width(), (double) renderTarget->height(),
+      0.0, 1.0
+    }
   );
   enc->setRenderPipelineState(m_pso);
-  enc->setVertexBuffer(m_vertexBuffer, 0, 0);
-  enc->setVertexBuffer(m_constantsBuffer, m_constantsOffset, 1);
+  enc->setVertexBuffer(m_constantsBuffer, m_constantsOffset, 2);
 
-  enc->drawIndexedPrimitives(
-    MTL::PrimitiveTypeTriangle,
-    m_indexCount,
-    MTL::IndexTypeUInt32,
-    m_indexBuffer,
-    0
-  );
+  size_t transformOffset = 0;
+  for (const auto& md: m_meshData) {
+    enc->setVertexBuffer(m_vertexBuffer, md.vertexOffset, 0);
+    enc->setVertexBuffer(m_transformBuffer, transformOffset, 1);
+    enc->drawIndexedPrimitives(
+      MTL::PrimitiveTypeTriangle,
+      md.indexCount,
+      MTL::IndexTypeUInt32,
+      m_indexBuffer,
+      md.indexOffset
+    );
+
+    transformOffset += sizeof(float4x4);
+  }
 
   enc->endEncoding();
   cmd->commit();
@@ -86,36 +108,73 @@ void Renderer::updateClearColor() {
 
 void Renderer::buildBuffers() {
   /*
-   * Build the vertex buffer
+   * Discard existing buffers
    */
-  size_t vertexBufferSize = m_vertexCount * sizeof(Vertex);
+  if (m_vertexBuffer != nullptr) m_vertexBuffer->release();
+  if (m_indexBuffer != nullptr) m_indexBuffer->release();
+  if (m_transformBuffer != nullptr) m_transformBuffer->release();
+
+  /*
+   * Calculate buffer sizes and create buffers
+   */
+  auto meshes = m_store.scene().getAllMeshes();
+  size_t vertexSize = 0, indexSize = 0, transformCount = meshes.size();
+
+  m_meshData.clear();
+  m_meshData.reserve(meshes.size());
+  for (const auto& meshAndTransform: meshes) {
+    const Mesh& mesh = meshAndTransform.first;
+
+    m_meshData.push_back(
+      {
+        vertexSize,
+        mesh.vertices().size(),
+        indexSize,
+        mesh.indices().size()
+      }
+    );
+
+    vertexSize += utils::align(mesh.vertices().size() * sizeof(Vertex), 256);
+    indexSize += utils::align(mesh.indices().size() * sizeof(uint32_t), 256);
+  }
+
+  size_t vertexBufferSize = vertexSize * sizeof(Vertex);
   m_vertexBuffer = m_device
     ->newBuffer(vertexBufferSize, MTL::ResourceStorageModeManaged);
 
-  memcpy(m_vertexBuffer->contents(), m_vertexData, vertexBufferSize);
-  m_vertexBuffer->didModifyRange(NS::Range::Make(0, m_vertexBuffer->length()));
-
-  /*
-   * Build the index buffer
-   */
-  size_t indexBufferSize = m_indexCount * sizeof(unsigned);
+  size_t indexBufferSize = indexSize * sizeof(uint32_t);
   m_indexBuffer = m_device
     ->newBuffer(indexBufferSize, MTL::ResourceStorageModeShared);
 
-  memcpy(m_indexBuffer->contents(), m_indexData, indexBufferSize);
-  m_indexBuffer->didModifyRange(NS::Range::Make(0, m_indexBuffer->length()));
+  size_t transformBufferSize = transformCount * sizeof(float4x4);
+  m_transformBuffer = m_device
+    ->newBuffer(transformBufferSize, MTL::ResourceStorageModeShared);
 
   /*
-   * Build the constants buffer
+   * Fill mesh data and transform buffers
    */
-  m_constantsSize = sizeof(Transforms);
-  m_constantsStride = ((m_constantsSize - 1) / 256 + 1) * 256;
-  m_constantsOffset = 0;
+  for (size_t i = 0; i < m_meshData.size(); i++) {
+    const Mesh& mesh = meshes[i].first;
+    const float4x4& transform = meshes[i].second;
+    const MeshData& data = m_meshData[i];
 
-  m_constantsBuffer = m_device->newBuffer(
-    m_constantsStride * m_maxFramesInFlight,
-    MTL::ResourceStorageModeShared
-  );
+    // Vertices
+    void* vbw = (char*) m_vertexBuffer->contents() + data.vertexOffset;
+    memcpy(vbw, mesh.vertices().data(), data.vertexCount * sizeof(Vertex));
+
+    // Indices
+    void* ibw = (char*) m_indexBuffer->contents() + data.indexOffset;
+    memcpy(ibw, mesh.indices().data(), data.indexCount * sizeof(uint32_t));
+
+    // Transform
+    void* tbw = (char*) m_transformBuffer->contents() + i * sizeof(float4x4);
+    memcpy(tbw, &transform, sizeof(float4x4));
+  }
+
+  m_vertexBuffer->didModifyRange(NS::Range::Make(0, m_vertexBuffer->length()));
+  m_indexBuffer->didModifyRange(NS::Range::Make(0, m_indexBuffer->length()));
+  m_transformBuffer
+    ->didModifyRange(NS::Range::Make(0, m_transformBuffer->length()));
 }
 
 void Renderer::buildShaders() {
@@ -155,13 +214,7 @@ void Renderer::buildShaders() {
   positionAttribDesc->setOffset(offsetof(Vertex, position));
   positionAttribDesc->setBufferIndex(0);
 
-  auto colorAttribDesc = MTL::VertexAttributeDescriptor::alloc()->init();
-  colorAttribDesc->setFormat(MTL::VertexFormatFloat4);
-  colorAttribDesc->setOffset(offsetof(Vertex, color));
-  colorAttribDesc->setBufferIndex(0);
-
   vertexDesc->attributes()->setObject(positionAttribDesc, 0);
-  vertexDesc->attributes()->setObject(colorAttribDesc, 1);
 
   auto vertexLayout = MTL::VertexBufferLayoutDescriptor::alloc()->init();
   vertexLayout->setStride(sizeof(Vertex));
@@ -194,20 +247,14 @@ void Renderer::buildShaders() {
 }
 
 void Renderer::updateConstants() {
-  int64_t time = getElapsedMillis();
-  auto angle = static_cast<float>(std::fmod(
-    static_cast<double>(time) * 0.0005,
-    2.0f * std::numbers::pi_v<double>
-  ));
+  auto view = mat::translation(-m_cameraPos);
+  auto projection = mat::projection(m_fov, m_aspect, 0.1f, 100.0f);
 
-  Transforms transforms;
-  transforms.model = mat::rotation(angle, float3{0.5, 1.0, 0.0});
-  transforms.view = mat::translation(-m_cameraPos);
-  transforms.projection = mat::projection(m_fov, m_aspect, 0.1f, 100.0f);
+  auto viewProjection = projection * view;
 
   m_constantsOffset = (m_frameIdx % m_maxFramesInFlight) * m_constantsStride;
   void* bufferWrite = (char*) m_constantsBuffer->contents() + m_constantsOffset;
-  memcpy(bufferWrite, &transforms, m_constantsSize);
+  memcpy(bufferWrite, &viewProjection, m_constantsSize);
 }
 
 int64_t Renderer::getElapsedMillis() {

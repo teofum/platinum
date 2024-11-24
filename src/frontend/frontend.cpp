@@ -19,7 +19,8 @@ bool isExitEvent(const SDL_Event& event, uint32_t windowID) {
   );
 }
 
-Frontend::Frontend() noexcept = default;
+Frontend::Frontend(Store& store) noexcept: m_store(store) {
+}
 
 Frontend::~Frontend() {
   m_commandQueue->release();
@@ -108,7 +109,8 @@ void Frontend::start() noexcept {
    */
   m_renderer = std::make_unique<renderer_studio::Renderer>(
     m_device,
-    m_commandQueue
+    m_commandQueue,
+    m_store
   );
 
   /*

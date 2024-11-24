@@ -63,15 +63,16 @@ build_shaders(renderer_studio.metallib src/renderer_studio/shaders/shaders.metal
 # Main executable
 add_executable(platinum
         src/main.cpp
+        src/core/mesh.cpp
+        src/core/scene.cpp
+        src/core/store.cpp
         src/utils/metal_utils.mm
         src/utils/matrices.cpp
         src/frontend/frontend.cpp
         src/renderer_studio/renderer_studio.cpp
         renderer_studio.metallib
-        src/core/primitive.cpp
-        src/core/primitive.hpp
-        src/core/mesh.cpp
-        src/core/mesh.hpp
+        src/utils/utils.cpp
+        src/utils/utils.hpp
 )
 
 target_include_directories(platinum PRIVATE src)

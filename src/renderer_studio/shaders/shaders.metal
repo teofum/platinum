@@ -11,11 +11,12 @@ struct RasterVertex {
 
 vertex RasterVertex vertexShader(
     Vertex in [[stage_in]],
-    constant Transforms &t [[buffer(1)]]
+    constant float4x4 &model [[buffer(1)]],
+    constant float4x4 &viewProjection [[buffer(2)]]
 ) {
     RasterVertex out;
-    out.position = t.projection * t.view * t.model * float4(in.position, 1.0);
-    out.color = in.color;
+    out.position = viewProjection * model * float4(in.position, 1.0);
+    out.color = float4(in.position * 0.5 + 0.5, 1.0);
 
     return out;
 }

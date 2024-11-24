@@ -7,13 +7,14 @@
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
 
+#include <core/store.hpp>
 #include <renderer_studio/renderer_studio.hpp>
 
 namespace pt::frontend {
 
 class Frontend {
 public:
-  explicit Frontend() noexcept;
+  explicit Frontend(Store& store) noexcept;
 
   ~Frontend();
 
@@ -39,6 +40,9 @@ private:
   float m_clearColor[4] = {0.45f, 0.55f, 0.6f, 1.0f};
   float m_dpiScaling = 1.0f;
   float2 m_viewportSize = {1, 1};
+
+  // Store
+  Store& m_store;
 
   // Renderer
   std::unique_ptr<renderer_studio::Renderer> m_renderer;
