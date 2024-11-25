@@ -109,6 +109,7 @@ typedef enum SDL_EventType
     SDL_MOUSEBUTTONDOWN,        /**< Mouse button pressed */
     SDL_MOUSEBUTTONUP,          /**< Mouse button released */
     SDL_MOUSEWHEEL,             /**< Mouse wheel motion */
+    SDL_MAC_MAGNIFY,            /**< macOS only: Magnify event (touchpad zoom) */
 
     /* Joystick events */
     SDL_JOYAXISMOTION  = 0x600, /**< Joystick axis motion */
@@ -343,6 +344,20 @@ typedef struct SDL_MouseWheelEvent
     Sint32 mouseX;      /**< X coordinate, relative to window (added in 2.26.0) */
     Sint32 mouseY;      /**< Y coordinate, relative to window (added in 2.26.0) */
 } SDL_MouseWheelEvent;
+
+/**
+ * Mouse wheel event structure (event.wheel.*)
+ */
+typedef struct SDL_MagnifyEvent
+{
+    Uint32 type;        /**< SDL_MAC_MAGNIFY */
+    Uint32 timestamp;   /**< In milliseconds, populated using SDL_GetTicks() */
+    Uint32 windowID;    /**< The window with mouse focus, if any */
+    Uint32 which;       /**< The mouse instance id, or SDL_TOUCH_MOUSEID */
+    float magnification;/**< Magnification amount, see NSEvent documentation */
+    Sint32 mouseX;      /**< X coordinate, relative to window (added in 2.26.0) */
+    Sint32 mouseY;      /**< Y coordinate, relative to window (added in 2.26.0) */
+} SDL_MagnifyEvent;
 
 /**
  * Joystick axis motion event structure (event.jaxis.*)
@@ -665,6 +680,7 @@ typedef union SDL_Event
     SDL_MouseMotionEvent motion;            /**< Mouse motion event data */
     SDL_MouseButtonEvent button;            /**< Mouse button event data */
     SDL_MouseWheelEvent wheel;              /**< Mouse wheel event data */
+    SDL_MagnifyEvent magnify;               /**< Magnification event data (macOS only) */
     SDL_JoyAxisEvent jaxis;                 /**< Joystick axis event data */
     SDL_JoyBallEvent jball;                 /**< Joystick ball event data */
     SDL_JoyHatEvent jhat;                   /**< Joystick hat event data */

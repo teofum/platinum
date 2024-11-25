@@ -38,11 +38,9 @@ private:
   float2 m_scrollSpeed = {0, 0};
 
   // Pinch state (pinch-to-zoom support)
-  static constexpr const float m_pinchThreshold = 0.95f;
-  static constexpr const float m_pinchThreshold2 = 0.5f;
-  static constexpr const float m_zoomSensitivity = 10.0f;
-  static constexpr const float m_zoomFriction = 0.003f;
-  static constexpr const float m_zoomStop = 0.003f;
+  static constexpr const float m_zoomSensitivity = 1.0f;
+  static constexpr const float m_zoomFriction = 0.001f;
+  static constexpr const float m_zoomStop = 0.001f;
   bool m_zooming = false;
   float m_zoomSpeed = 0.0f;
 

@@ -239,30 +239,29 @@ void Frontend::handleInput(const SDL_Event& event) {
   bool allowMouseEvents = !io.WantCaptureMouse || m_mouseInViewport;
 
   switch (event.type) {
+    case SDL_MAC_MAGNIFY: {
+      if (!allowMouseEvents) return;
+
+      // Handle pinch to zoom
+      m_scrolling = false;
+      m_scrollSpeed = {0.0f, 0.0f};
+      m_zooming = true;
+      m_zoomSpeed = event.magnify.magnification * m_zoomSensitivity;
+
+      break;
+    }
     case SDL_MULTIGESTURE: {
       if (!allowMouseEvents) return;
+
+      // Handle scroll to move/orbit
+      // We don't use the SDL_MOUSEWHEEL event because its precision is ass
       const auto& mgesture = event.mgesture;
-
-      if (mgesture.numFingers == 2) {
-        float2 delta = float2{mgesture.x, mgesture.y} - m_scrollLastPos;
-        if (m_scrolling) {
-          // Handle scroll to move/orbit
-          m_scrollSpeed = delta * m_scrollSensitivity;
-        } else if (m_zooming) {
-          // Handle pinch to zoom
-          m_zoomSpeed = mgesture.dDist * m_zoomSensitivity;
-
-          if (abs(mgesture.dDist) < length(delta) * m_pinchThreshold2) {
-            m_zooming = false;
-            m_zoomSpeed = 0.0f;
-            m_scrolling = true;
-          }
+      if (mgesture.numFingers == 2 && !m_zooming) {
+        if (!m_scrolling) {
+          m_scrolling = true;
         } else {
-          if (abs(mgesture.dDist) > length(delta) * m_pinchThreshold) {
-            m_zooming = true;
-          } else {
-            m_scrolling = true;
-          }
+          float2 delta = float2{mgesture.x, mgesture.y} - m_scrollLastPos;
+          m_scrollSpeed = delta * m_scrollSensitivity;
         }
         m_scrollLastPos = {mgesture.x, mgesture.y};
       }
@@ -290,7 +289,6 @@ void Frontend::handleScrollAndZoomState() {
   }
 
   if (abs(m_zoomSpeed) < m_zoomStop) {
-    m_zooming = false;
     m_zoomSpeed = 0.0f;
   } else {
     m_zoomSpeed -= sign(m_zoomSpeed) * m_zoomFriction;
