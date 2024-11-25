@@ -21,7 +21,7 @@ Renderer::Renderer(
   /*
    * Build the constants buffer
    */
-  m_constantsSize = sizeof(float4x4);
+  m_constantsSize = sizeof(Constants);
   m_constantsStride = utils::align(m_constantsSize, 256);
   m_constantsOffset = 0;
 
@@ -75,12 +75,13 @@ void Renderer::render(
     }
   );
   enc->setRenderPipelineState(m_pso);
-  enc->setVertexBuffer(m_constantsBuffer, m_constantsOffset, 2);
+  enc->setVertexBuffer(m_constantsBuffer, m_constantsOffset, 3);
 
   size_t dataOffset = 0;
   for (const auto& md: m_meshData) {
-    enc->setVertexBuffer(m_vertexBuffer, md.vertexOffset, 0);
-    enc->setVertexBuffer(m_dataBuffer, dataOffset, 1);
+    enc->setVertexBuffer(m_vertexPosBuffer, md.vertexPosOffset, 0);
+    enc->setVertexBuffer(m_vertexDataBuffer, md.vertexDataOffset, 1);
+    enc->setVertexBuffer(m_dataBuffer, dataOffset, 2);
     enc->drawIndexedPrimitives(
       MTL::PrimitiveTypeTriangle,
       md.indexCount,
@@ -120,7 +121,8 @@ void Renderer::buildBuffers() {
   /*
    * Discard existing buffers
    */
-  if (m_vertexBuffer != nullptr) m_vertexBuffer->release();
+  if (m_vertexPosBuffer != nullptr) m_vertexPosBuffer->release();
+  if (m_vertexDataBuffer != nullptr) m_vertexDataBuffer->release();
   if (m_indexBuffer != nullptr) m_indexBuffer->release();
   if (m_dataBuffer != nullptr) m_dataBuffer->release();
 
@@ -128,31 +130,36 @@ void Renderer::buildBuffers() {
    * Calculate buffer sizes and create buffers
    */
   auto meshes = m_store.scene().getAllMeshes();
-  size_t vertexSize = 0, indexSize = 0, meshCount = meshes.size();
+  size_t vertexPosSize = 0, vertexDataSize = 0, indexSize = 0;
+  size_t meshCount = meshes.size();
 
   m_meshData.clear();
   m_meshData.reserve(meshes.size());
   for (const auto& md: meshes) {
     const Mesh& mesh = md.mesh;
+    const size_t vc = mesh.vertexPositions().size();
 
     m_meshData.emplace_back(
-      vertexSize,
-      mesh.vertexPositions().size(),
+      vertexPosSize,
+      vertexDataSize,
+      vc,
       indexSize,
       mesh.indices().size(),
       static_cast<uint16_t>(md.nodeIdx)
     );
 
-    vertexSize += utils::align(
-      mesh.vertexPositions().size() * sizeof(Vertex),
-      256
-    );
+    vertexPosSize += utils::align(vc * sizeof(float3), 256);
+    vertexDataSize += utils::align(vc * sizeof(VertexData), 256);
     indexSize += utils::align(mesh.indices().size() * sizeof(uint32_t), 256);
   }
 
-  size_t vertexBufferSize = vertexSize * sizeof(Vertex);
-  m_vertexBuffer = m_device
-    ->newBuffer(vertexBufferSize, MTL::ResourceStorageModeManaged);
+  size_t vertexPosBufferSize = vertexPosSize * sizeof(float3);
+  m_vertexPosBuffer = m_device
+    ->newBuffer(vertexPosBufferSize, MTL::ResourceStorageModeManaged);
+
+  size_t vertexDataBufferSize = vertexDataSize * sizeof(VertexData);
+  m_vertexDataBuffer = m_device
+    ->newBuffer(vertexDataBufferSize, MTL::ResourceStorageModeManaged);
 
   size_t indexBufferSize = indexSize * sizeof(uint32_t);
   m_indexBuffer = m_device
@@ -165,21 +172,39 @@ void Renderer::buildBuffers() {
   /*
    * Fill mesh data and transform buffers
    */
+  float4x4 view = m_camera.view();
   for (size_t i = 0; i < m_meshData.size(); i++) {
     const Mesh& mesh = meshes[i].mesh;
     const MeshData& data = m_meshData[i];
 
+    float4x4 viewModel = view * meshes[i].transform;
+    float4x4 vmit = transpose(inverse(viewModel));
+    float3x3 normalViewModel(
+      vmit.columns[0].xyz,
+      vmit.columns[1].xyz,
+      vmit.columns[2].xyz
+    );
+
     const NodeData nodeData = {
-      meshes[i].transform,
+      viewModel,
+      normalViewModel,
       data.nodeIdx,
     };
 
     // Vertices
-    void* vbw = (char*) m_vertexBuffer->contents() + data.vertexOffset;
+    void* vpbw = (char*) m_vertexPosBuffer->contents() + data.vertexPosOffset;
     memcpy(
-      vbw,
+      vpbw,
       mesh.vertexPositions().data(),
-      data.vertexCount * sizeof(Vertex)
+      data.vertexCount * sizeof(float3)
+    );
+
+    // Vertices
+    void* vdbw = (char*) m_vertexDataBuffer->contents() + data.vertexDataOffset;
+    memcpy(
+      vdbw,
+      mesh.vertexData().data(),
+      data.vertexCount * sizeof(VertexData)
     );
 
     // Indices
@@ -191,7 +216,8 @@ void Renderer::buildBuffers() {
     memcpy(dbw, &nodeData, sizeof(NodeData));
   }
 
-  m_vertexBuffer->didModifyRange(NS::Range::Make(0, m_vertexBuffer->length()));
+  m_vertexPosBuffer
+    ->didModifyRange(NS::Range::Make(0, m_vertexPosBuffer->length()));
   m_indexBuffer->didModifyRange(NS::Range::Make(0, m_indexBuffer->length()));
   m_dataBuffer
     ->didModifyRange(NS::Range::Make(0, m_dataBuffer->length()));
@@ -233,16 +259,28 @@ void Renderer::buildShaders() {
 
   auto positionAttribDesc = MTL::VertexAttributeDescriptor::alloc()->init();
   positionAttribDesc->setFormat(MTL::VertexFormatFloat3);
-  positionAttribDesc->setOffset(offsetof(Vertex, position));
+  positionAttribDesc->setOffset(0);
   positionAttribDesc->setBufferIndex(0);
 
   vertexDesc->attributes()->setObject(positionAttribDesc, 0);
 
+  auto normalAttribDesc = MTL::VertexAttributeDescriptor::alloc()->init();
+  normalAttribDesc->setFormat(MTL::VertexFormatFloat3);
+  normalAttribDesc->setOffset(offsetof(VertexData, normal));
+  normalAttribDesc->setBufferIndex(1);
+
+  vertexDesc->attributes()->setObject(normalAttribDesc, 1);
+
   auto vertexLayout = MTL::VertexBufferLayoutDescriptor::alloc()->init();
-  vertexLayout->setStride(sizeof(Vertex));
+  vertexLayout->setStride(sizeof(float3));
   vertexDesc->layouts()->setObject(vertexLayout, 0);
 
+  vertexLayout->setStride(sizeof(VertexData));
+  vertexDesc->layouts()->setObject(vertexLayout, 1);
+
   desc->setVertexDescriptor(vertexDesc);
+  vertexLayout->release();
+  vertexDesc->release();
 
   /*
    * Get the pipeline state object
@@ -269,11 +307,13 @@ void Renderer::buildShaders() {
 }
 
 void Renderer::updateConstants() {
-  auto viewProjection = m_camera.projection(m_aspect) * m_camera.view();
+  Constants constants = {
+    m_camera.projection(m_aspect),
+  };
 
   m_constantsOffset = (m_frameIdx % m_maxFramesInFlight) * m_constantsStride;
   void* bufferWrite = (char*) m_constantsBuffer->contents() + m_constantsOffset;
-  memcpy(bufferWrite, &viewProjection, m_constantsSize);
+  memcpy(bufferWrite, &constants, m_constantsSize);
 }
 
 void Renderer::handleScrollEvent(const float2& delta) {

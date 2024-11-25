@@ -11,7 +11,8 @@ namespace pt::renderer_studio {
 
 class Renderer {
   struct MeshData {
-    size_t vertexOffset;
+    size_t vertexPosOffset;
+    size_t vertexDataOffset;
     size_t vertexCount;
     size_t indexOffset;
     size_t indexCount;
@@ -52,7 +53,8 @@ private:
   MTL::DepthStencilState* m_dsso = nullptr;
 
   // Buffers
-  MTL::Buffer* m_vertexBuffer = nullptr;
+  MTL::Buffer* m_vertexPosBuffer = nullptr;
+  MTL::Buffer* m_vertexDataBuffer = nullptr;
   MTL::Buffer* m_indexBuffer = nullptr;
   MTL::Buffer* m_dataBuffer = nullptr;
 
