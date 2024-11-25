@@ -44,19 +44,19 @@ private:
   // Scene Explorer state
   std::optional<uint32_t> m_selectedNodeIdx, m_nextNodeIdx;
 
-  // Properties state
-  bool m_propertiesNodeTransformOpen = true;
-
   // Store
   Store& m_store;
 
   // Renderer
+  bool m_viewportWasResized = false;
   std::unique_ptr<renderer_studio::Renderer> m_renderer;
   MTL::Texture* m_renderTarget = nullptr;
 
   void drawImGui();
 
   void handleInput(const SDL_Event& event);
+
+  void rebuildRenderTarget();
 
   /**
    * ImGui windows

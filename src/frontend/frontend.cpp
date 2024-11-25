@@ -157,19 +157,11 @@ void Frontend::start() {
     colorAttachment->setLoadAction(MTL::LoadActionClear);
     colorAttachment->setStoreAction(MTL::StoreActionStore);
 
-    // Create render target
-    auto texd = MTL::TextureDescriptor::alloc()->init();
-    texd->setTextureType(MTL::TextureType2D);
-    texd->setWidth(static_cast<uint32_t>(m_viewportSize.x * m_dpiScaling));
-    texd->setHeight(static_cast<uint32_t>(m_viewportSize.y * m_dpiScaling));
-    texd->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
-    texd->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
-
-    m_renderTarget = m_device->newTexture(texd);
-    texd->release();
-
+    // Render scene
+    if (!m_renderTarget || m_viewportWasResized) rebuildRenderTarget();
     m_renderer->render(m_renderTarget);
 
+    // Render ImGui
     auto enc = cmd->renderCommandEncoder(m_rpd);
     enc->pushDebugGroup("ImGui"_ns);
 
@@ -215,7 +207,12 @@ void Frontend::drawImGui() {
 
     auto vMin = ImGui::GetWindowContentRegionMin();
     auto vMax = ImGui::GetWindowContentRegionMax();
-    m_viewportSize = {vMax.x - vMin.x, vMax.y - vMin.y};
+    float2 viewportSize = {vMax.x - vMin.x, vMax.y - vMin.y};
+
+    if (!equal(viewportSize, m_viewportSize)) {
+      m_viewportSize = viewportSize;
+      m_viewportWasResized = true;
+    }
 
     ImGui::Image(
       (ImTextureID) m_renderTarget,
@@ -236,6 +233,20 @@ void Frontend::drawImGui() {
 
 void Frontend::handleInput(const SDL_Event& event) {
 
+}
+
+void Frontend::rebuildRenderTarget() {
+  if (m_renderTarget != nullptr) m_renderTarget->release();
+
+  auto texd = MTL::TextureDescriptor::alloc()->init();
+  texd->setTextureType(MTL::TextureType2D);
+  texd->setWidth(static_cast<uint32_t>(m_viewportSize.x * m_dpiScaling));
+  texd->setHeight(static_cast<uint32_t>(m_viewportSize.y * m_dpiScaling));
+  texd->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
+  texd->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
+
+  m_renderTarget = m_device->newTexture(texd);
+  texd->release();
 }
 
 void Frontend::mainDockSpace() {
