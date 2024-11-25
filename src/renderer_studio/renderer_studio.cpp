@@ -77,10 +77,10 @@ void Renderer::render(
   enc->setRenderPipelineState(m_pso);
   enc->setVertexBuffer(m_constantsBuffer, m_constantsOffset, 2);
 
-  size_t transformOffset = 0;
+  size_t dataOffset = 0;
   for (const auto& md: m_meshData) {
     enc->setVertexBuffer(m_vertexBuffer, md.vertexOffset, 0);
-    enc->setVertexBuffer(m_dataBuffer, transformOffset, 1);
+    enc->setVertexBuffer(m_dataBuffer, dataOffset, 1);
     enc->drawIndexedPrimitives(
       MTL::PrimitiveTypeTriangle,
       md.indexCount,
@@ -89,7 +89,7 @@ void Renderer::render(
       md.indexOffset
     );
 
-    transformOffset += sizeof(float4x4);
+    dataOffset += sizeof(NodeData);
   }
 
   enc->endEncoding();
@@ -135,13 +135,12 @@ void Renderer::buildBuffers() {
   for (const auto& md: meshes) {
     const Mesh& mesh = md.mesh;
 
-    m_meshData.push_back(
-      {
-        vertexSize,
-        mesh.vertexPositions().size(),
-        indexSize,
-        mesh.indices().size()
-      }
+    m_meshData.emplace_back(
+      vertexSize,
+      mesh.vertexPositions().size(),
+      indexSize,
+      mesh.indices().size(),
+      static_cast<uint16_t>(md.nodeIdx)
     );
 
     vertexSize += utils::align(
@@ -172,7 +171,7 @@ void Renderer::buildBuffers() {
 
     const NodeData nodeData = {
       meshes[i].transform,
-      static_cast<uint16_t>(meshes[i].nodeIdx),
+      data.nodeIdx,
     };
 
     // Vertices
