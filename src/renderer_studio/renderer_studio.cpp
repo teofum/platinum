@@ -128,13 +128,16 @@ void Renderer::buildBuffers() {
     m_meshData.push_back(
       {
         vertexSize,
-        mesh.vertices().size(),
+        mesh.vertexPositions().size(),
         indexSize,
         mesh.indices().size()
       }
     );
 
-    vertexSize += utils::align(mesh.vertices().size() * sizeof(Vertex), 256);
+    vertexSize += utils::align(
+      mesh.vertexPositions().size() * sizeof(Vertex),
+      256
+    );
     indexSize += utils::align(mesh.indices().size() * sizeof(uint32_t), 256);
   }
 
@@ -160,7 +163,10 @@ void Renderer::buildBuffers() {
 
     // Vertices
     void* vbw = (char*) m_vertexBuffer->contents() + data.vertexOffset;
-    memcpy(vbw, mesh.vertices().data(), data.vertexCount * sizeof(Vertex));
+    memcpy(
+      vbw,
+      mesh.vertexPositions().data(),
+      data.vertexCount * sizeof(Vertex));
 
     // Indices
     void* ibw = (char*) m_indexBuffer->contents() + data.indexOffset;

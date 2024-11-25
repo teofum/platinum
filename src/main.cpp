@@ -1,4 +1,5 @@
 #include <core/store.hpp>
+#include <core/primitives.hpp>
 #include <frontend/frontend.hpp>
 
 int main() {
@@ -6,7 +7,7 @@ int main() {
 
   pt::Scene& scene = store.scene();
 
-  auto cube = pt::Mesh::make_cube(2.0f);
+  auto cube = pt::primitives::cube(2.0f);
   auto idx = scene.addMesh(std::move(cube));
   scene.addNode(pt::Scene::Node(idx));
 

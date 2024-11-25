@@ -73,6 +73,8 @@ add_executable(platinum
         src/renderer_studio/renderer_studio.cpp
         src/renderer_studio/camera.cpp
         renderer_studio.metallib
+        src/core/primitives.cpp
+        src/core/primitives.hpp
 )
 
 target_include_directories(platinum PRIVATE src)

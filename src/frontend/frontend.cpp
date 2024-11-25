@@ -7,6 +7,7 @@
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_metal.h>
 
+#include <core/primitives.hpp>
 #include <utils/metal_utils.hpp>
 
 namespace pt::frontend {
@@ -373,7 +374,7 @@ void Frontend::sceneExplorer() {
     if (ImGui::Button("Cube", {ImGui::GetContentRegionAvail().x, 0})) {
       uint32_t parentIdx = m_selectedNodeIdx.value_or(0);
 
-      auto cube = pt::Mesh::make_cube(2.0f);
+      auto cube = pt::primitives::cube(2.0f);
       auto idx = m_store.scene().addMesh(std::move(cube));
       m_store.scene().addNode(pt::Scene::Node(idx), parentIdx);
 
