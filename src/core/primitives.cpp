@@ -1,5 +1,7 @@
 #include "primitives.hpp"
 
+#include <numbers>
+
 namespace pt::primitives {
 
 Mesh cube(float side) {
@@ -41,6 +43,55 @@ Mesh cube(float side) {
     indices[6 * i + 3] = 4 * i + 1;
     indices[6 * i + 4] = 4 * i + 2;
     indices[6 * i + 5] = 4 * i + 3;
+  }
+
+  return Mesh(std::move(vertices), std::move(vData), std::move(indices));
+}
+
+Mesh sphere(float radius, size_t lat, size_t lng) {
+  std::vector<float3> vertices((lat + 1) * (lng + 1));
+  std::vector<VertexData> vData((lat + 1) * (lng + 1));
+  std::vector<uint32_t> indices(lat * lng * 6);
+
+  const float pi = std::numbers::pi_v<float>;
+  const float dLat = pi / static_cast<float>(lat);
+  const float dLng = pi / static_cast<float>(lng) * 2.0f;
+
+  size_t t = 0;
+  for (size_t i = 0; i <= lat; i++) {
+    const float phi = 0.5f * pi - static_cast<float>(i) * dLat;
+    const float c = cos(phi);
+
+    for (size_t j = 0; j <= lng; j++) {
+      const float theta = static_cast<float>(j) * dLng;
+
+      float3 pos{c * cos(theta), sin(phi), c * sin(theta)};
+      vertices[i * (lng + 1) + j] = pos * radius;
+      vData[i * (lng + 1) + j] = {
+        pos,
+        {0, 0, 0, 0}, // TODO tangent
+        {
+          static_cast<float>(j) / static_cast<float>(lng),
+          static_cast<float>(i) / static_cast<float>(lat),
+        }
+      };
+
+      if (i > 0 && j > 0) {
+        const size_t
+          v0 = (i - 1) * (lng + 1) + (j - 1),
+          v1 = (i - 1) * (lng + 1) + (j),
+          v2 = (i) * (lng + 1) + (j - 1),
+          v3 = (i) * (lng + 1) + (j);
+
+        indices[6 * t + 0] = v0;
+        indices[6 * t + 1] = v1;
+        indices[6 * t + 2] = v2;
+        indices[6 * t + 3] = v1;
+        indices[6 * t + 4] = v3;
+        indices[6 * t + 5] = v2;
+        t++;
+      }
+    }
   }
 
   return Mesh(std::move(vertices), std::move(vData), std::move(indices));

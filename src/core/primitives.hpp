@@ -7,6 +7,8 @@ namespace pt::primitives {
 
 [[nodiscard]] Mesh cube(float side);
 
+[[nodiscard]] Mesh sphere(float radius, size_t lat, size_t lng);
+
 }
 
 #endif //PLATINUM_PRIMITIVES_HPP

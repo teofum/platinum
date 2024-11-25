@@ -428,6 +428,15 @@ void Frontend::sceneExplorer() {
 
       ImGui::CloseCurrentPopup();
     }
+    if (ImGui::Button("Sphere", {ImGui::GetContentRegionAvail().x, 0})) {
+      uint32_t parentIdx = m_selectedNodeIdx.value_or(0);
+
+      auto sphere = pt::primitives::sphere(1.0f, 8, 12);
+      auto idx = m_store.scene().addMesh(std::move(sphere));
+      m_store.scene().addNode(pt::Scene::Node(idx), parentIdx);
+
+      ImGui::CloseCurrentPopup();
+    }
     ImGui::EndCombo();
   }
 
