@@ -376,6 +376,12 @@ void Frontend::properties() {
         (float*) &node.transform.scale,
         0.01f
       );
+
+      if (ImGui::Button("Reset", {ImGui::GetContentRegionAvail().x, 0})) {
+        node.transform.translation = {0, 0, 0};
+        node.transform.rotation = {0, 0, 0};
+        node.transform.scale = {1, 1, 1};
+      }
     }
   } else {
     ImGui::Text("[ Nothing selected ]");
