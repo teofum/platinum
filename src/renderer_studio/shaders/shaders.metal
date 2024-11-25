@@ -17,6 +17,8 @@ struct FragmentOut {
 };
 
 constant float3 objectColor(0.5, 0.5, 0.5);
+constant float3 vsLightDirection(0.2, -0.2, -1.0);
+constant float ambientLight = 0.5;
 
 vertex VertexOut vertexShader(
     Vertex in [[stage_in]],
@@ -33,8 +35,10 @@ vertex VertexOut vertexShader(
 }
 
 fragment FragmentOut fragmentShader(VertexOut in [[stage_in]]) {
+    float shading = mix(abs(dot(vsLightDirection, in.vsNormal)), 1.0, ambientLight);
+
     FragmentOut out;
-    out.color = float4(in.vsNormal * 0.5 + 0.5, 1.0);
+    out.color = float4(objectColor * shading, 1.0);
     out.objectId = in.objectId;
 
     return out;
