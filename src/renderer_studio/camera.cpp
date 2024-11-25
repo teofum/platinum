@@ -1,6 +1,5 @@
 #include "camera.hpp"
 
-#include <print>
 #include <utils/matrices.hpp>
 
 namespace pt::renderer_studio {

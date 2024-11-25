@@ -10,6 +10,8 @@ namespace pt {
 
 class Mesh {
 public:
+  [[nodiscard]] static Mesh make_cube(float side);
+
   explicit Mesh(
     std::vector<float3>&& vertices,
     std::vector<uint32_t>&& indices

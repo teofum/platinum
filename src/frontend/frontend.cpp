@@ -344,6 +344,20 @@ void Frontend::mainDockSpace() {
 void Frontend::sceneExplorer() {
   ImGui::Begin("Scene Explorer");
 
+  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+  if (ImGui::BeginCombo("##", "Add Objects...")) {
+    if (ImGui::Button("Cube", {ImGui::GetContentRegionAvail().x, 0})) {
+      uint32_t parentIdx = m_selectedNodeIdx.value_or(0);
+
+      auto cube = pt::Mesh::make_cube(2.0f);
+      auto idx = m_store.scene().addMesh(std::move(cube));
+      m_store.scene().addNode(pt::Scene::Node(idx), parentIdx);
+
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndCombo();
+  }
+
   sceneExplorerNode(0);
   m_selectedNodeIdx = m_nextNodeIdx;
 
@@ -354,7 +368,7 @@ void Frontend::sceneExplorerNode(uint32_t idx) {
   const Scene::Node& node = m_store.scene().node(idx);
   static ImGuiTreeNodeFlags baseFlags =
     ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
-    ImGuiTreeNodeFlags_SpanAvailWidth;
+    ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding;
 
   auto nodeFlags = baseFlags;
   bool isSelected = m_selectedNodeIdx == idx;
@@ -367,7 +381,8 @@ void Frontend::sceneExplorerNode(uint32_t idx) {
     nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
   }
 
-  bool isOpen = ImGui::TreeNodeEx(idx == 0 ? "Root" : "Node", nodeFlags);
+  auto label = idx == 0 ? "Root" : std::format("Node [{}]", idx);
+  bool isOpen = ImGui::TreeNodeEx(label.c_str(), nodeFlags);
   if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
     m_nextNodeIdx = idx;
 
