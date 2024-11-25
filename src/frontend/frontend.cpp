@@ -385,6 +385,7 @@ void Frontend::sceneExplorer() {
 
   sceneExplorerNode(0);
   m_selectedNodeIdx = m_nextNodeIdx;
+  m_selectedMeshIdx = m_nextMeshIdx;
 
   ImGui::End();
 }
@@ -408,12 +409,26 @@ void Frontend::sceneExplorerNode(uint32_t idx) {
 
   auto label = idx == 0 ? "Root" : std::format("Node [{}]", idx);
   bool isOpen = ImGui::TreeNodeEx(label.c_str(), nodeFlags);
-  if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+  if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
     m_nextNodeIdx = idx;
+    m_nextMeshIdx = std::nullopt;
+  }
 
   if (isOpen) {
     if (node.meshIdx) {
-      ImGui::Text("Mesh (%u)", node.meshIdx.value());
+      auto meshFlags = baseFlags;
+      if (m_selectedMeshIdx == idx) {
+        meshFlags |= ImGuiTreeNodeFlags_Selected;
+      }
+      meshFlags |=
+        ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+
+      auto meshLabel = std::format("Mesh [{}]", node.meshIdx.value());
+      ImGui::TreeNodeEx(meshLabel.c_str(), meshFlags);
+      if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+        m_nextNodeIdx = std::nullopt;
+        m_nextMeshIdx = idx;
+      }
     }
     for (uint32_t childIdx: node.children) {
       sceneExplorerNode(childIdx);
@@ -460,6 +475,8 @@ void Frontend::properties() {
         node.transform.scale = {1, 1, 1};
       }
     }
+  } else if (m_selectedMeshIdx) {
+    ImGui::Text("Mesh [index: %u]", m_selectedMeshIdx.value());
   } else {
     ImGui::Text("[ Nothing selected ]");
   }

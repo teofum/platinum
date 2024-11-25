@@ -59,6 +59,7 @@ private:
 
   // Scene Explorer state
   std::optional<uint32_t> m_selectedNodeIdx, m_nextNodeIdx;
+  std::optional<uint32_t> m_selectedMeshIdx, m_nextMeshIdx;
 
   // Store
   Store& m_store;
