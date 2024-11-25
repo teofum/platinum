@@ -5,6 +5,7 @@
 
 #include <core/store.hpp>
 #include "shader_defs.hpp"
+#include "camera.hpp"
 
 namespace pt::renderer_studio {
 
@@ -30,6 +31,8 @@ public:
   float* clearColor();
 
   void updateClearColor();
+
+  void handleScrollEvent(const float2& delta);
 
 private:
   // Store
@@ -59,8 +62,7 @@ private:
   std::chrono::time_point<std::chrono::high_resolution_clock> m_startTime;
 
   // Camera
-  float3 m_cameraPos = {0.0f, 0.0f, 5.0f};
-  float m_fov = 45.0f;
+  Camera m_camera;
   float m_aspect = 1.0;
 
   float m_clearColor[4] = {0.45f, 0.55f, 0.60f, 1.0f};

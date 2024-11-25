@@ -29,6 +29,14 @@ private:
   SDL_Renderer* m_sdlRenderer = nullptr;
   const uint8_t* m_keys = nullptr;
 
+  // Scroll state (smooth scrolling/trackpad support)
+  static constexpr const float m_scrollSensitivity = 10;
+  static constexpr const float m_scrollFriction = 0.001f;
+  static constexpr const float m_scrollStop = 0.001f;
+  bool m_scrolling = false;
+  float2 m_scrollLastPos = false;
+  float2 m_scrollSpeed = false;
+
   // Metal
   CA::MetalLayer* m_layer = nullptr;
   MTL::Device* m_device = nullptr;
@@ -40,6 +48,7 @@ private:
   float m_clearColor[4] = {0.45f, 0.55f, 0.6f, 1.0f};
   float m_dpiScaling = 1.0f;
   float2 m_viewportSize = {1, 1};
+  bool m_mouseInViewport = false;
 
   // Scene Explorer state
   std::optional<uint32_t> m_selectedNodeIdx, m_nextNodeIdx;
@@ -55,6 +64,8 @@ private:
   void drawImGui();
 
   void handleInput(const SDL_Event& event);
+
+  void handleScrollState();
 
   void rebuildRenderTarget();
 

@@ -68,11 +68,11 @@ add_executable(platinum
         src/core/store.cpp
         src/utils/metal_utils.mm
         src/utils/matrices.cpp
+        src/utils/utils.cpp
         src/frontend/frontend.cpp
         src/renderer_studio/renderer_studio.cpp
+        src/renderer_studio/camera.cpp
         renderer_studio.metallib
-        src/utils/utils.cpp
-        src/utils/utils.hpp
 )
 
 target_include_directories(platinum PRIVATE src)

@@ -129,7 +129,20 @@ float4x4 scaling(float s) {
   return simd_diagonal_matrix(float4{s, s, s, 1.0f});
 }
 
-float4x4 projection(float fov, float aspect, float near, float far) {
+float4x4 lookAt(float3 position, float3 target, float3 up) {
+  const float3 f = normalize(position - target);
+  const float3 s = normalize(cross(up, f));
+  const float3 u = cross(f, s);
+
+  return {
+    float4{s.x, u.x, f.x, 0.0f},
+    float4{s.y, u.y, f.y, 0.0f},
+    float4{s.z, u.z, f.z, 0.0f},
+    float4{-dot(s, position), -dot(u, position), -dot(f, position), 1.0f}
+  };
+}
+
+float4x4 perspective(float fov, float aspect, float near, float far) {
   const float sy = 1.0f / std::tan(fov * 0.5f);
   const float sx = sy / aspect;
   const float zRange = near - far;

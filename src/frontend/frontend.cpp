@@ -43,6 +43,10 @@ void Frontend::start() {
 
   ImGui::StyleColorsLight();
 
+  SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
+  SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
+  SDL_SetHint(SDL_HINT_TRACKPAD_IS_TOUCH_ONLY, "1");
+
   /*
    * Initialize SDL and set hints to render using Metal
    */
@@ -50,9 +54,6 @@ void Frontend::start() {
     std::print(stderr, "SDL init failed: {}\n", SDL_GetError());
     return; // TODO return error code
   }
-
-  SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
-  SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
 
   /*
    * Set up SDL window and renderer
@@ -121,7 +122,7 @@ void Frontend::start() {
   while (!exit) {
     NS::AutoreleasePool* autoreleasePool = NS::AutoreleasePool::alloc()->init();
 
-    // Event polling
+    // Event polling and input
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
       ImGui_ImplSDL2_ProcessEvent(&event);
@@ -131,6 +132,7 @@ void Frontend::start() {
         handleInput(event);
       }
     }
+    handleScrollState();
 
     // Handle resize
     int width, height;
@@ -221,6 +223,7 @@ void Frontend::drawImGui() {
         m_viewportSize.y
       }
     );
+    m_mouseInViewport = ImGui::IsItemHovered();
     ImGui::End();
   }
 
@@ -232,7 +235,41 @@ void Frontend::drawImGui() {
 }
 
 void Frontend::handleInput(const SDL_Event& event) {
+  ImGuiIO& io = ImGui::GetIO();
+  bool allowMouseEvents = !io.WantCaptureMouse || m_mouseInViewport;
 
+  switch (event.type) {
+    case SDL_MULTIGESTURE: {
+      if (!allowMouseEvents) return;
+      const auto& mgesture = event.mgesture;
+      if (mgesture.numFingers == 2) {
+        if (!m_scrolling) {
+          m_scrolling = true;
+        } else {
+          float2 delta = float2{mgesture.x, mgesture.y} - m_scrollLastPos;
+          m_scrollSpeed = delta * m_scrollSensitivity;
+        }
+        m_scrollLastPos = {mgesture.x, mgesture.y};
+      }
+      break;
+    }
+    case SDL_FINGERDOWN: {
+      if (!allowMouseEvents) return;
+      m_scrolling = false;
+      break;
+    }
+  }
+}
+
+void Frontend::handleScrollState() {
+  if (length_squared(m_scrollSpeed) < m_scrollStop * m_scrollStop) {
+    m_scrollSpeed = {0.0f, 0.0f};
+    m_scrolling = false;
+  } else {
+    m_scrollSpeed -= normalize(m_scrollSpeed) * m_scrollFriction;
+  }
+
+  m_renderer->handleScrollEvent(m_scrollSpeed);
 }
 
 void Frontend::rebuildRenderTarget() {

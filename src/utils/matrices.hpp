@@ -29,7 +29,9 @@ float4x4 scaling(float3 s);
 
 float4x4 scaling(float s);
 
-float4x4 projection(float fov, float aspect, float near, float far);
+float4x4 lookAt(float3 position, float3 target, float3 up);
+
+float4x4 perspective(float fov, float aspect, float near, float far);
 
 }
 

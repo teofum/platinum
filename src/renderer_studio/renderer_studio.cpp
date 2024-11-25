@@ -13,7 +13,8 @@ Renderer::Renderer(
   MTL::CommandQueue* commandQueue,
   Store& store
 ) noexcept
-  : m_store(store), m_device(device), m_commandQueue(commandQueue) {
+  : m_store(store), m_device(device), m_commandQueue(commandQueue),
+    m_camera(float3{-3, 3, 3}) {
   m_rpd = MTL::RenderPassDescriptor::alloc()->init();
   updateClearColor();
 
@@ -246,14 +247,15 @@ void Renderer::buildShaders() {
 }
 
 void Renderer::updateConstants() {
-  auto view = mat::translation(-m_cameraPos);
-  auto projection = mat::projection(m_fov, m_aspect, 0.1f, 100.0f);
-
-  auto viewProjection = projection * view;
+  auto viewProjection = m_camera.projection(m_aspect) * m_camera.view();
 
   m_constantsOffset = (m_frameIdx % m_maxFramesInFlight) * m_constantsStride;
   void* bufferWrite = (char*) m_constantsBuffer->contents() + m_constantsOffset;
   memcpy(bufferWrite, &viewProjection, m_constantsSize);
+}
+
+void Renderer::handleScrollEvent(const float2& delta) {
+  m_camera.orbit(-delta);
 }
 
 }
