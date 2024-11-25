@@ -37,4 +37,8 @@ void Camera::orbit(float2 angles) {
   position = posFromTarget.xyz + target;
 }
 
+void Camera::moveTowardTarget(float amt) {
+  position = target + (position - target) * (1.0f - amt);
+}
+
 }

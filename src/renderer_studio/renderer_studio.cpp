@@ -258,4 +258,8 @@ void Renderer::handleScrollEvent(const float2& delta) {
   m_camera.orbit(-delta);
 }
 
+void Renderer::handleZoomEvent(float delta) {
+  m_camera.moveTowardTarget(delta);
+}
+
 }

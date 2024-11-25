@@ -132,7 +132,7 @@ void Frontend::start() {
         handleInput(event);
       }
     }
-    handleScrollState();
+    handleScrollAndZoomState();
 
     // Handle resize
     int width, height;
@@ -242,34 +242,60 @@ void Frontend::handleInput(const SDL_Event& event) {
     case SDL_MULTIGESTURE: {
       if (!allowMouseEvents) return;
       const auto& mgesture = event.mgesture;
+
       if (mgesture.numFingers == 2) {
-        if (!m_scrolling) {
-          m_scrolling = true;
-        } else {
-          float2 delta = float2{mgesture.x, mgesture.y} - m_scrollLastPos;
+        float2 delta = float2{mgesture.x, mgesture.y} - m_scrollLastPos;
+        if (m_scrolling) {
+          // Handle scroll to move/orbit
           m_scrollSpeed = delta * m_scrollSensitivity;
+        } else if (m_zooming) {
+          // Handle pinch to zoom
+          m_zoomSpeed = mgesture.dDist * m_zoomSensitivity;
+
+          if (abs(mgesture.dDist) < length(delta) * m_pinchThreshold2) {
+            m_zooming = false;
+            m_zoomSpeed = 0.0f;
+            m_scrolling = true;
+          }
+        } else {
+          if (abs(mgesture.dDist) > length(delta) * m_pinchThreshold) {
+            m_zooming = true;
+          } else {
+            m_scrolling = true;
+          }
         }
         m_scrollLastPos = {mgesture.x, mgesture.y};
       }
+
       break;
     }
     case SDL_FINGERDOWN: {
       if (!allowMouseEvents) return;
       m_scrolling = false;
+      m_scrollSpeed = {0.0f, 0.0f};
+      m_zooming = false;
+      m_zoomSpeed = 0.0f;
       break;
     }
   }
 }
 
-void Frontend::handleScrollState() {
+void Frontend::handleScrollAndZoomState() {
   if (length_squared(m_scrollSpeed) < m_scrollStop * m_scrollStop) {
-    m_scrollSpeed = {0.0f, 0.0f};
     m_scrolling = false;
+    m_scrollSpeed = {0.0f, 0.0f};
   } else {
     m_scrollSpeed -= normalize(m_scrollSpeed) * m_scrollFriction;
+    m_renderer->handleScrollEvent(m_scrollSpeed);
   }
 
-  m_renderer->handleScrollEvent(m_scrollSpeed);
+  if (abs(m_zoomSpeed) < m_zoomStop) {
+    m_zooming = false;
+    m_zoomSpeed = 0.0f;
+  } else {
+    m_zoomSpeed -= sign(m_zoomSpeed) * m_zoomFriction;
+    m_renderer->handleZoomEvent(m_zoomSpeed);
+  }
 }
 
 void Frontend::rebuildRenderTarget() {

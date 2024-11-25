@@ -25,6 +25,8 @@ struct Camera {
   [[nodiscard]] float4x4 projection(float aspect) const;
 
   void orbit(float2 angles);
+
+  void moveTowardTarget(float amt);
 };
 
 }

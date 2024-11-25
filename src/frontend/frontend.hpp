@@ -30,12 +30,21 @@ private:
   const uint8_t* m_keys = nullptr;
 
   // Scroll state (smooth scrolling/trackpad support)
-  static constexpr const float m_scrollSensitivity = 10;
+  static constexpr const float m_scrollSensitivity = 10.0f;
   static constexpr const float m_scrollFriction = 0.001f;
   static constexpr const float m_scrollStop = 0.001f;
   bool m_scrolling = false;
-  float2 m_scrollLastPos = false;
-  float2 m_scrollSpeed = false;
+  float2 m_scrollLastPos = {0, 0};
+  float2 m_scrollSpeed = {0, 0};
+
+  // Pinch state (pinch-to-zoom support)
+  static constexpr const float m_pinchThreshold = 0.95f;
+  static constexpr const float m_pinchThreshold2 = 0.5f;
+  static constexpr const float m_zoomSensitivity = 10.0f;
+  static constexpr const float m_zoomFriction = 0.003f;
+  static constexpr const float m_zoomStop = 0.003f;
+  bool m_zooming = false;
+  float m_zoomSpeed = 0.0f;
 
   // Metal
   CA::MetalLayer* m_layer = nullptr;
@@ -65,7 +74,7 @@ private:
 
   void handleInput(const SDL_Event& event);
 
-  void handleScrollState();
+  void handleScrollAndZoomState();
 
   void rebuildRenderTarget();
 

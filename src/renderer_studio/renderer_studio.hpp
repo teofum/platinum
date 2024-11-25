@@ -34,6 +34,8 @@ public:
 
   void handleScrollEvent(const float2& delta);
 
+  void handleZoomEvent(float delta);
+
 private:
   // Store
   Store& m_store;
