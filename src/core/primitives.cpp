@@ -69,7 +69,7 @@ Mesh sphere(float radius, size_t lat, size_t lng) {
       vertices[i * (lng + 1) + j] = pos * radius;
       vData[i * (lng + 1) + j] = {
         pos,
-        {0, 0, 0, 0}, // TODO tangent
+        {-sin(theta), 0, cos(theta), 1.0f},
         {
           static_cast<float>(j) / static_cast<float>(lng),
           static_cast<float>(i) / static_cast<float>(lat),
