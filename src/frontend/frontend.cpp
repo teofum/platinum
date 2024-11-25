@@ -161,8 +161,8 @@ void Frontend::start() {
     colorAttachment->setStoreAction(MTL::StoreActionStore);
 
     // Render scene
-    if (!m_renderTarget || m_viewportWasResized) rebuildRenderTarget();
-    m_renderer->render(m_renderTarget);
+    if (!m_renderTarget || m_viewportWasResized) rebuildRenderTargets();
+    m_renderer->render(m_renderTarget, m_geometryRenderTarget);
 
     // Render ImGui
     auto enc = cmd->renderCommandEncoder(m_rpd);
@@ -196,43 +196,6 @@ void Frontend::start() {
   SDL_DestroyRenderer(m_sdlRenderer);
   SDL_DestroyWindow(m_sdlWindow);
   SDL_Quit();
-}
-
-void Frontend::drawImGui() {
-  mainDockSpace();
-  sceneExplorer();
-  properties();
-
-  {
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 1.0f));
-    ImGui::Begin("Viewport");
-    ImGui::PopStyleVar();
-
-    auto vMin = ImGui::GetWindowContentRegionMin();
-    auto vMax = ImGui::GetWindowContentRegionMax();
-    float2 viewportSize = {vMax.x - vMin.x, vMax.y - vMin.y};
-
-    if (!equal(viewportSize, m_viewportSize)) {
-      m_viewportSize = viewportSize;
-      m_viewportWasResized = true;
-    }
-
-    ImGui::Image(
-      (ImTextureID) m_renderTarget,
-      {
-        m_viewportSize.x,
-        m_viewportSize.y
-      }
-    );
-    m_mouseInViewport = ImGui::IsItemHovered();
-    ImGui::End();
-  }
-
-//  ImGui::Text(
-//    "Application average %.3f ms/frame (%.1f FPS)",
-//    1000.0f / io.Framerate,
-//    io.Framerate
-//  );
 }
 
 void Frontend::handleInput(const SDL_Event& event) {
@@ -277,6 +240,47 @@ void Frontend::handleInput(const SDL_Event& event) {
       m_zoomSpeed = 0.0f;
       break;
     }
+    case SDL_MOUSEBUTTONUP: {
+      if (!allowMouseEvents) return;
+      const auto& button = event.button;
+
+      uint32_t x = button.x - static_cast<uint32_t>(m_viewportTopLeft.x);
+      uint32_t y = button.y - static_cast<uint32_t>(m_viewportTopLeft.y);
+
+      // TODO this seems afwully inefficient
+      auto pixelSize = 2;
+      auto readBuf = m_device
+        ->newBuffer(pixelSize, MTL::ResourceStorageModeShared);
+      auto cmd = m_commandQueue->commandBuffer();
+      auto benc = cmd->blitCommandEncoder();
+
+      benc->copyFromTexture(
+        m_geometryRenderTarget,
+        0,
+        0,
+        MTL::Origin(x * 2, y * 2, 0),
+        MTL::Size(1, 1, 1),
+        readBuf,
+        0,
+        pixelSize,
+        pixelSize
+      );
+      benc->endEncoding();
+      cmd->commit();
+      cmd->waitUntilCompleted();
+
+      uint16_t objectId;
+      auto contents = readBuf->contents();
+      memcpy(&objectId, contents, pixelSize);
+
+      if (objectId != 0) {
+        m_selectedNodeIdx = m_nextNodeIdx = objectId;
+      } else {
+        m_selectedNodeIdx = m_nextNodeIdx = std::nullopt;
+      }
+      m_selectedMeshIdx = m_nextMeshIdx = std::nullopt;
+      break;
+    }
   }
 }
 
@@ -297,18 +301,62 @@ void Frontend::handleScrollAndZoomState() {
   }
 }
 
-void Frontend::rebuildRenderTarget() {
+void Frontend::rebuildRenderTargets() {
   if (m_renderTarget != nullptr) m_renderTarget->release();
+  if (m_geometryRenderTarget != nullptr) m_geometryRenderTarget->release();
 
   auto texd = MTL::TextureDescriptor::alloc()->init();
   texd->setTextureType(MTL::TextureType2D);
   texd->setWidth(static_cast<uint32_t>(m_viewportSize.x * m_dpiScaling));
   texd->setHeight(static_cast<uint32_t>(m_viewportSize.y * m_dpiScaling));
-  texd->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
   texd->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
+  texd->setStorageMode(MTL::StorageModeShared);
 
+  texd->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
   m_renderTarget = m_device->newTexture(texd);
+
+  texd->setPixelFormat(MTL::PixelFormatR16Uint);
+  m_geometryRenderTarget = m_device->newTexture(texd);
+
   texd->release();
+}
+
+void Frontend::drawImGui() {
+  mainDockSpace();
+  sceneExplorer();
+  properties();
+
+  {
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 1.0f));
+    ImGui::Begin("Viewport");
+    ImGui::PopStyleVar();
+
+    auto pos = ImGui::GetCursorScreenPos();
+    m_viewportTopLeft = {pos.x, pos.y};
+
+    auto size = ImGui::GetContentRegionAvail();
+    float2 viewportSize = {size.x, size.y};
+    if (!equal(viewportSize, m_viewportSize)) {
+      m_viewportSize = viewportSize;
+      m_viewportWasResized = true;
+    }
+
+    ImGui::Image(
+      (ImTextureID) m_renderTarget,
+      {
+        m_viewportSize.x,
+        m_viewportSize.y
+      }
+    );
+    m_mouseInViewport = ImGui::IsItemHovered();
+    ImGui::End();
+  }
+
+//  ImGui::Text(
+//    "Application average %.3f ms/frame (%.1f FPS)",
+//    1000.0f / io.Framerate,
+//    io.Framerate
+//  );
 }
 
 void Frontend::mainDockSpace() {

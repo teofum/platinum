@@ -24,6 +24,12 @@ public:
     }
   };
 
+  struct MeshData {
+    const Mesh& mesh;
+    float4x4 transform;
+    uint32_t nodeIdx = 0;
+  };
+
   explicit Scene() noexcept;
 
   uint32_t addMesh(Mesh&& mesh);
@@ -50,7 +56,7 @@ public:
     return m_meshes[idx];
   }
 
-  [[nodiscard]] std::vector<std::pair<const Mesh&, float4x4>> getAllMeshes() const;
+  [[nodiscard]] std::vector<MeshData> getAllMeshes() const;
 
 private:
   std::vector<Mesh> m_meshes;

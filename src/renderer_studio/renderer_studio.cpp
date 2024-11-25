@@ -37,7 +37,10 @@ Renderer::~Renderer() {
   m_rpd->release();
 }
 
-void Renderer::render(MTL::Texture* renderTarget) noexcept {
+void Renderer::render(
+  MTL::Texture* renderTarget,
+  MTL::Texture* geometryTarget
+) noexcept {
   NS::AutoreleasePool* autoreleasePool = NS::AutoreleasePool::alloc()->init();
 
   m_aspect = static_cast<float>(renderTarget->width()) /
@@ -47,10 +50,17 @@ void Renderer::render(MTL::Texture* renderTarget) noexcept {
   updateConstants();
 
   auto cmd = m_commandQueue->commandBuffer();
+
   auto colorAttachment = m_rpd->colorAttachments()->object(0);
   colorAttachment->setTexture(renderTarget);
   colorAttachment->setLoadAction(MTL::LoadActionClear);
   colorAttachment->setStoreAction(MTL::StoreActionStore);
+
+  auto geomAttachment = m_rpd->colorAttachments()->object(1);
+  geomAttachment->setClearColor(MTL::ClearColor::Make(0.0f, 0.0f, 0.0f, 1.0f));
+  geomAttachment->setTexture(geometryTarget);
+  geomAttachment->setLoadAction(MTL::LoadActionClear);
+  geomAttachment->setStoreAction(MTL::StoreActionStore);
 
   auto enc = cmd->renderCommandEncoder(m_rpd);
 
@@ -70,7 +80,7 @@ void Renderer::render(MTL::Texture* renderTarget) noexcept {
   size_t transformOffset = 0;
   for (const auto& md: m_meshData) {
     enc->setVertexBuffer(m_vertexBuffer, md.vertexOffset, 0);
-    enc->setVertexBuffer(m_transformBuffer, transformOffset, 1);
+    enc->setVertexBuffer(m_dataBuffer, transformOffset, 1);
     enc->drawIndexedPrimitives(
       MTL::PrimitiveTypeTriangle,
       md.indexCount,
@@ -112,18 +122,18 @@ void Renderer::buildBuffers() {
    */
   if (m_vertexBuffer != nullptr) m_vertexBuffer->release();
   if (m_indexBuffer != nullptr) m_indexBuffer->release();
-  if (m_transformBuffer != nullptr) m_transformBuffer->release();
+  if (m_dataBuffer != nullptr) m_dataBuffer->release();
 
   /*
    * Calculate buffer sizes and create buffers
    */
   auto meshes = m_store.scene().getAllMeshes();
-  size_t vertexSize = 0, indexSize = 0, transformCount = meshes.size();
+  size_t vertexSize = 0, indexSize = 0, meshCount = meshes.size();
 
   m_meshData.clear();
   m_meshData.reserve(meshes.size());
-  for (const auto& meshAndTransform: meshes) {
-    const Mesh& mesh = meshAndTransform.first;
+  for (const auto& md: meshes) {
+    const Mesh& mesh = md.mesh;
 
     m_meshData.push_back(
       {
@@ -149,38 +159,43 @@ void Renderer::buildBuffers() {
   m_indexBuffer = m_device
     ->newBuffer(indexBufferSize, MTL::ResourceStorageModeShared);
 
-  size_t transformBufferSize = transformCount * sizeof(float4x4);
-  m_transformBuffer = m_device
-    ->newBuffer(transformBufferSize, MTL::ResourceStorageModeShared);
+  size_t dataBufferSize = meshCount * sizeof(NodeData);
+  m_dataBuffer = m_device
+    ->newBuffer(dataBufferSize, MTL::ResourceStorageModeShared);
 
   /*
    * Fill mesh data and transform buffers
    */
   for (size_t i = 0; i < m_meshData.size(); i++) {
-    const Mesh& mesh = meshes[i].first;
-    const float4x4& transform = meshes[i].second;
+    const Mesh& mesh = meshes[i].mesh;
     const MeshData& data = m_meshData[i];
+
+    const NodeData nodeData = {
+      meshes[i].transform,
+      static_cast<uint16_t>(meshes[i].nodeIdx),
+    };
 
     // Vertices
     void* vbw = (char*) m_vertexBuffer->contents() + data.vertexOffset;
     memcpy(
       vbw,
       mesh.vertexPositions().data(),
-      data.vertexCount * sizeof(Vertex));
+      data.vertexCount * sizeof(Vertex)
+    );
 
     // Indices
     void* ibw = (char*) m_indexBuffer->contents() + data.indexOffset;
     memcpy(ibw, mesh.indices().data(), data.indexCount * sizeof(uint32_t));
 
     // Transform
-    void* tbw = (char*) m_transformBuffer->contents() + i * sizeof(float4x4);
-    memcpy(tbw, &transform, sizeof(float4x4));
+    void* dbw = (char*) m_dataBuffer->contents() + i * sizeof(NodeData);
+    memcpy(dbw, &nodeData, sizeof(NodeData));
   }
 
   m_vertexBuffer->didModifyRange(NS::Range::Make(0, m_vertexBuffer->length()));
   m_indexBuffer->didModifyRange(NS::Range::Make(0, m_indexBuffer->length()));
-  m_transformBuffer
-    ->didModifyRange(NS::Range::Make(0, m_transformBuffer->length()));
+  m_dataBuffer
+    ->didModifyRange(NS::Range::Make(0, m_dataBuffer->length()));
 }
 
 void Renderer::buildShaders() {
@@ -207,6 +222,8 @@ void Renderer::buildShaders() {
   desc->setFragmentFunction(fragmentFunction);
   desc->colorAttachments()->object(0)
       ->setPixelFormat(MTL::PixelFormatRGBA8Unorm_sRGB);
+  desc->colorAttachments()->object(1)
+      ->setPixelFormat(MTL::PixelFormatR16Uint);
 
   /*
    * Set up a vertex attribute descriptor, this tells Metal where each attribute

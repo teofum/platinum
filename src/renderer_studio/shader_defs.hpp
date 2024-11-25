@@ -12,6 +12,11 @@ struct Vertex {
   float3 position [[attribute(0)]];
 };
 
+struct NodeData {
+  float4x4 model;
+  uint16_t nodeIdx = 0;
+};
+
 #endif //PLATINUM_SHADER_DEFS_HPP
 
 #pragma clang diagnostic pop

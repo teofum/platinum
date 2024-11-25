@@ -55,6 +55,7 @@ private:
   float m_clearColor[4] = {0.45f, 0.55f, 0.6f, 1.0f};
   float m_dpiScaling = 1.0f;
   float2 m_viewportSize = {1, 1};
+  float2 m_viewportTopLeft = {0, 0};
   bool m_mouseInViewport = false;
 
   // Scene Explorer state
@@ -68,6 +69,7 @@ private:
   bool m_viewportWasResized = false;
   std::unique_ptr<renderer_studio::Renderer> m_renderer;
   MTL::Texture* m_renderTarget = nullptr;
+  MTL::Texture* m_geometryRenderTarget = nullptr;
 
   void drawImGui();
 
@@ -75,7 +77,7 @@ private:
 
   void handleScrollAndZoomState();
 
-  void rebuildRenderTarget();
+  void rebuildRenderTargets();
 
   /**
    * ImGui windows

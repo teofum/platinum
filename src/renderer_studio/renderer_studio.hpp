@@ -15,6 +15,7 @@ class Renderer {
     size_t vertexCount;
     size_t indexOffset;
     size_t indexCount;
+    uint16_t nodeIdx;
   };
 
 public:
@@ -26,7 +27,10 @@ public:
 
   ~Renderer();
 
-  void render(MTL::Texture* renderTarget) noexcept;
+  void render(
+    MTL::Texture* renderTarget,
+    MTL::Texture* geometryTarget = nullptr
+  ) noexcept;
 
   float* clearColor();
 
@@ -50,7 +54,7 @@ private:
   // Buffers
   MTL::Buffer* m_vertexBuffer = nullptr;
   MTL::Buffer* m_indexBuffer = nullptr;
-  MTL::Buffer* m_transformBuffer = nullptr;
+  MTL::Buffer* m_dataBuffer = nullptr;
 
   std::vector<MeshData> m_meshData;
 

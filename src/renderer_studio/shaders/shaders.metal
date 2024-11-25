@@ -4,23 +4,34 @@
 
 using namespace metal;
 
-struct RasterVertex {
+struct VertexOut {
     float4 position [[position]];
     float4 color;
+    uint16_t objectId;
 };
 
-vertex RasterVertex vertexShader(
+struct FragmentOut {
+    float4 color [[color(0)]];
+    uint16_t objectId [[color(1)]];
+};
+
+vertex VertexOut vertexShader(
     Vertex in [[stage_in]],
-    constant float4x4 &model [[buffer(1)]],
+    constant NodeData &data [[buffer(1)]],
     constant float4x4 &viewProjection [[buffer(2)]]
 ) {
-    RasterVertex out;
-    out.position = viewProjection * model * float4(in.position, 1.0);
+    VertexOut out;
+    out.position = viewProjection * data.model * float4(in.position, 1.0);
     out.color = float4(in.position * 0.5 + 0.5, 1.0);
+    out.objectId = data.nodeIdx;
 
     return out;
 }
 
-fragment float4 fragmentShader(RasterVertex in [[stage_in]]) {
-    return in.color;
+fragment FragmentOut fragmentShader(VertexOut in [[stage_in]]) {
+    FragmentOut out;
+    out.color = in.color;
+    out.objectId = in.objectId;
+
+    return out;
 }
