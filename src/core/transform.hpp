@@ -33,7 +33,7 @@ struct Transform {
     const auto Ry = mat::rotation_y(rotation.y);
     const auto Rz = mat::rotation_z(rotation.z);
 
-    return Rz * Rx * Ry * S * T;
+    return T * Rz * Rx * Ry * S;
   }
 
   [[nodiscard]] constexpr float3x3 normalMatrix() const {

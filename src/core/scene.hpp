@@ -34,6 +34,22 @@ public:
     return m_nodes[0];
   }
 
+  [[nodiscard]] constexpr const Node& node(uint32_t idx) const {
+    return m_nodes[idx];
+  }
+
+  [[nodiscard]] constexpr Node& node(uint32_t idx) {
+    return m_nodes[idx];
+  }
+
+  [[nodiscard]] constexpr const Mesh& mesh(uint32_t idx) const {
+    return m_meshes[idx];
+  }
+
+  [[nodiscard]] constexpr Mesh& mesh(uint32_t idx) {
+    return m_meshes[idx];
+  }
+
   [[nodiscard]] std::vector<std::pair<const Mesh&, float4x4>> getAllMeshes() const;
 
 private:

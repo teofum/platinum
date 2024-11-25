@@ -1,6 +1,5 @@
 #include "renderer_studio.hpp"
 
-#include <numbers>
 #include <print>
 #include <utils/metal_utils.hpp>
 #include <utils/matrices.hpp>

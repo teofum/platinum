@@ -2,6 +2,7 @@
 #define PLATINUM_FRONTEND_HPP
 
 #include <string>
+#include <optional>
 #include <SDL.h>
 #include <imgui.h>
 #include <Metal/Metal.hpp>
@@ -18,7 +19,7 @@ public:
 
   ~Frontend();
 
-  void start() noexcept;
+  void start();
 
 private:
   static constexpr const std::string m_defaultTitle = "Pt [SDL2 | Metal]";
@@ -35,11 +36,16 @@ private:
   MTL::RenderPassDescriptor* m_rpd = nullptr;
 
   // ImGui
-  bool m_showDemo = true;
   bool m_initialized = false;
   float m_clearColor[4] = {0.45f, 0.55f, 0.6f, 1.0f};
   float m_dpiScaling = 1.0f;
   float2 m_viewportSize = {1, 1};
+
+  // Scene Explorer state
+  std::optional<uint32_t> m_selectedNodeIdx, m_nextNodeIdx;
+
+  // Properties state
+  bool m_propertiesNodeTransformOpen = true;
 
   // Store
   Store& m_store;
@@ -48,14 +54,20 @@ private:
   std::unique_ptr<renderer_studio::Renderer> m_renderer;
   MTL::Texture* m_renderTarget = nullptr;
 
-  void drawImGui() noexcept;
+  void drawImGui();
 
-  void handleInput(const SDL_Event& event) noexcept;
+  void handleInput(const SDL_Event& event);
 
   /**
    * ImGui windows
    */
-  void mainDockSpace() noexcept;
+  void mainDockSpace();
+
+  void sceneExplorer();
+
+  void sceneExplorerNode(uint32_t idx);
+
+  void properties();
 };
 
 }

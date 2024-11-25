@@ -1,5 +1,6 @@
 #include "frontend.hpp"
 
+#include <numbers>
 #include <print>
 #include <Foundation/Foundation.hpp>
 #include <imgui_internal.h>
@@ -30,7 +31,7 @@ Frontend::~Frontend() {
   m_renderTarget->release();
 }
 
-void Frontend::start() noexcept {
+void Frontend::start() {
   /*
    * Set up ImGui
    */
@@ -170,7 +171,7 @@ void Frontend::start() noexcept {
     m_renderer->render(m_renderTarget);
 
     auto enc = cmd->renderCommandEncoder(m_rpd);
-    enc->pushDebugGroup("ImGui demo"_ns);
+    enc->pushDebugGroup("ImGui"_ns);
 
     ImGui_ImplMetal_NewFrame(m_rpd);
     ImGui_ImplSDL2_NewFrame();
@@ -202,34 +203,10 @@ void Frontend::start() noexcept {
   SDL_Quit();
 }
 
-void Frontend::drawImGui() noexcept {
+void Frontend::drawImGui() {
   mainDockSpace();
-
-  if (m_showDemo) ImGui::ShowDemoWindow(&m_showDemo);
-
-  {
-    ImGui::Begin("Hello World");
-
-    ImGui::Text("Some text here");
-    ImGui::Checkbox("Demo Window", &m_showDemo);
-    if (ImGui::ColorEdit3("Background Color", m_renderer->clearColor())) {
-      m_renderer->updateClearColor();
-    }
-
-    ImGui::End();
-  }
-
-  {
-    ImGuiIO& io = ImGui::GetIO();
-    ImGui::Begin("Down");
-    ImGui::Text("Some text here");
-    ImGui::Text(
-      "Application average %.3f ms/frame (%.1f FPS)",
-      1000.0f / io.Framerate,
-      io.Framerate
-    );
-    ImGui::End();
-  }
+  sceneExplorer();
+  properties();
 
   {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 1.0f));
@@ -249,13 +226,19 @@ void Frontend::drawImGui() noexcept {
     );
     ImGui::End();
   }
+
+//  ImGui::Text(
+//    "Application average %.3f ms/frame (%.1f FPS)",
+//    1000.0f / io.Framerate,
+//    io.Framerate
+//  );
 }
 
-void Frontend::handleInput(const SDL_Event& event) noexcept {
+void Frontend::handleInput(const SDL_Event& event) {
 
 }
 
-void Frontend::mainDockSpace() noexcept {
+void Frontend::mainDockSpace() {
   ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDocking;
   windowFlags |= ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration;
   windowFlags |= ImGuiWindowFlags_NoBackground;
@@ -292,19 +275,99 @@ void Frontend::mainDockSpace() noexcept {
       ImGui::DockBuilderSetNodeSize(dockSpaceId, viewport->Size);
 
       auto dockIdLeft = ImGui::DockBuilderSplitNode(
-        dockSpaceId, ImGuiDir_Left, 0.4f,
+        dockSpaceId, ImGuiDir_Left, 0.25f,
         nullptr, &dockSpaceId
       );
-      auto dockIdDown = ImGui::DockBuilderSplitNode(
-        dockSpaceId, ImGuiDir_Down, 0.5f,
-        nullptr, &dockSpaceId
+      auto dockIdLeftLower = ImGui::DockBuilderSplitNode(
+        dockIdLeft, ImGuiDir_Down, 0.4f,
+        nullptr, &dockIdLeft
       );
 
-      ImGui::DockBuilderDockWindow("Hello World", dockIdLeft);
-      ImGui::DockBuilderDockWindow("Down", dockIdDown);
+      ImGui::DockBuilderDockWindow("Scene Explorer", dockIdLeft);
+      ImGui::DockBuilderDockWindow("Properties", dockIdLeftLower);
       ImGui::DockBuilderDockWindow("Viewport", dockSpaceId);
       ImGui::DockBuilderFinish(dockSpaceId);
     }
+  }
+
+  ImGui::End();
+}
+
+void Frontend::sceneExplorer() {
+  ImGui::Begin("Scene Explorer");
+
+  sceneExplorerNode(0);
+  m_selectedNodeIdx = m_nextNodeIdx;
+
+  ImGui::End();
+}
+
+void Frontend::sceneExplorerNode(uint32_t idx) {
+  const Scene::Node& node = m_store.scene().node(idx);
+  static ImGuiTreeNodeFlags baseFlags =
+    ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+    ImGuiTreeNodeFlags_SpanAvailWidth;
+
+  auto nodeFlags = baseFlags;
+  bool isSelected = m_selectedNodeIdx == idx;
+  if (isSelected) {
+    nodeFlags |= ImGuiTreeNodeFlags_Selected;
+  }
+
+  bool isLeaf = !node.meshIdx && node.children.empty();
+  if (isLeaf) {
+    nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+  }
+
+  bool isOpen = ImGui::TreeNodeEx(idx == 0 ? "Root" : "Node", nodeFlags);
+  if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+    m_nextNodeIdx = idx;
+
+  if (isOpen) {
+    if (node.meshIdx) {
+      ImGui::Text("Mesh (%u)", node.meshIdx.value());
+    }
+    for (uint32_t childIdx: node.children) {
+      sceneExplorerNode(childIdx);
+    }
+    ImGui::TreePop();
+  }
+}
+
+void Frontend::properties() {
+  static ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen;
+
+  ImGui::Begin("Properties");
+  if (m_selectedNodeIdx) {
+    Scene::Node& node = m_store.scene().node(m_selectedNodeIdx.value());
+
+    ImGui::Text("Node [index: %u]", m_selectedNodeIdx.value());
+
+    if (ImGui::CollapsingHeader("Transform", flags)) {
+      ImGui::DragFloat3(
+        "Translation",
+        (float*) &node.transform.translation,
+        0.01f
+      );
+
+      ImGui::DragFloat3(
+        "Rotation",
+        (float*) &node.transform.rotation,
+        0.005f,
+        0.0f,
+        2.0f * std::numbers::pi,
+        "%.3f",
+        ImGuiSliderFlags_WrapAround
+      );
+
+      ImGui::DragFloat3(
+        "Scale",
+        (float*) &node.transform.scale,
+        0.01f
+      );
+    }
+  } else {
+    ImGui::Text("[ Nothing selected ]");
   }
 
   ImGui::End();
