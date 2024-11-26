@@ -69,6 +69,7 @@ private:
   bool m_viewportWasResized = false;
   std::unique_ptr<renderer_studio::Renderer> m_renderer;
   MTL::Texture* m_renderTarget = nullptr;
+  MTL::Texture* m_renderTarget2 = nullptr;
   MTL::Texture* m_geometryRenderTarget = nullptr;
 
   void drawImGui();

@@ -26,16 +26,13 @@ public:
     Store& store
   ) noexcept;
 
-  ~Renderer();
-
   void render(
     MTL::Texture* renderTarget,
+    MTL::Texture* renderTarget2,
     MTL::Texture* geometryTarget = nullptr
   ) noexcept;
 
   float* clearColor();
-
-  void updateClearColor();
 
   void handleScrollEvent(const float2& delta);
 
@@ -48,7 +45,6 @@ private:
   // Metal
   MTL::Device* m_device = nullptr;
   MTL::CommandQueue* m_commandQueue = nullptr;
-  MTL::RenderPassDescriptor* m_rpd = nullptr;
   MTL::RenderPipelineState* m_pso = nullptr;
   MTL::DepthStencilState* m_dsso = nullptr;
 
@@ -59,6 +55,12 @@ private:
   MTL::Buffer* m_dataBuffer = nullptr;
 
   std::vector<MeshData> m_meshData;
+
+  // Post process pass
+  MTL::RenderPipelineState* m_postPassPso = nullptr;
+  MTL::SamplerState* m_postPassSso = nullptr;
+  MTL::Buffer* m_postPassVertexBuffer = nullptr;
+  MTL::Buffer* m_postPassIndexBuffer = nullptr;
 
   // Constants
   MTL::Buffer* m_constantsBuffer = nullptr;

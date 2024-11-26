@@ -140,9 +140,6 @@ void Frontend::start() {
     SDL_GetRendererOutputSize(m_sdlRenderer, &width, &height);
     metal_utils::setDrawableSize(m_layer, width, height);
 
-//    m_viewportSize.x() = width;
-//    m_viewportSize.y() = height;
-
     // Draw ImGui
     auto drawable = metal_utils::nextDrawable(m_layer);
 
@@ -162,7 +159,7 @@ void Frontend::start() {
 
     // Render scene
     if (!m_renderTarget || m_viewportWasResized) rebuildRenderTargets();
-    m_renderer->render(m_renderTarget, m_geometryRenderTarget);
+    m_renderer->render(m_renderTarget, m_renderTarget2, m_geometryRenderTarget);
 
     // Render ImGui
     auto enc = cmd->renderCommandEncoder(m_rpd);
@@ -303,6 +300,7 @@ void Frontend::handleScrollAndZoomState() {
 
 void Frontend::rebuildRenderTargets() {
   if (m_renderTarget != nullptr) m_renderTarget->release();
+  if (m_renderTarget2 != nullptr) m_renderTarget2->release();
   if (m_geometryRenderTarget != nullptr) m_geometryRenderTarget->release();
 
   auto texd = MTL::TextureDescriptor::alloc()->init();
@@ -314,6 +312,7 @@ void Frontend::rebuildRenderTargets() {
 
   texd->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
   m_renderTarget = m_device->newTexture(texd);
+  m_renderTarget2 = m_device->newTexture(texd);
 
   texd->setPixelFormat(MTL::PixelFormatR16Uint);
   m_geometryRenderTarget = m_device->newTexture(texd);
@@ -342,7 +341,7 @@ void Frontend::drawImGui() {
     }
 
     ImGui::Image(
-      (ImTextureID) m_renderTarget,
+      (ImTextureID) m_renderTarget2,
       {
         m_viewportSize.x,
         m_viewportSize.y

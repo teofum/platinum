@@ -58,7 +58,10 @@ target_link_libraries(ImGui PRIVATE METAL_CPP)
 target_link_libraries(ImGui PRIVATE ${SDL2}/SDL2)
 
 # Build shaders
-build_shaders(renderer_studio.metallib src/renderer_studio/shaders/shaders.metal)
+build_shaders(renderer_studio.metallib
+        src/renderer_studio/shaders/shaders.metal
+        src/renderer_studio/shaders/edge_pass.metal
+)
 
 # Main executable
 add_executable(platinum
@@ -66,6 +69,7 @@ add_executable(platinum
         src/core/mesh.cpp
         src/core/scene.cpp
         src/core/store.cpp
+        src/core/primitives.cpp
         src/utils/metal_utils.mm
         src/utils/matrices.cpp
         src/utils/utils.cpp
@@ -73,8 +77,6 @@ add_executable(platinum
         src/renderer_studio/renderer_studio.cpp
         src/renderer_studio/camera.cpp
         renderer_studio.metallib
-        src/core/primitives.cpp
-        src/core/primitives.hpp
 )
 
 target_include_directories(platinum PRIVATE src)

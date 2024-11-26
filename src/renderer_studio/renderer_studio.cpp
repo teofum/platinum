@@ -15,9 +15,6 @@ Renderer::Renderer(
 ) noexcept
   : m_store(store), m_device(device), m_commandQueue(commandQueue),
     m_camera(float3{-3, 3, 3}) {
-  m_rpd = MTL::RenderPassDescriptor::alloc()->init();
-  updateClearColor();
-
   /*
    * Build the constants buffer
    */
@@ -30,15 +27,33 @@ Renderer::Renderer(
     MTL::ResourceStorageModeShared
   );
 
-  buildShaders();
-}
+  m_postPassVertexBuffer = m_device->newBuffer(
+    4 * sizeof(float2),
+    MTL::ResourceStorageModeShared
+  );
+  float2 vertices[] = {{-1.0, 1.0},
+                       {1.0,  1.0},
+                       {-1.0, -1.0},
+                       {1.0,  -1.0}};
+  memcpy(m_postPassVertexBuffer->contents(), vertices, 4 * sizeof(float2));
+  m_postPassVertexBuffer
+    ->didModifyRange(NS::Range::Make(0, m_postPassVertexBuffer->length()));
 
-Renderer::~Renderer() {
-  m_rpd->release();
+  m_postPassIndexBuffer = m_device->newBuffer(
+    6 * sizeof(uint32_t),
+    MTL::ResourceStorageModeShared
+  );
+  uint32_t indices[] = {0, 2, 1, 1, 2, 3};
+  memcpy(m_postPassIndexBuffer->contents(), indices, 6 * sizeof(uint32_t));
+  m_postPassIndexBuffer
+    ->didModifyRange(NS::Range::Make(0, m_postPassIndexBuffer->length()));
+
+  buildShaders();
 }
 
 void Renderer::render(
   MTL::Texture* renderTarget,
+  MTL::Texture* renderTarget2,
   MTL::Texture* geometryTarget
 ) noexcept {
   NS::AutoreleasePool* autoreleasePool = NS::AutoreleasePool::alloc()->init();
@@ -51,30 +66,43 @@ void Renderer::render(
 
   auto cmd = m_commandQueue->commandBuffer();
 
-  auto colorAttachment = m_rpd->colorAttachments()->object(0);
+  auto viewport = MTL::Viewport{
+    0.0, 0.0, (double) renderTarget->width(), (double) renderTarget->height(),
+    0.0, 1.0
+  };
+
+  /**
+   * Main pass
+   */
+  auto rpd = MTL::RenderPassDescriptor::alloc()->init();
+  auto colorAttachment = rpd->colorAttachments()->object(0);
   colorAttachment->setTexture(renderTarget);
+  colorAttachment->setClearColor(
+    MTL::ClearColor::Make(
+      m_clearColor[0] * m_clearColor[3],
+      m_clearColor[1] * m_clearColor[3],
+      m_clearColor[2] * m_clearColor[3],
+      m_clearColor[3]
+    )
+  );
   colorAttachment->setLoadAction(MTL::LoadActionClear);
   colorAttachment->setStoreAction(MTL::StoreActionStore);
 
-  auto geomAttachment = m_rpd->colorAttachments()->object(1);
+  auto geomAttachment = rpd->colorAttachments()->object(1);
   geomAttachment->setClearColor(MTL::ClearColor::Make(0.0f, 0.0f, 0.0f, 1.0f));
   geomAttachment->setTexture(geometryTarget);
   geomAttachment->setLoadAction(MTL::LoadActionClear);
   geomAttachment->setStoreAction(MTL::StoreActionStore);
 
-  auto enc = cmd->renderCommandEncoder(m_rpd);
+  auto enc = cmd->renderCommandEncoder(rpd);
+  rpd->release();
 
+  enc->setRenderPipelineState(m_pso);
   enc->setDepthStencilState(m_dsso);
   enc->setFrontFacingWinding(MTL::WindingCounterClockwise);
   enc->setCullMode(MTL::CullModeBack);
 
-  enc->setViewport(
-    {
-      0.0, 0.0, (double) renderTarget->width(), (double) renderTarget->height(),
-      0.0, 1.0
-    }
-  );
-  enc->setRenderPipelineState(m_pso);
+  enc->setViewport(viewport);
   enc->setVertexBuffer(m_constantsBuffer, m_constantsOffset, 3);
 
   size_t dataOffset = 0;
@@ -94,6 +122,50 @@ void Renderer::render(
   }
 
   enc->endEncoding();
+
+  /*
+   * Post process pass
+   */
+  rpd = MTL::RenderPassDescriptor::alloc()->init();
+  colorAttachment = rpd->colorAttachments()->object(0);
+  colorAttachment->setClearColor(
+    MTL::ClearColor::Make(
+      m_clearColor[0] * m_clearColor[3],
+      m_clearColor[1] * m_clearColor[3],
+      m_clearColor[2] * m_clearColor[3],
+      m_clearColor[3]
+    )
+  );
+  colorAttachment->setTexture(renderTarget2);
+  colorAttachment->setLoadAction(MTL::LoadActionClear);
+  colorAttachment->setStoreAction(MTL::StoreActionStore);
+
+  auto encPost = cmd->renderCommandEncoder(rpd);
+  rpd->release();
+
+  encPost->setRenderPipelineState(m_postPassPso);
+  encPost->setDepthStencilState(m_dsso);
+  encPost->setFrontFacingWinding(MTL::WindingCounterClockwise);
+  encPost->setCullMode(MTL::CullModeBack);
+
+  encPost->setFragmentTexture(renderTarget, 0);
+  encPost->setFragmentTexture(geometryTarget, 1);
+  encPost->setFragmentSamplerState(m_postPassSso, 0);
+
+  encPost->setViewport(viewport);
+  encPost->setVertexBuffer(m_postPassVertexBuffer, 0, 0);
+  float2 viewportSize{(float) renderTarget->width(),
+                      (float) renderTarget->height()};
+  encPost->setFragmentBytes(&viewportSize, sizeof(viewportSize), 0);
+  encPost->drawIndexedPrimitives(
+    MTL::PrimitiveTypeTriangle,
+    6,
+    MTL::IndexTypeUInt32,
+    m_postPassIndexBuffer,
+    0
+  );
+
+  encPost->endEncoding();
   cmd->commit();
 
   m_frameIdx++;
@@ -103,18 +175,6 @@ void Renderer::render(
 
 float* Renderer::clearColor() {
   return m_clearColor;
-}
-
-void Renderer::updateClearColor() {
-  auto colorAttachment = m_rpd->colorAttachments()->object(0);
-  colorAttachment->setClearColor(
-    MTL::ClearColor::Make(
-      m_clearColor[0] * m_clearColor[3],
-      m_clearColor[1] * m_clearColor[3],
-      m_clearColor[2] * m_clearColor[3],
-      m_clearColor[3]
-    )
-  );
 }
 
 void Renderer::buildBuffers() {
@@ -231,6 +291,7 @@ void Renderer::buildShaders() {
   MTL::Library* lib = m_device
     ->newLibrary("renderer_studio.metallib"_ns, &error);
   if (!lib) {
+    // TODO
 //    std::cerr << error->localizedDescription()->utf8String() << "\n";
     assert(false);
   }
@@ -246,7 +307,7 @@ void Renderer::buildShaders() {
   desc->setVertexFunction(vertexFunction);
   desc->setFragmentFunction(fragmentFunction);
   desc->colorAttachments()->object(0)
-      ->setPixelFormat(MTL::PixelFormatRGBA8Unorm_sRGB);
+      ->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
   desc->colorAttachments()->object(1)
       ->setPixelFormat(MTL::PixelFormatR16Uint);
 
@@ -283,13 +344,61 @@ void Renderer::buildShaders() {
   vertexDesc->release();
 
   /*
-   * Get the pipeline state object
+   * Create the main render pipeline state object
    */
   m_pso = m_device->newRenderPipelineState(desc, &error);
   if (!m_pso) {
+    // TODO
 //    std::cerr << error->localizedDescription()->utf8String() << "\n";
     assert(false);
   }
+
+  vertexFunction->release();
+  fragmentFunction->release();
+  desc->release();
+
+  /*
+   * Create the edge pass pipeline state object
+   */
+  vertexFunction = lib->newFunction("edgePassVertex"_ns);
+  fragmentFunction = lib->newFunction("edgePassFragment"_ns);
+
+  desc = MTL::RenderPipelineDescriptor::alloc()->init();
+  desc->setVertexFunction(vertexFunction);
+  desc->setFragmentFunction(fragmentFunction);
+  desc->colorAttachments()->object(0)
+      ->setPixelFormat(MTL::PixelFormatRGBA8Unorm_sRGB);
+
+  positionAttribDesc->setFormat(MTL::VertexFormatFloat2);
+  vertexDesc = MTL::VertexDescriptor::alloc()->init();
+  vertexDesc->attributes()->setObject(positionAttribDesc, 0);
+
+  vertexLayout = MTL::VertexBufferLayoutDescriptor::alloc()->init();
+  vertexLayout->setStride(sizeof(float2));
+  vertexDesc->layouts()->setObject(vertexLayout, 0);
+
+  desc->setVertexDescriptor(vertexDesc);
+  vertexLayout->release();
+  vertexDesc->release();
+
+  m_postPassPso = m_device->newRenderPipelineState(desc, &error);
+  if (!m_postPassPso) {
+//    std::cerr << error->localizedDescription()->utf8String() << "\n";
+    assert(false);
+  }
+
+  auto samplerDesc = MTL::SamplerDescriptor::alloc()->init();
+  samplerDesc->setMagFilter(MTL::SamplerMinMagFilterNearest);
+  samplerDesc->setMinFilter(MTL::SamplerMinMagFilterNearest);
+  samplerDesc->setSAddressMode(MTL::SamplerAddressModeClampToEdge);
+  samplerDesc->setTAddressMode(MTL::SamplerAddressModeClampToEdge);
+
+  m_postPassSso = m_device->newSamplerState(samplerDesc);
+  samplerDesc->release();
+
+  vertexFunction->release();
+  fragmentFunction->release();
+  desc->release();
 
   /*
    * Set up the depth/stencil buffer
@@ -299,10 +408,9 @@ void Renderer::buildShaders() {
   depthStencilDesc->setDepthCompareFunction(MTL::CompareFunctionLess);
   m_dsso = m_device->newDepthStencilState(depthStencilDesc);
 
+  positionAttribDesc->release();
+  normalAttribDesc->release();
   depthStencilDesc->release();
-  vertexFunction->release();
-  fragmentFunction->release();
-  desc->release();
   lib->release();
 }
 
@@ -314,6 +422,8 @@ void Renderer::updateConstants() {
   m_constantsOffset = (m_frameIdx % m_maxFramesInFlight) * m_constantsStride;
   void* bufferWrite = (char*) m_constantsBuffer->contents() + m_constantsOffset;
   memcpy(bufferWrite, &constants, m_constantsSize);
+  m_constantsBuffer
+    ->didModifyRange(NS::Range::Make(m_constantsOffset, m_constantsSize));
 }
 
 void Renderer::handleScrollEvent(const float2& delta) {

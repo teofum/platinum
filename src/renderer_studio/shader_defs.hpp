@@ -8,6 +8,10 @@
 
 using namespace simd;
 
+struct PostPassVertex {
+  float2 position [[attribute(0)]];
+};
+
 struct Vertex {
   float3 position [[attribute(0)]];
   float3 normal [[attribute(1)]];
