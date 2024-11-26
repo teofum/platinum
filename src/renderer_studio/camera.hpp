@@ -12,7 +12,6 @@ struct Camera {
   float3 target;
   float fov;
   float near = 0.1f;
-  float far = 100.0f;
 
   explicit Camera(
     const float3& position,

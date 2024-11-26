@@ -33,6 +33,8 @@ float4x4 lookAt(float3 position, float3 target, float3 up);
 
 float4x4 perspective(float fov, float aspect, float near, float far);
 
+float4x4 perspectiveInf(float fov, float aspect, float near);
+
 }
 
 #endif //PLATINUM_MATRICES_HPP

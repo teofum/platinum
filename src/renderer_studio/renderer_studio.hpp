@@ -50,7 +50,7 @@ private:
   Camera m_camera;
   float2 m_viewportSize = {1, 1};
   float m_aspect = 1.0;
-  float m_clearColor[4] = {0.45f, 0.55f, 0.60f, 1.0f};
+  float m_clearColor[4] = {0.8f, 0.8f, 0.8f, 1.0f};
 
   // Metal
   MTL::Device* m_device = nullptr;
@@ -60,6 +60,11 @@ private:
   MTL::Texture* m_primaryRenderTarget = nullptr;
   MTL::Texture* m_auxRenderTarget = nullptr;
   MTL::Texture* m_objectIdRenderTarget = nullptr;
+  MTL::Texture* m_depthTexture = nullptr;
+
+  // Shared buffers
+  MTL::Buffer* m_simpleQuadVertexBuffer = nullptr;
+  MTL::Buffer* m_simpleQuadIndexBuffer = nullptr;
 
   // Main pass pipeline state and buffers
   MTL::RenderPipelineState* m_pso = nullptr;
@@ -70,11 +75,20 @@ private:
   MTL::Buffer* m_dataBuffer = nullptr;
   std::vector<MeshData> m_meshData;
 
-  // Post process pass pipeline state and buffers
+  // Grid pass pipeline state
+  MTL::RenderPipelineState* m_gridPassPso = nullptr;
+  MTL::DepthStencilState* m_gridPassDsso = nullptr;
+  static constexpr const GridProperties m_gridProperties = {
+    .size = 10000.0f,
+    .spacing = 0.1f,
+    .lineWidth = 1.0f,
+    .fadeDistance = 1.0f,
+    .lineColor = {0.3f, 0.3f, 0.3f},
+  };
+
+  // Post process pass pipeline state
   MTL::RenderPipelineState* m_postPassPso = nullptr;
   MTL::SamplerState* m_postPassSso = nullptr;
-  MTL::Buffer* m_postPassVertexBuffer = nullptr;
-  MTL::Buffer* m_postPassIndexBuffer = nullptr;
 
   // Readback buffer
   static constexpr const uint32_t m_objectIdPixelSize = sizeof(uint16_t);

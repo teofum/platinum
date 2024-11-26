@@ -25,6 +25,16 @@ struct NodeData {
 
 struct Constants {
   float4x4 projection;
+  float4x4 view; // Used by grid shader
+};
+
+struct GridProperties {
+  float size = 1000.0;
+  float spacing = 0.1;
+  float lineWidth = 1.0;
+  float fadeDistance = 1.0;
+  float3 lineColor = {0, 0, 0};
+  uint32_t level = 0;
 };
 
 #endif //PLATINUM_SHADER_DEFS_HPP

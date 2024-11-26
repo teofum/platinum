@@ -16,6 +16,7 @@ float4x4 Camera::view() const {
 }
 
 float4x4 Camera::projection(float aspect) const {
+  float far = max(distance(position, target) * 2, 1000.0f);
   return mat::perspective(fov, aspect, near, far);
 }
 

@@ -157,5 +157,17 @@ float4x4 perspective(float fov, float aspect, float near, float far) {
   };
 }
 
+float4x4 perspectiveInf(float fov, float aspect, float near) {
+  const float sy = 1.0f / std::tan(fov * 0.5f);
+  const float sx = sy / aspect;
+
+  return {
+    float4{sx, 0.0f, 0.0f, 0.0f},
+    float4{0.0f, sy, 0.0f, 0.0f},
+    float4{0.0f, 0.0f, -1.0f, -1.0f},
+    float4{0.0f, 0.0f, -2.0f * near, 0.0f},
+  };
+}
+
 }
 

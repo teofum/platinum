@@ -27,7 +27,7 @@ Renderer::Renderer(
     MTL::ResourceStorageModeShared
   );
 
-  m_postPassVertexBuffer = m_device->newBuffer(
+  m_simpleQuadVertexBuffer = m_device->newBuffer(
     4 * sizeof(float2),
     MTL::ResourceStorageModeShared
   );
@@ -35,18 +35,14 @@ Renderer::Renderer(
                        {1.0,  1.0},
                        {-1.0, -1.0},
                        {1.0,  -1.0}};
-  memcpy(m_postPassVertexBuffer->contents(), vertices, 4 * sizeof(float2));
-  m_postPassVertexBuffer
-    ->didModifyRange(NS::Range::Make(0, m_postPassVertexBuffer->length()));
+  memcpy(m_simpleQuadVertexBuffer->contents(), vertices, 4 * sizeof(float2));
 
-  m_postPassIndexBuffer = m_device->newBuffer(
+  m_simpleQuadIndexBuffer = m_device->newBuffer(
     6 * sizeof(uint32_t),
     MTL::ResourceStorageModeShared
   );
   uint32_t indices[] = {0, 2, 1, 1, 2, 3};
-  memcpy(m_postPassIndexBuffer->contents(), indices, 6 * sizeof(uint32_t));
-  m_postPassIndexBuffer
-    ->didModifyRange(NS::Range::Make(0, m_postPassIndexBuffer->length()));
+  memcpy(m_simpleQuadIndexBuffer->contents(), indices, 6 * sizeof(uint32_t));
 
   /*
    * Build the readback buffer
@@ -71,8 +67,8 @@ Renderer::~Renderer() {
   m_vertexDataBuffer->release();
   m_indexBuffer->release();
   m_constantsBuffer->release();
-  m_postPassVertexBuffer->release();
-  m_postPassIndexBuffer->release();
+  m_simpleQuadVertexBuffer->release();
+  m_simpleQuadIndexBuffer->release();
   m_objectIdReadbackBuffer->release();
 }
 
@@ -168,6 +164,9 @@ void Renderer::render() noexcept {
   geomAttachment->setLoadAction(MTL::LoadActionClear);
   geomAttachment->setStoreAction(MTL::StoreActionStore);
 
+  rpd->depthAttachment()->setTexture(m_depthTexture);
+  rpd->depthAttachment()->setStoreAction(MTL::StoreActionStore);
+
   auto enc = cmd->renderCommandEncoder(rpd);
   rpd->release();
 
@@ -198,27 +197,60 @@ void Renderer::render() noexcept {
   enc->endEncoding();
 
   /*
+   * Grid pass
+   */
+  rpd = MTL::RenderPassDescriptor::alloc()->init();
+  colorAttachment = rpd->colorAttachments()->object(0);
+  colorAttachment->setTexture(m_auxRenderTarget);
+  colorAttachment->setLoadAction(MTL::LoadActionLoad);
+  colorAttachment->setStoreAction(MTL::StoreActionStore);
+
+  rpd->depthAttachment()->setTexture(m_depthTexture);
+  rpd->depthAttachment()->setLoadAction(MTL::LoadActionLoad);
+
+  auto encGrid = cmd->renderCommandEncoder(rpd);
+  rpd->release();
+
+  encGrid->setRenderPipelineState(m_gridPassPso);
+  encGrid->setDepthStencilState(m_gridPassDsso);
+  encGrid->setFrontFacingWinding(MTL::WindingCounterClockwise);
+  encGrid->setCullMode(MTL::CullModeNone);
+
+  encGrid->setViewport(viewport);
+  encGrid->setVertexBuffer(m_simpleQuadVertexBuffer, 0, 0);
+  encGrid->setVertexBuffer(m_constantsBuffer, m_constantsOffset, 1);
+  encGrid->setFragmentBytes(&m_camera.position, sizeof(m_camera.position), 1);
+
+  auto grid = m_gridProperties;
+  for (int i = 0; i < 6; i++) {
+    encGrid->setVertexBytes(&grid, sizeof(grid), 2);
+    encGrid->setFragmentBytes(&grid, sizeof(grid), 0);
+    encGrid->drawIndexedPrimitives(
+      MTL::PrimitiveTypeTriangle,
+      6,
+      MTL::IndexTypeUInt32,
+      m_simpleQuadIndexBuffer,
+      0
+    );
+
+    grid.level++;
+    grid.spacing *= 10.0f;
+  }
+  encGrid->endEncoding();
+
+  /*
    * Post process pass
    */
   rpd = MTL::RenderPassDescriptor::alloc()->init();
   colorAttachment = rpd->colorAttachments()->object(0);
-  colorAttachment->setClearColor(
-    MTL::ClearColor::Make(
-      m_clearColor[0] * m_clearColor[3],
-      m_clearColor[1] * m_clearColor[3],
-      m_clearColor[2] * m_clearColor[3],
-      m_clearColor[3]
-    )
-  );
   colorAttachment->setTexture(m_primaryRenderTarget);
-  colorAttachment->setLoadAction(MTL::LoadActionClear);
+  colorAttachment->setLoadAction(MTL::LoadActionDontCare);
   colorAttachment->setStoreAction(MTL::StoreActionStore);
 
   auto encPost = cmd->renderCommandEncoder(rpd);
   rpd->release();
 
   encPost->setRenderPipelineState(m_postPassPso);
-  encPost->setDepthStencilState(m_dsso);
   encPost->setFrontFacingWinding(MTL::WindingCounterClockwise);
   encPost->setCullMode(MTL::CullModeBack);
 
@@ -227,13 +259,13 @@ void Renderer::render() noexcept {
   encPost->setFragmentSamplerState(m_postPassSso, 0);
 
   encPost->setViewport(viewport);
-  encPost->setVertexBuffer(m_postPassVertexBuffer, 0, 0);
+  encPost->setVertexBuffer(m_simpleQuadVertexBuffer, 0, 0);
   encPost->setFragmentBytes(&m_viewportSize, sizeof(m_viewportSize), 0);
   encPost->drawIndexedPrimitives(
     MTL::PrimitiveTypeTriangle,
     6,
     MTL::IndexTypeUInt32,
-    m_postPassIndexBuffer,
+    m_simpleQuadIndexBuffer,
     0
   );
 
@@ -343,12 +375,6 @@ void Renderer::buildBuffers() {
     void* dbw = (char*) m_dataBuffer->contents() + i * sizeof(NodeData);
     memcpy(dbw, &nodeData, sizeof(NodeData));
   }
-
-  m_vertexPosBuffer
-    ->didModifyRange(NS::Range::Make(0, m_vertexPosBuffer->length()));
-  m_indexBuffer->didModifyRange(NS::Range::Make(0, m_indexBuffer->length()));
-  m_dataBuffer
-    ->didModifyRange(NS::Range::Make(0, m_dataBuffer->length()));
 }
 
 void Renderer::buildShaders() {
@@ -378,6 +404,7 @@ void Renderer::buildShaders() {
       ->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
   desc->colorAttachments()->object(1)
       ->setPixelFormat(MTL::PixelFormatR16Uint);
+  desc->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
 
   /*
    * Set up a vertex attribute descriptor, this tells Metal where each attribute
@@ -417,6 +444,54 @@ void Renderer::buildShaders() {
   m_pso = m_device->newRenderPipelineState(desc, &error);
   if (!m_pso) {
     // TODO
+//    std::cerr << error->localizedDescription()->utf8String() << "\n";
+    assert(false);
+  }
+
+  vertexFunction->release();
+  fragmentFunction->release();
+  desc->release();
+
+  /*
+   * Create the grid pass pipeline state object
+   */
+  vertexFunction = lib->newFunction("gridVertex"_ns);
+  fragmentFunction = lib->newFunction("gridFragment"_ns);
+
+  desc = MTL::RenderPipelineDescriptor::alloc()->init();
+  desc->setVertexFunction(vertexFunction);
+  desc->setFragmentFunction(fragmentFunction);
+  desc->colorAttachments()->object(0)
+      ->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
+  desc->colorAttachments()->object(0)->setBlendingEnabled(true);
+  desc->colorAttachments()->object(0)
+      ->setRgbBlendOperation(MTL::BlendOperationAdd);
+  desc->colorAttachments()->object(0)
+      ->setSourceRGBBlendFactor(MTL::BlendFactorSourceAlpha);
+  desc->colorAttachments()->object(0)
+      ->setDestinationRGBBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+  desc->colorAttachments()->object(0)
+      ->setAlphaBlendOperation(MTL::BlendOperationAdd);
+  desc->colorAttachments()->object(0)
+      ->setSourceAlphaBlendFactor(MTL::BlendFactorSourceAlpha);
+  desc->colorAttachments()->object(0)
+      ->setDestinationAlphaBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+  desc->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+
+  positionAttribDesc->setFormat(MTL::VertexFormatFloat2);
+  vertexDesc = MTL::VertexDescriptor::alloc()->init();
+  vertexDesc->attributes()->setObject(positionAttribDesc, 0);
+
+  vertexLayout = MTL::VertexBufferLayoutDescriptor::alloc()->init();
+  vertexLayout->setStride(sizeof(float2));
+  vertexDesc->layouts()->setObject(vertexLayout, 0);
+
+  desc->setVertexDescriptor(vertexDesc);
+  vertexLayout->release();
+  vertexDesc->release();
+
+  m_gridPassPso = m_device->newRenderPipelineState(desc, &error);
+  if (!m_gridPassPso) {
 //    std::cerr << error->localizedDescription()->utf8String() << "\n";
     assert(false);
   }
@@ -476,6 +551,9 @@ void Renderer::buildShaders() {
   depthStencilDesc->setDepthCompareFunction(MTL::CompareFunctionLess);
   m_dsso = m_device->newDepthStencilState(depthStencilDesc);
 
+  depthStencilDesc->setDepthWriteEnabled(false);
+  m_gridPassDsso = m_device->newDepthStencilState(depthStencilDesc);
+
   positionAttribDesc->release();
   normalAttribDesc->release();
   depthStencilDesc->release();
@@ -486,6 +564,7 @@ void Renderer::rebuildRenderTargets() {
   if (m_primaryRenderTarget != nullptr) m_primaryRenderTarget->release();
   if (m_auxRenderTarget != nullptr) m_auxRenderTarget->release();
   if (m_objectIdRenderTarget != nullptr) m_objectIdRenderTarget->release();
+  if (m_depthTexture != nullptr) m_depthTexture->release();
 
   auto texd = MTL::TextureDescriptor::alloc()->init();
   texd->setTextureType(MTL::TextureType2D);
@@ -501,19 +580,21 @@ void Renderer::rebuildRenderTargets() {
   texd->setPixelFormat(MTL::PixelFormatR16Uint);
   m_objectIdRenderTarget = m_device->newTexture(texd);
 
+  texd->setPixelFormat(MTL::PixelFormatDepth32Float);
+  m_depthTexture = m_device->newTexture(texd);
+
   texd->release();
 }
 
 void Renderer::updateConstants() {
   Constants constants = {
     m_camera.projection(m_aspect),
+    m_camera.view(),
   };
 
   m_constantsOffset = (m_frameIdx % m_maxFramesInFlight) * m_constantsStride;
   void* bufferWrite = (char*) m_constantsBuffer->contents() + m_constantsOffset;
   memcpy(bufferWrite, &constants, m_constantsSize);
-  m_constantsBuffer
-    ->didModifyRange(NS::Range::Make(m_constantsOffset, m_constantsSize));
 }
 
 }
