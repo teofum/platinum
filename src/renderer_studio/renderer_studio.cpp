@@ -310,11 +310,11 @@ void Renderer::buildBuffers() {
 
   size_t vertexPosBufferSize = vertexPosSize * sizeof(float3);
   m_vertexPosBuffer = m_device
-    ->newBuffer(vertexPosBufferSize, MTL::ResourceStorageModeManaged);
+    ->newBuffer(vertexPosBufferSize, MTL::ResourceStorageModeShared);
 
   size_t vertexDataBufferSize = vertexDataSize * sizeof(VertexData);
   m_vertexDataBuffer = m_device
-    ->newBuffer(vertexDataBufferSize, MTL::ResourceStorageModeManaged);
+    ->newBuffer(vertexDataBufferSize, MTL::ResourceStorageModeShared);
 
   size_t indexBufferSize = indexSize * sizeof(uint32_t);
   m_indexBuffer = m_device

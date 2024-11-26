@@ -8,6 +8,7 @@ struct VertexOut {
     float4 position [[position]];
     float3 wsPosition;
     float2 uv;
+    float depth;
 };
 
 vertex VertexOut gridVertex(
@@ -21,6 +22,7 @@ vertex VertexOut gridVertex(
     out.position = float4(out.wsPosition, 1.0);
     out.position = c.projection * c.view * out.position;
     out.uv = in.position * grid.size / grid.spacing;
+    out.depth = out.position.z;
 
     return out;
 }
@@ -42,6 +44,7 @@ fragment float4 gridFragment(
     float cameraDistance = distance(cameraPosition, in.wsPosition);
     float fadeDistance = exp10((float)grid.level + 1.0) * grid.fadeDistance;
     line *= saturate(1.0 - cameraDistance / fadeDistance);
+    line *= 1.0 - saturate(in.position.z - 0.99999) * 100000.0;
 
     float3 color = mix(float3(0.0), grid.lineColor, line);
     return float4(color, line);
