@@ -50,6 +50,12 @@ private:
   MTL::CommandQueue* m_commandQueue = nullptr;
   MTL::RenderPassDescriptor* m_rpd = nullptr;
 
+  // Store
+  Store& m_store;
+
+  // Renderer
+  std::unique_ptr<renderer_studio::Renderer> m_renderer;
+
   // ImGui
   bool m_initialized = false;
   float m_clearColor[4] = {0.45f, 0.55f, 0.6f, 1.0f};
@@ -62,23 +68,11 @@ private:
   std::optional<uint32_t> m_selectedNodeIdx, m_nextNodeIdx;
   std::optional<uint32_t> m_selectedMeshIdx, m_nextMeshIdx;
 
-  // Store
-  Store& m_store;
-
-  // Renderer
-  bool m_viewportWasResized = false;
-  std::unique_ptr<renderer_studio::Renderer> m_renderer;
-  MTL::Texture* m_renderTarget = nullptr;
-  MTL::Texture* m_renderTarget2 = nullptr;
-  MTL::Texture* m_geometryRenderTarget = nullptr;
-
   void drawImGui();
 
   void handleInput(const SDL_Event& event);
 
   void handleScrollAndZoomState();
-
-  void rebuildRenderTargets();
 
   /**
    * ImGui windows

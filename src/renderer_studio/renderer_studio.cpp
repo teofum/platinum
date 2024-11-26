@@ -13,8 +13,8 @@ Renderer::Renderer(
   MTL::CommandQueue* commandQueue,
   Store& store
 ) noexcept
-  : m_store(store), m_device(device), m_commandQueue(commandQueue),
-    m_camera(float3{-3, 3, 3}) {
+  : m_store(store), m_camera(float3{-3, 3, 3}),
+    m_device(device), m_commandQueue(commandQueue) {
   /*
    * Build the constants buffer
    */
@@ -48,18 +48,91 @@ Renderer::Renderer(
   m_postPassIndexBuffer
     ->didModifyRange(NS::Range::Make(0, m_postPassIndexBuffer->length()));
 
+  /*
+   * Build the readback buffer
+   */
+  m_objectIdReadbackBuffer = m_device
+    ->newBuffer(m_objectIdPixelSize, MTL::ResourceStorageModeShared);
+
   buildShaders();
 }
 
-void Renderer::render(
-  MTL::Texture* renderTarget,
-  MTL::Texture* renderTarget2,
-  MTL::Texture* geometryTarget
-) noexcept {
-  NS::AutoreleasePool* autoreleasePool = NS::AutoreleasePool::alloc()->init();
+Renderer::~Renderer() {
+  m_primaryRenderTarget->release();
+  m_auxRenderTarget->release();
+  m_objectIdRenderTarget->release();
 
-  m_aspect = static_cast<float>(renderTarget->width()) /
-             static_cast<float>(renderTarget->height());
+  m_pso->release();
+  m_dsso->release();
+  m_postPassPso->release();
+  m_postPassSso->release();
+
+  m_vertexPosBuffer->release();
+  m_vertexDataBuffer->release();
+  m_indexBuffer->release();
+  m_constantsBuffer->release();
+  m_postPassVertexBuffer->release();
+  m_postPassIndexBuffer->release();
+  m_objectIdReadbackBuffer->release();
+}
+
+float* Renderer::clearColor() {
+  return m_clearColor;
+}
+
+void Renderer::handleScrollEvent(const float2& delta) {
+  m_camera.orbit(-delta);
+}
+
+void Renderer::handleZoomEvent(float delta) {
+  m_camera.moveTowardTarget(delta);
+}
+
+void Renderer::handleResizeViewport(const float2& size) {
+  if (!equal(size, m_viewportSize)) {
+    m_viewportSize = size;
+    m_aspect = m_viewportSize.x / m_viewportSize.y;
+
+    rebuildRenderTargets();
+  }
+}
+
+const MTL::Texture* Renderer::presentRenderTarget() const {
+  return m_primaryRenderTarget;
+}
+
+uint16_t Renderer::readbackObjectIdAt(uint32_t x, uint32_t y) const {
+  auto cmd = m_commandQueue->commandBuffer();
+  auto benc = cmd->blitCommandEncoder();
+
+  benc->copyFromTexture(
+    m_objectIdRenderTarget,
+    0,
+    0,
+    MTL::Origin(x * 2, y * 2, 0),
+    MTL::Size(1, 1, 1),
+    m_objectIdReadbackBuffer,
+    0,
+    m_objectIdPixelSize, // * 1 pixel per row
+    m_objectIdPixelSize  // * 1 pixel in the image
+  );
+  benc->endEncoding();
+  cmd->commit();
+  cmd->waitUntilCompleted();
+
+  uint16_t objectId;
+  auto contents = m_objectIdReadbackBuffer->contents();
+  memcpy(&objectId, contents, m_objectIdPixelSize);
+
+  return objectId;
+}
+
+void Renderer::render() noexcept {
+  // Don't render if the render targets are not initialized: this should only
+  // happen in the first frame before handleResizeViewport() is called
+  if (!m_primaryRenderTarget) return;
+
+  NS::AutoreleasePool* autoreleasePool = NS::AutoreleasePool::alloc()->init();
 
   buildBuffers();
   updateConstants();
@@ -67,7 +140,8 @@ void Renderer::render(
   auto cmd = m_commandQueue->commandBuffer();
 
   auto viewport = MTL::Viewport{
-    0.0, 0.0, (double) renderTarget->width(), (double) renderTarget->height(),
+    0.0, 0.0,
+    m_viewportSize.x, m_viewportSize.y,
     0.0, 1.0
   };
 
@@ -76,7 +150,7 @@ void Renderer::render(
    */
   auto rpd = MTL::RenderPassDescriptor::alloc()->init();
   auto colorAttachment = rpd->colorAttachments()->object(0);
-  colorAttachment->setTexture(renderTarget);
+  colorAttachment->setTexture(m_auxRenderTarget);
   colorAttachment->setClearColor(
     MTL::ClearColor::Make(
       m_clearColor[0] * m_clearColor[3],
@@ -90,7 +164,7 @@ void Renderer::render(
 
   auto geomAttachment = rpd->colorAttachments()->object(1);
   geomAttachment->setClearColor(MTL::ClearColor::Make(0.0f, 0.0f, 0.0f, 1.0f));
-  geomAttachment->setTexture(geometryTarget);
+  geomAttachment->setTexture(m_objectIdRenderTarget);
   geomAttachment->setLoadAction(MTL::LoadActionClear);
   geomAttachment->setStoreAction(MTL::StoreActionStore);
 
@@ -136,7 +210,7 @@ void Renderer::render(
       m_clearColor[3]
     )
   );
-  colorAttachment->setTexture(renderTarget2);
+  colorAttachment->setTexture(m_primaryRenderTarget);
   colorAttachment->setLoadAction(MTL::LoadActionClear);
   colorAttachment->setStoreAction(MTL::StoreActionStore);
 
@@ -148,15 +222,13 @@ void Renderer::render(
   encPost->setFrontFacingWinding(MTL::WindingCounterClockwise);
   encPost->setCullMode(MTL::CullModeBack);
 
-  encPost->setFragmentTexture(renderTarget, 0);
-  encPost->setFragmentTexture(geometryTarget, 1);
+  encPost->setFragmentTexture(m_auxRenderTarget, 0);
+  encPost->setFragmentTexture(m_objectIdRenderTarget, 1);
   encPost->setFragmentSamplerState(m_postPassSso, 0);
 
   encPost->setViewport(viewport);
   encPost->setVertexBuffer(m_postPassVertexBuffer, 0, 0);
-  float2 viewportSize{(float) renderTarget->width(),
-                      (float) renderTarget->height()};
-  encPost->setFragmentBytes(&viewportSize, sizeof(viewportSize), 0);
+  encPost->setFragmentBytes(&m_viewportSize, sizeof(m_viewportSize), 0);
   encPost->drawIndexedPrimitives(
     MTL::PrimitiveTypeTriangle,
     6,
@@ -171,10 +243,6 @@ void Renderer::render(
   m_frameIdx++;
 
   autoreleasePool->release();
-}
-
-float* Renderer::clearColor() {
-  return m_clearColor;
 }
 
 void Renderer::buildBuffers() {
@@ -414,6 +482,28 @@ void Renderer::buildShaders() {
   lib->release();
 }
 
+void Renderer::rebuildRenderTargets() {
+  if (m_primaryRenderTarget != nullptr) m_primaryRenderTarget->release();
+  if (m_auxRenderTarget != nullptr) m_auxRenderTarget->release();
+  if (m_objectIdRenderTarget != nullptr) m_objectIdRenderTarget->release();
+
+  auto texd = MTL::TextureDescriptor::alloc()->init();
+  texd->setTextureType(MTL::TextureType2D);
+  texd->setWidth(static_cast<uint32_t>(m_viewportSize.x));
+  texd->setHeight(static_cast<uint32_t>(m_viewportSize.y));
+  texd->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
+  texd->setStorageMode(MTL::StorageModeShared);
+
+  texd->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
+  m_primaryRenderTarget = m_device->newTexture(texd);
+  m_auxRenderTarget = m_device->newTexture(texd);
+
+  texd->setPixelFormat(MTL::PixelFormatR16Uint);
+  m_objectIdRenderTarget = m_device->newTexture(texd);
+
+  texd->release();
+}
+
 void Renderer::updateConstants() {
   Constants constants = {
     m_camera.projection(m_aspect),
@@ -424,14 +514,6 @@ void Renderer::updateConstants() {
   memcpy(bufferWrite, &constants, m_constantsSize);
   m_constantsBuffer
     ->didModifyRange(NS::Range::Make(m_constantsOffset, m_constantsSize));
-}
-
-void Renderer::handleScrollEvent(const float2& delta) {
-  m_camera.orbit(-delta);
-}
-
-void Renderer::handleZoomEvent(float delta) {
-  m_camera.moveTowardTarget(delta);
 }
 
 }
