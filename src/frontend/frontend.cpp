@@ -27,7 +27,6 @@ Frontend::Frontend(Store& store) noexcept: m_store(store) {
 Frontend::~Frontend() {
   m_commandQueue->release();
   m_device->release();
-  m_rpd->release();
 }
 
 void Frontend::start() {
@@ -103,7 +102,6 @@ void Frontend::start() {
   ImGui_ImplSDL2_InitForMetal(m_sdlWindow);
 
   m_commandQueue = m_device->newCommandQueue();
-  m_rpd = MTL::RenderPassDescriptor::alloc()->init();
 
   /*
    * Initialize renderer
@@ -138,11 +136,11 @@ void Frontend::start() {
     SDL_GetRendererOutputSize(m_sdlRenderer, &width, &height);
     metal_utils::setDrawableSize(m_layer, width, height);
 
-    // Draw ImGui
+    // Rendering
     auto drawable = metal_utils::nextDrawable(m_layer);
 
-    auto cmd = m_commandQueue->commandBuffer();
-    auto colorAttachment = m_rpd->colorAttachments()->object(0);
+    auto rpd = metal_utils::ns_shared<MTL::RenderPassDescriptor>();
+    auto colorAttachment = rpd->colorAttachments()->object(0);
     colorAttachment->setClearColor(
       MTL::ClearColor::Make(
         m_clearColor[0] * m_clearColor[3],
@@ -159,10 +157,11 @@ void Frontend::start() {
     m_renderer->render(m_selectedNodeIdx.value_or(0));
 
     // Render ImGui
-    auto enc = cmd->renderCommandEncoder(m_rpd);
+    auto cmd = m_commandQueue->commandBuffer();
+    auto enc = cmd->renderCommandEncoder(rpd);
     enc->pushDebugGroup("ImGui"_ns);
 
-    ImGui_ImplMetal_NewFrame(m_rpd);
+    ImGui_ImplMetal_NewFrame(rpd);
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
@@ -373,7 +372,7 @@ void Frontend::sceneExplorer() {
     if (ImGui::Button("Sphere", {ImGui::GetContentRegionAvail().x, 0})) {
       uint32_t parentIdx = m_selectedNodeIdx.value_or(0);
 
-      auto sphere = pt::primitives::sphere(1.0f, 8, 12);
+      auto sphere = pt::primitives::sphere(1.0f, 24, 32);
       auto idx = m_store.scene().addMesh(std::move(sphere));
       m_store.scene().addNode(pt::Scene::Node(idx), parentIdx);
 

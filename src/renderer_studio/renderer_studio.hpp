@@ -30,8 +30,6 @@ public:
 
   void render(uint16_t selectedNodeId = 0) noexcept;
 
-  float* clearColor();
-
   void handleScrollEvent(const float2& delta);
 
   void handleZoomEvent(float delta);

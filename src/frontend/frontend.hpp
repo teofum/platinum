@@ -48,7 +48,6 @@ private:
   CA::MetalLayer* m_layer = nullptr;
   MTL::Device* m_device = nullptr;
   MTL::CommandQueue* m_commandQueue = nullptr;
-  MTL::RenderPassDescriptor* m_rpd = nullptr;
 
   // Store
   Store& m_store;

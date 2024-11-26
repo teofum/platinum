@@ -28,4 +28,66 @@ void setDrawableSize(CA::MetalLayer* layer, int width, int height) noexcept {
   metalLayer.drawableSize = CGSize{float(width), float(height)};
 }
 
+NS::SharedPtr<MTL::VertexDescriptor> makeVertexDescriptor(const VertexParams& params) {
+  auto desc = ns_shared<MTL::VertexDescriptor>();
+
+  size_t i = 0;
+  auto attribDesc = ns_shared<MTL::VertexAttributeDescriptor>();
+  for (auto attrib: params.attributes) {
+    attribDesc->setFormat(attrib.format);
+    attribDesc->setOffset(attrib.offset);
+    attribDesc->setBufferIndex(attrib.bufferIndex);
+    desc->attributes()->setObject(attribDesc, i++);
+  }
+
+  i = 0;
+  auto layoutDesc = ns_shared<MTL::VertexBufferLayoutDescriptor>();
+  for (auto layout: params.layouts) {
+    layoutDesc->setStride(layout.stride);
+    layoutDesc->setStepFunction(layout.stepFunction);
+    layoutDesc->setStepRate(
+      layout.stepFunction == MTL::VertexStepFunctionPerVertex ? 1 :
+      layout.stepFunction == MTL::VertexStepFunctionConstant ? 0 :
+      layout.stepRate
+    );
+    desc->layouts()->setObject(layoutDesc, i++);
+  }
+
+  return desc;
+}
+
+void enableBlending(
+  MTL::RenderPipelineColorAttachmentDescriptor* cad,
+  MTL::BlendOperation operation,
+  MTL::BlendFactor sourceFactor,
+  MTL::BlendFactor destFactor
+) {
+  cad->setBlendingEnabled(true);
+  cad->setRgbBlendOperation(operation);
+  cad->setSourceRGBBlendFactor(sourceFactor);
+  cad->setDestinationRGBBlendFactor(destFactor);
+  cad->setAlphaBlendOperation(operation);
+  cad->setSourceAlphaBlendFactor(sourceFactor);
+  cad->setDestinationAlphaBlendFactor(destFactor);
+}
+
+NS::SharedPtr<MTL::RenderPipelineDescriptor> makeRenderPipelineDescriptor(const RenderPipelineParams& params) {
+  auto desc = ns_shared<MTL::RenderPipelineDescriptor>();
+  desc->setVertexFunction(params.vertexFunction);
+  desc->setFragmentFunction(params.fragmentFunction);
+
+  uint32_t i = 0;
+  for (auto format: params.colorAttachments) {
+    desc->colorAttachments()->object(i++)->setPixelFormat(format);
+  }
+
+  desc->setDepthAttachmentPixelFormat(params.depthFormat);
+  return desc;
+}
+
+NS::SharedPtr<MTL::Function> getFunction(MTL::Library* lib, const char* name) {
+  auto nsName = NS::String::string(name, NS::UTF8StringEncoding);
+  return NS::TransferPtr(lib->newFunction(nsName));
+}
+
 }

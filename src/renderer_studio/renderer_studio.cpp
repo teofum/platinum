@@ -7,6 +7,7 @@
 
 namespace pt::renderer_studio {
 using metal_utils::operator ""_ns;
+using metal_utils::ns_shared;
 
 Renderer::Renderer(
   MTL::Device* device,
@@ -70,10 +71,6 @@ Renderer::~Renderer() {
   m_simpleQuadVertexBuffer->release();
   m_simpleQuadIndexBuffer->release();
   m_objectIdReadbackBuffer->release();
-}
-
-float* Renderer::clearColor() {
-  return m_clearColor;
 }
 
 void Renderer::handleScrollEvent(const float2& delta) {
@@ -144,7 +141,7 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
   /**
    * Main pass
    */
-  auto rpd = MTL::RenderPassDescriptor::alloc()->init();
+  auto rpd = ns_shared<MTL::RenderPassDescriptor>();
   auto colorAttachment = rpd->colorAttachments()->object(0);
   colorAttachment->setTexture(m_auxRenderTarget);
   colorAttachment->setClearColor(
@@ -168,7 +165,6 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
   rpd->depthAttachment()->setStoreAction(MTL::StoreActionStore);
 
   auto enc = cmd->renderCommandEncoder(rpd);
-  rpd->release();
 
   enc->setRenderPipelineState(m_pso);
   enc->setDepthStencilState(m_dsso);
@@ -199,7 +195,7 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
   /*
    * Grid pass
    */
-  rpd = MTL::RenderPassDescriptor::alloc()->init();
+  rpd = ns_shared<MTL::RenderPassDescriptor>();
   colorAttachment = rpd->colorAttachments()->object(0);
   colorAttachment->setTexture(m_auxRenderTarget);
   colorAttachment->setLoadAction(MTL::LoadActionLoad);
@@ -209,7 +205,6 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
   rpd->depthAttachment()->setLoadAction(MTL::LoadActionLoad);
 
   auto encGrid = cmd->renderCommandEncoder(rpd);
-  rpd->release();
 
   encGrid->setRenderPipelineState(m_gridPassPso);
   encGrid->setDepthStencilState(m_gridPassDsso);
@@ -241,14 +236,13 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
   /*
    * Post process pass
    */
-  rpd = MTL::RenderPassDescriptor::alloc()->init();
+  rpd = ns_shared<MTL::RenderPassDescriptor>();
   colorAttachment = rpd->colorAttachments()->object(0);
   colorAttachment->setTexture(m_primaryRenderTarget);
   colorAttachment->setLoadAction(MTL::LoadActionDontCare);
   colorAttachment->setStoreAction(MTL::StoreActionStore);
 
   auto encPost = cmd->renderCommandEncoder(rpd);
-  rpd->release();
 
   encPost->setRenderPipelineState(m_postPassPso);
   encPost->setFrontFacingWinding(MTL::WindingCounterClockwise);
@@ -386,168 +380,144 @@ void Renderer::buildShaders() {
   MTL::Library* lib = m_device
     ->newLibrary("renderer_studio.metallib"_ns, &error);
   if (!lib) {
-    // TODO
-//    std::cerr << error->localizedDescription()->utf8String() << "\n";
+    std::println(
+      "renderer_studio: Failed to load shader library: {}\n",
+      error->localizedDescription()->utf8String()
+    );
     assert(false);
   }
-
-  MTL::Function* vertexFunction = lib->newFunction("vertexShader"_ns);
-  MTL::Function* fragmentFunction = lib->newFunction("fragmentShader"_ns);
 
   /*
    * Set up a render pipeline descriptor (parameter object)
    * Set the vertex and fragment funcs and color attachment format (match view)
    */
-  auto desc = MTL::RenderPipelineDescriptor::alloc()->init();
-  desc->setVertexFunction(vertexFunction);
-  desc->setFragmentFunction(fragmentFunction);
-  desc->colorAttachments()->object(0)
-      ->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
-  desc->colorAttachments()->object(1)
-      ->setPixelFormat(MTL::PixelFormatR16Uint);
-  desc->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+  auto desc = metal_utils::makeRenderPipelineDescriptor(
+    {
+      .vertexFunction = metal_utils::getFunction(lib, "vertexShader"),
+      .fragmentFunction = metal_utils::getFunction(lib, "fragmentShader"),
+      .colorAttachments = {MTL::PixelFormatRGBA8Unorm, MTL::PixelFormatR16Uint},
+      .depthFormat = MTL::PixelFormatDepth32Float,
+    }
+  );
 
   /*
    * Set up a vertex attribute descriptor, this tells Metal where each attribute
    * is located
-   * TODO: this can be encapsulated in a less verbose API
    */
-  auto* vertexDesc = MTL::VertexDescriptor::alloc()->init();
-
-  auto positionAttribDesc = MTL::VertexAttributeDescriptor::alloc()->init();
-  positionAttribDesc->setFormat(MTL::VertexFormatFloat3);
-  positionAttribDesc->setOffset(0);
-  positionAttribDesc->setBufferIndex(0);
-
-  vertexDesc->attributes()->setObject(positionAttribDesc, 0);
-
-  auto normalAttribDesc = MTL::VertexAttributeDescriptor::alloc()->init();
-  normalAttribDesc->setFormat(MTL::VertexFormatFloat3);
-  normalAttribDesc->setOffset(offsetof(VertexData, normal));
-  normalAttribDesc->setBufferIndex(1);
-
-  vertexDesc->attributes()->setObject(normalAttribDesc, 1);
-
-  auto vertexLayout = MTL::VertexBufferLayoutDescriptor::alloc()->init();
-  vertexLayout->setStride(sizeof(float3));
-  vertexDesc->layouts()->setObject(vertexLayout, 0);
-
-  vertexLayout->setStride(sizeof(VertexData));
-  vertexDesc->layouts()->setObject(vertexLayout, 1);
+  auto vertexDesc = metal_utils::makeVertexDescriptor(
+    {
+      .attributes = {
+        {
+          .format = MTL::VertexFormatFloat3,
+          .bufferIndex = 0,
+        },
+        {
+          .format = MTL::VertexFormatFloat3,
+          .offset = offsetof(VertexData, normal),
+          .bufferIndex = 1,
+        }
+      },
+      .layouts = {
+        {.stride = sizeof(float3)},
+        {.stride = sizeof(VertexData)},
+      }
+    }
+  );
 
   desc->setVertexDescriptor(vertexDesc);
-  vertexLayout->release();
-  vertexDesc->release();
 
   /*
    * Create the main render pipeline state object
    */
   m_pso = m_device->newRenderPipelineState(desc, &error);
   if (!m_pso) {
-    // TODO
-//    std::cerr << error->localizedDescription()->utf8String() << "\n";
+    std::println(
+      "renderer_studio: Failed to create main render pass PSO: {}\n",
+      error->localizedDescription()->utf8String()
+    );
     assert(false);
   }
-
-  vertexFunction->release();
-  fragmentFunction->release();
-  desc->release();
 
   /*
    * Create the grid pass pipeline state object
    */
-  vertexFunction = lib->newFunction("gridVertex"_ns);
-  fragmentFunction = lib->newFunction("gridFragment"_ns);
+  desc = metal_utils::makeRenderPipelineDescriptor(
+    {
+      .vertexFunction = metal_utils::getFunction(lib, "gridVertex"),
+      .fragmentFunction = metal_utils::getFunction(lib, "gridFragment"),
+      .colorAttachments = {MTL::PixelFormatRGBA8Unorm},
+      .depthFormat = MTL::PixelFormatDepth32Float,
+    }
+  );
 
-  desc = MTL::RenderPipelineDescriptor::alloc()->init();
-  desc->setVertexFunction(vertexFunction);
-  desc->setFragmentFunction(fragmentFunction);
-  desc->colorAttachments()->object(0)
-      ->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
-  desc->colorAttachments()->object(0)->setBlendingEnabled(true);
-  desc->colorAttachments()->object(0)
-      ->setRgbBlendOperation(MTL::BlendOperationAdd);
-  desc->colorAttachments()->object(0)
-      ->setSourceRGBBlendFactor(MTL::BlendFactorSourceAlpha);
-  desc->colorAttachments()->object(0)
-      ->setDestinationRGBBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
-  desc->colorAttachments()->object(0)
-      ->setAlphaBlendOperation(MTL::BlendOperationAdd);
-  desc->colorAttachments()->object(0)
-      ->setSourceAlphaBlendFactor(MTL::BlendFactorSourceAlpha);
-  desc->colorAttachments()->object(0)
-      ->setDestinationAlphaBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
-  desc->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
-
-  positionAttribDesc->setFormat(MTL::VertexFormatFloat2);
-  vertexDesc = MTL::VertexDescriptor::alloc()->init();
-  vertexDesc->attributes()->setObject(positionAttribDesc, 0);
-
-  vertexLayout = MTL::VertexBufferLayoutDescriptor::alloc()->init();
-  vertexLayout->setStride(sizeof(float2));
-  vertexDesc->layouts()->setObject(vertexLayout, 0);
+  vertexDesc = metal_utils::makeVertexDescriptor(
+    {
+      .attributes = {
+        {.format = MTL::VertexFormatFloat2},
+      },
+      .layouts = {
+        {.stride = sizeof(float2)},
+      }
+    }
+  );
 
   desc->setVertexDescriptor(vertexDesc);
-  vertexLayout->release();
-  vertexDesc->release();
+  metal_utils::enableBlending(desc->colorAttachments()->object(0));
 
   m_gridPassPso = m_device->newRenderPipelineState(desc, &error);
   if (!m_gridPassPso) {
-//    std::cerr << error->localizedDescription()->utf8String() << "\n";
+    std::println(
+      "renderer_studio: Failed to create grid render pass PSO: {}\n",
+      error->localizedDescription()->utf8String()
+    );
     assert(false);
   }
-
-  vertexFunction->release();
-  fragmentFunction->release();
-  desc->release();
 
   /*
    * Create the edge pass pipeline state object
    */
-  vertexFunction = lib->newFunction("edgePassVertex"_ns);
-  fragmentFunction = lib->newFunction("edgePassFragment"_ns);
+  desc = metal_utils::makeRenderPipelineDescriptor(
+    {
+      .vertexFunction = metal_utils::getFunction(lib, "edgePassVertex"),
+      .fragmentFunction = metal_utils::getFunction(lib, "edgePassFragment"),
+      .colorAttachments = {MTL::PixelFormatRGBA8Unorm_sRGB},
+    }
+  );
 
-  desc = MTL::RenderPipelineDescriptor::alloc()->init();
-  desc->setVertexFunction(vertexFunction);
-  desc->setFragmentFunction(fragmentFunction);
-  desc->colorAttachments()->object(0)
-      ->setPixelFormat(MTL::PixelFormatRGBA8Unorm_sRGB);
-
-  positionAttribDesc->setFormat(MTL::VertexFormatFloat2);
-  vertexDesc = MTL::VertexDescriptor::alloc()->init();
-  vertexDesc->attributes()->setObject(positionAttribDesc, 0);
-
-  vertexLayout = MTL::VertexBufferLayoutDescriptor::alloc()->init();
-  vertexLayout->setStride(sizeof(float2));
-  vertexDesc->layouts()->setObject(vertexLayout, 0);
+  vertexDesc = metal_utils::makeVertexDescriptor(
+    {
+      .attributes = {
+        {.format = MTL::VertexFormatFloat2},
+      },
+      .layouts = {
+        {.stride = sizeof(float2)},
+      }
+    }
+  );
 
   desc->setVertexDescriptor(vertexDesc);
-  vertexLayout->release();
-  vertexDesc->release();
 
   m_postPassPso = m_device->newRenderPipelineState(desc, &error);
   if (!m_postPassPso) {
-//    std::cerr << error->localizedDescription()->utf8String() << "\n";
+    std::println(
+      "renderer_studio: Failed to create post process pass PSO: {}\n",
+      error->localizedDescription()->utf8String()
+    );
     assert(false);
   }
 
-  auto samplerDesc = MTL::SamplerDescriptor::alloc()->init();
+  auto samplerDesc = ns_shared<MTL::SamplerDescriptor>();
   samplerDesc->setMagFilter(MTL::SamplerMinMagFilterNearest);
   samplerDesc->setMinFilter(MTL::SamplerMinMagFilterNearest);
   samplerDesc->setSAddressMode(MTL::SamplerAddressModeClampToEdge);
   samplerDesc->setTAddressMode(MTL::SamplerAddressModeClampToEdge);
 
   m_postPassSso = m_device->newSamplerState(samplerDesc);
-  samplerDesc->release();
-
-  vertexFunction->release();
-  fragmentFunction->release();
-  desc->release();
 
   /*
    * Set up the depth/stencil buffer
    */
-  auto depthStencilDesc = MTL::DepthStencilDescriptor::alloc()->init();
+  auto depthStencilDesc = ns_shared<MTL::DepthStencilDescriptor>();
   depthStencilDesc->setDepthWriteEnabled(true);
   depthStencilDesc->setDepthCompareFunction(MTL::CompareFunctionLess);
   m_dsso = m_device->newDepthStencilState(depthStencilDesc);
@@ -555,9 +525,6 @@ void Renderer::buildShaders() {
   depthStencilDesc->setDepthWriteEnabled(false);
   m_gridPassDsso = m_device->newDepthStencilState(depthStencilDesc);
 
-  positionAttribDesc->release();
-  normalAttribDesc->release();
-  depthStencilDesc->release();
   lib->release();
 }
 
