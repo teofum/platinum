@@ -28,7 +28,7 @@ public:
 
   ~Renderer();
 
-  void render() noexcept;
+  void render(uint16_t selectedNodeId = 0) noexcept;
 
   float* clearColor();
 

@@ -10,6 +10,7 @@ struct VertexOut {
 };
 
 constant float3 edgeColor(0.15, 0.15, 0.15);
+constant float3 selectionColor(0.05, 0.25, 0.65);
 
 vertex VertexOut edgePassVertex(PostPassVertex in [[stage_in]]) {
     VertexOut out;
@@ -24,7 +25,8 @@ fragment float4 edgePassFragment(
     texture2d<float> colorTexture [[texture(0)]],
     texture2d<uint16_t> objectTexture [[texture(1)]],
     sampler sampler [[sampler(0)]],
-    constant float2& viewportSize [[buffer(0)]]
+    constant float2& viewportSize [[buffer(0)]],
+    constant uint16_t& selectedNodeId [[buffer(1)]]
 ) {
     float2 offset = 1.0 / viewportSize;
     float edgeKernel[9] = {
@@ -33,15 +35,19 @@ fragment float4 edgePassFragment(
         1.0, 1.0, 1.0,
     };
 
+    float3 drawColor = edgeColor;
     float edge = 0.0;
     for (int8_t i = 0; i < 9; i++) {
         float2 localOffset = offset * float2(i % 3 - 1, i / 3 - 1);
-        edge += edgeKernel[i] * objectTexture.sample(sampler, in.texCoords + localOffset).x;
+        uint16_t sample = objectTexture.sample(sampler, in.texCoords + localOffset).x;
+        if (sample != 0 && sample == selectedNodeId) drawColor = selectionColor;
+
+        edge += edgeKernel[i] * sample;
     }
     edge = smoothstep(0.0, 1.0, abs(edge));
 
     float3 color = colorTexture.sample(sampler, in.texCoords).xyz;
-    color = mix(color, edgeColor, edge);
+    color = mix(color, drawColor, edge);
 
     return float4(color, 1.0);
 }

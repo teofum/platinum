@@ -156,7 +156,7 @@ void Frontend::start() {
     colorAttachment->setStoreAction(MTL::StoreActionStore);
 
     // Render scene
-    m_renderer->render();
+    m_renderer->render(m_selectedNodeIdx.value_or(0));
 
     // Render ImGui
     auto enc = cmd->renderCommandEncoder(m_rpd);

@@ -123,7 +123,7 @@ uint16_t Renderer::readbackObjectIdAt(uint32_t x, uint32_t y) const {
   return objectId;
 }
 
-void Renderer::render() noexcept {
+void Renderer::render(uint16_t selectedNodeId) noexcept {
   // Don't render if the render targets are not initialized: this should only
   // happen in the first frame before handleResizeViewport() is called
   if (!m_primaryRenderTarget) return;
@@ -261,6 +261,7 @@ void Renderer::render() noexcept {
   encPost->setViewport(viewport);
   encPost->setVertexBuffer(m_simpleQuadVertexBuffer, 0, 0);
   encPost->setFragmentBytes(&m_viewportSize, sizeof(m_viewportSize), 0);
+  encPost->setFragmentBytes(&selectedNodeId, sizeof(selectedNodeId), 1);
   encPost->drawIndexedPrimitives(
     MTL::PrimitiveTypeTriangle,
     6,
