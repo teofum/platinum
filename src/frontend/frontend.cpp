@@ -62,6 +62,8 @@ void Frontend::init() {
   auto& style = ImGui::GetStyle();
   style.FrameRounding = 4.0f;
   style.PopupRounding = 4.0f;
+  style.WindowRounding = 4.0f;
+  style.TabBarOverlineSize = 0.0f;
 
   SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
   SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
@@ -443,6 +445,7 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
   }
 
   auto label = id == 0 ? "Root" : std::format("Node [{}]", id);
+  ImGui::PushID(label.c_str());
 
   if (!isSelected) {
     ImGui::PushStyleColor(
@@ -456,6 +459,30 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
   if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
     m_nextNodeId = id;
     m_nextMeshId = std::nullopt;
+  }
+
+  if (id != 0 && ImGui::BeginDragDropSource()) {
+    ImGui::SetDragDropPayload("PT_NODE", &id, sizeof(Scene::NodeID));
+
+    const bool clone = m_keys[SDL_SCANCODE_LALT] || m_keys[SDL_SCANCODE_RALT];
+
+    ImGui::Text("%s%s", label.c_str(), clone ? " [+]" : "");
+    ImGui::EndDragDropSource();
+  }
+
+  if (ImGui::BeginDragDropTarget()) {
+    if (const auto pl = ImGui::AcceptDragDropPayload("PT_NODE")) {
+      IM_ASSERT(pl->DataSize == sizeof(Scene::NodeID));
+      const auto plId = *((Scene::NodeID*) pl->Data);
+      const bool clone = m_keys[SDL_SCANCODE_LALT] || m_keys[SDL_SCANCODE_RALT];
+
+      if (clone) {
+        m_store.scene().cloneNode(plId, id);
+      } else {
+        m_store.scene().moveNode(plId, id);
+      }
+    }
+    ImGui::EndDragDropTarget();
   }
 
   if (isOpen) {
@@ -488,6 +515,8 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
     }
     ImGui::TreePop();
   }
+
+  ImGui::PopID();
 }
 
 void Frontend::properties() {
@@ -513,7 +542,13 @@ void Frontend::properties() {
       }
       ImGui::PopStyleColor(4);
       if (!node->children.empty() && ImGui::BeginPopup("Delete_Popup")) {
+        ImGui::PushStyleColor(
+          ImGuiCol_FrameBg,
+          ImGui::GetStyleColorVec4(ImGuiCol_WindowBg)
+        );
         ImGui::Checkbox("Keep orphaned meshes", &m_keepOrphanedMeshes);
+        ImGui::PopStyleColor();
+
         ImGui::Separator();
         ImGui::Text("Action for children:");
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);

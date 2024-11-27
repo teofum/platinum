@@ -69,6 +69,59 @@ void Scene::removeNode(Scene::NodeID id, int flags) {
   m_nextNodeId = id; // Set next ID to removed one to be reused
 }
 
+bool Scene::moveNode(Scene::NodeID id, Scene::NodeID targetId) {
+  if (targetId == id) return false; // Can't move a node into itself!
+
+  const auto& node = m_nodes.at(id);
+  const auto& target = m_nodes.at(targetId);
+
+  // While moving a node into its own parent is technically a valid operation,
+  // it's also completely pointless
+  if (node->parent == targetId) return false;
+
+  // Make sure we don't move a node into its own children
+  NodeID parentId = target->parent;
+  while (parentId != 0) {
+    if (parentId == id) return false;
+    parentId = m_nodes.at(parentId)->parent;
+  }
+
+  // Move the node
+  const auto& oldParent = m_nodes.at(node->parent);
+  oldParent->children.erase(
+    std::find(oldParent->children.begin(), oldParent->children.end(), id)
+  );
+  target->children.push_back(id);
+  node->parent = targetId;
+
+  return true;
+}
+
+bool Scene::cloneNode(Scene::NodeID id, Scene::NodeID targetId) {
+  const auto& node = m_nodes.at(id);
+  const auto& target = m_nodes.at(targetId);
+
+  // Make sure we don't clone a node into its own children
+  NodeID parentId = target->parent;
+  while (parentId != 0) {
+    if (parentId == id) return false;
+    parentId = m_nodes.at(parentId)->parent;
+  }
+
+  auto children = node->children;
+
+  Node clone(node->meshId);
+  clone.transform = node->transform;
+  const auto cloneId = addNode(std::move(clone), targetId);
+
+  // Recursively clone children
+  for (auto childId: children) {
+    cloneNode(childId, cloneId);
+  }
+
+  return true;
+}
+
 std::vector<Scene::MeshData> Scene::getAllMeshes() const {
   std::vector<Scene::MeshData> meshes;
   meshes.reserve(m_meshes.size());

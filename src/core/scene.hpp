@@ -21,11 +21,7 @@ public:
     NodeID parent;
     Transform transform;
 
-    constexpr explicit Node() noexcept
-      : meshId(std::nullopt), children(), parent(0), transform() {
-    }
-
-    constexpr explicit Node(MeshID meshId) noexcept
+    constexpr explicit Node(std::optional<MeshID> meshId = std::nullopt) noexcept
       : meshId(meshId), children(), parent(0), transform() {
     }
   };
@@ -55,6 +51,10 @@ public:
     int flags = RemoveOptions_RemoveOrphanedMeshes |
                 RemoveOptions_RemoveChildrenRecursively
   );
+
+  bool moveNode(NodeID id, NodeID targetId);
+
+  bool cloneNode(NodeID id, NodeID targetId);
 
   [[nodiscard]] constexpr const Node* root() const {
     return m_nodes.at(0).get();
