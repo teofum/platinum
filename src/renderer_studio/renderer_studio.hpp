@@ -25,6 +25,8 @@ public:
 
   void handleZoomEvent(float delta);
 
+  void handlePanEvent(const float2& delta);
+
   void handleResizeViewport(const float2& size);
 
   [[nodiscard]] const MTL::Texture* presentRenderTarget() const;

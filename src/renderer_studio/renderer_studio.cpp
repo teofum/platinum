@@ -78,6 +78,10 @@ void Renderer::handleZoomEvent(float delta) {
   m_camera.moveTowardTarget(delta);
 }
 
+void Renderer::handlePanEvent(const float2& delta) {
+  m_camera.pan(delta, m_aspect);
+}
+
 void Renderer::handleResizeViewport(const float2& size) {
   if (!equal(size, m_viewportSize)) {
     m_viewportSize = size;

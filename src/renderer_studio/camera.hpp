@@ -26,6 +26,8 @@ struct Camera {
   void orbit(float2 angles);
 
   void moveTowardTarget(float amt);
+
+  void pan(float2 movement, float aspect);
 };
 
 }

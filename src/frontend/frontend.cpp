@@ -276,6 +276,16 @@ void Frontend::handleInput(const SDL_Event& event) {
       m_selectedMeshId = m_nextMeshId = std::nullopt;
       break;
     }
+    case SDL_KEYDOWN:
+    case SDL_KEYUP: {
+      auto sc = event.key.keysym.scancode;
+      if (sc == SDL_SCANCODE_LSHIFT || sc == SDL_SCANCODE_RSHIFT) {
+        m_scrolling = false;
+        m_scrollSpeed = {0.0f, 0.0f};
+        m_zooming = false;
+        m_zoomSpeed = 0.0f;
+      }
+    }
   }
 }
 
@@ -285,7 +295,11 @@ void Frontend::handleScrollAndZoomState() {
     m_scrollSpeed = {0.0f, 0.0f};
   } else {
     m_scrollSpeed -= normalize(m_scrollSpeed) * m_scrollFriction;
-    m_renderer->handleScrollEvent(m_scrollSpeed);
+    if (m_keys[SDL_SCANCODE_LSHIFT] || m_keys[SDL_SCANCODE_RSHIFT]) {
+      m_renderer->handlePanEvent(m_scrollSpeed);
+    } else {
+      m_renderer->handleScrollEvent(m_scrollSpeed);
+    }
   }
 
   if (abs(m_zoomSpeed) < m_zoomStop) {

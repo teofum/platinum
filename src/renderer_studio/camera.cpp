@@ -1,5 +1,6 @@
 #include "camera.hpp"
 
+#include<print>
 #include <utils/matrices.hpp>
 
 namespace pt::renderer_studio {
@@ -21,13 +22,13 @@ float4x4 Camera::projection(float aspect) const {
 }
 
 void Camera::orbit(float2 angles) {
-  float3 viewDirection = normalize(target - position);
+  auto viewDirection = normalize(target - position);
   if (viewDirection.y > 0.99f && angles.y > 0) { angles.y = 0; }
   if (viewDirection.y < -0.99f && angles.y < 0) { angles.y = 0; }
 
   if (length_squared(angles) < 0.00001f) return;
 
-  auto right = cross(viewDirection, float3{0, 1, 0});
+  auto right = normalize(cross(viewDirection, float3{0, 1, 0}));
   auto up = cross(right, viewDirection);
 
   auto axis = normalize(up * angles.x + right * angles.y);
@@ -40,6 +41,20 @@ void Camera::orbit(float2 angles) {
 
 void Camera::moveTowardTarget(float amt) {
   position = target + (position - target) * (1.0f - amt);
+}
+
+void Camera::pan(float2 movement, float aspect) {
+  auto delta = position - target;
+  auto dist = length(delta);
+  auto viewDirection = normalize(delta);
+  auto right = normalize(cross(viewDirection, float3{0, 1, 0}));
+  auto up = cross(right, viewDirection);
+
+  auto projected = (projection(aspect) * float4{1.0, 0.0, -dist, 1.0});
+  auto projectedUnit = projected.x / projected.w;
+  auto d = (right * movement.x + up * movement.y) / projectedUnit;
+  position += d;
+  target += d;
 }
 
 }
