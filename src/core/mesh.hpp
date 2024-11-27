@@ -24,11 +24,11 @@ public:
     const std::vector<uint32_t>& indices
   ) noexcept;
 
-  Mesh(const Mesh& m) noexcept;
+  Mesh(const Mesh& m) noexcept = delete;
 
   Mesh(Mesh&& m) noexcept;
 
-  Mesh& operator=(const Mesh& m);
+  Mesh& operator=(const Mesh& m) = delete;
 
   Mesh& operator=(Mesh&& m) noexcept;
 

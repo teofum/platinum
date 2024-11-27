@@ -28,14 +28,6 @@ Mesh::~Mesh() {
   m_indices->release();
 }
 
-Mesh::Mesh(const Mesh& m) noexcept {
-  m_indexCount = m.m_indexCount;
-  m_vertexCount = m.m_vertexCount;
-  m_vertexPositions = m.m_vertexPositions->retain();
-  m_vertexData = m.m_vertexData->retain();
-  m_indices = m.m_indices->retain();
-}
-
 Mesh::Mesh(Mesh&& m) noexcept {
   m_indexCount = m.m_indexCount;
   m_vertexCount = m.m_vertexCount;
@@ -46,17 +38,6 @@ Mesh::Mesh(Mesh&& m) noexcept {
   m.m_vertexPositions = nullptr;
   m.m_vertexData = nullptr;
   m.m_indices = nullptr;
-}
-
-Mesh& Mesh::operator=(const Mesh& m) {
-  if (&m != this) {
-    m_indexCount = m.m_indexCount;
-    m_vertexCount = m.m_vertexCount;
-    m_vertexPositions = m.m_vertexPositions->retain();
-    m_vertexData = m.m_vertexData->retain();
-    m_indices = m.m_indices->retain();
-  }
-  return *this;
 }
 
 Mesh& Mesh::operator=(Mesh&& m) noexcept {

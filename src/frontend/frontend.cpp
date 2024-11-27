@@ -40,6 +40,8 @@ void Frontend::init() {
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
   ImGui::StyleColorsLight();
+  auto& style = ImGui::GetStyle();
+  style.FrameRounding = 4.0f;
 
   SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
   SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
@@ -362,7 +364,7 @@ void Frontend::sceneExplorer() {
   ImGui::Begin("Scene Explorer");
 
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-  if (ImGui::BeginCombo("##", "Add Objects...")) {
+  if (ImGui::BeginCombo("##SEAdd", "Add Objects...")) {
     if (ImGui::Button("Cube", {ImGui::GetContentRegionAvail().x, 0})) {
       uint32_t parentIdx = m_selectedNodeId.value_or(0);
 
@@ -384,9 +386,21 @@ void Frontend::sceneExplorer() {
     ImGui::EndCombo();
   }
 
-  sceneExplorerNode(0);
-  m_selectedNodeId = m_nextNodeId;
-  m_selectedMeshId = m_nextMeshId;
+  ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {8, 4});
+  if (ImGui::BeginChild("##SETree", {0, 0}, ImGuiChildFlags_FrameStyle)) {
+    ImGui::PopStyleVar();
+    ImGui::PopStyleVar();
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
+    sceneExplorerNode(0);
+    ImGui::PopStyleVar();
+    m_selectedNodeId = m_nextNodeId;
+    m_selectedMeshId = m_nextMeshId;
+  } else {
+    ImGui::PopStyleVar();
+    ImGui::PopStyleVar();
+  }
+  ImGui::EndChild();
 
   ImGui::End();
 }
@@ -395,7 +409,7 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
   const Scene::Node* node = m_store.scene().node(id);
   static ImGuiTreeNodeFlags baseFlags =
     ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
-    ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding;
+    ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed;
 
   auto nodeFlags = baseFlags;
   bool isSelected = m_selectedNodeId == id;
@@ -409,7 +423,16 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
   }
 
   auto label = id == 0 ? "Root" : std::format("Node [{}]", id);
-  bool isOpen = ImGui::TreeNodeEx(label.c_str(), nodeFlags);
+
+  if (!isSelected) {
+    ImGui::PushStyleColor(
+      ImGuiCol_Header,
+      ImGui::GetStyleColorVec4(ImGuiCol_FrameBg)
+    );
+  }
+  bool isOpen = ImGui::TreeNodeEx(label.c_str(), nodeFlags) && !isLeaf;
+  if (!isSelected) ImGui::PopStyleColor();
+
   if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
     m_nextNodeId = id;
     m_nextMeshId = std::nullopt;
@@ -418,11 +441,18 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
   if (isOpen) {
     if (node->meshId) {
       auto meshFlags = baseFlags;
-      if (m_selectedMeshId == id) {
-        meshFlags |= ImGuiTreeNodeFlags_Selected;
-      }
       meshFlags |=
         ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+
+      bool meshSelected = m_selectedMeshId == id;
+      if (meshSelected) {
+        meshFlags |= ImGuiTreeNodeFlags_Selected;
+      } else {
+        ImGui::PushStyleColor(
+          ImGuiCol_Header,
+          ImGui::GetStyleColorVec4(ImGuiCol_FrameBg)
+        );
+      }
 
       auto meshLabel = std::format("Mesh [{}]", node->meshId.value());
       ImGui::TreeNodeEx(meshLabel.c_str(), meshFlags);
@@ -430,6 +460,8 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
         m_nextNodeId = std::nullopt;
         m_nextMeshId = id;
       }
+
+      if (!meshSelected) ImGui::PopStyleColor();
     }
     for (Scene::NodeID childId: node->children) {
       sceneExplorerNode(childId);
@@ -441,11 +473,39 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
 void Frontend::properties() {
   static ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen;
 
+  bool markedForDelete = false;
   ImGui::Begin("Properties");
   if (m_selectedNodeId) {
     Scene::Node* node = m_store.scene().node(m_selectedNodeId.value());
 
+    ImGui::AlignTextToFramePadding();
     ImGui::Text("Node [index: %u]", m_selectedNodeId.value());
+
+    if (m_selectedNodeId != 0) {
+      float buttonWidth = 80.0f;
+      ImGui::SameLine(ImGui::GetContentRegionAvail().x - buttonWidth + 12.0f);
+
+      ImGui::PushStyleColor(
+        ImGuiCol_Button,
+        (ImVec4) ImColor::HSV(0.0f, 0.6f, 0.9f)
+      );
+      ImGui::PushStyleColor(
+        ImGuiCol_ButtonHovered,
+        (ImVec4) ImColor::HSV(0.0f, 0.7f, 0.8f)
+      );
+      ImGui::PushStyleColor(
+        ImGuiCol_ButtonActive,
+        (ImVec4) ImColor::HSV(0.0f, 0.8f, 0.7f)
+      );
+      ImGui::PushStyleColor(
+        ImGuiCol_Text,
+        (ImVec4) ImColor::HSV(0.0f, 0.0f, 1.0f)
+      );
+      markedForDelete = ImGui::Button("Delete", {buttonWidth, 0});
+      ImGui::PopStyleColor(4);
+    }
+
+    ImGui::Spacing();
 
     if (ImGui::CollapsingHeader("Transform", flags)) {
       ImGui::DragFloat3(
@@ -483,6 +543,11 @@ void Frontend::properties() {
   }
 
   ImGui::End();
+
+  if (markedForDelete) {
+    m_store.scene().removeNode(m_selectedNodeId.value());
+    m_selectedNodeId = m_nextNodeId = std::nullopt;
+  }
 }
 
 }
