@@ -29,7 +29,7 @@ Frontend::~Frontend() {
   m_device->release();
 }
 
-void Frontend::start() {
+void Frontend::init() {
   /*
    * Set up ImGui
    */
@@ -97,6 +97,7 @@ void Frontend::start() {
   m_layer = static_cast<CA::MetalLayer*>(SDL_RenderGetMetalLayer(m_sdlRenderer));
   m_layer->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
   m_device = metal_utils::getDevice(m_layer);
+  m_store.setDevice(m_device);
 
   ImGui_ImplMetal_Init(m_device);
   ImGui_ImplSDL2_InitForMetal(m_sdlWindow);
@@ -111,7 +112,9 @@ void Frontend::start() {
     m_commandQueue,
     m_store
   );
+}
 
+void Frontend::start() {
   /*
    * Main application loop
    */
@@ -154,7 +157,7 @@ void Frontend::start() {
     colorAttachment->setStoreAction(MTL::StoreActionStore);
 
     // Render scene
-    m_renderer->render(m_selectedNodeIdx.value_or(0));
+    m_renderer->render(m_selectedNodeId.value_or(0));
 
     // Render ImGui
     auto cmd = m_commandQueue->commandBuffer();
@@ -241,11 +244,11 @@ void Frontend::handleInput(const SDL_Event& event) {
 
       auto objectId = m_renderer->readbackObjectIdAt(x, y);
       if (objectId != 0) {
-        m_selectedNodeIdx = m_nextNodeIdx = objectId;
+        m_selectedNodeId = m_nextNodeId = objectId;
       } else {
-        m_selectedNodeIdx = m_nextNodeIdx = std::nullopt;
+        m_selectedNodeId = m_nextNodeId = std::nullopt;
       }
-      m_selectedMeshIdx = m_nextMeshIdx = std::nullopt;
+      m_selectedMeshId = m_nextMeshId = std::nullopt;
       break;
     }
   }
@@ -361,18 +364,18 @@ void Frontend::sceneExplorer() {
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
   if (ImGui::BeginCombo("##", "Add Objects...")) {
     if (ImGui::Button("Cube", {ImGui::GetContentRegionAvail().x, 0})) {
-      uint32_t parentIdx = m_selectedNodeIdx.value_or(0);
+      uint32_t parentIdx = m_selectedNodeId.value_or(0);
 
-      auto cube = pt::primitives::cube(2.0f);
+      auto cube = pt::primitives::cube(m_device, 2.0f);
       auto idx = m_store.scene().addMesh(std::move(cube));
       m_store.scene().addNode(pt::Scene::Node(idx), parentIdx);
 
       ImGui::CloseCurrentPopup();
     }
     if (ImGui::Button("Sphere", {ImGui::GetContentRegionAvail().x, 0})) {
-      uint32_t parentIdx = m_selectedNodeIdx.value_or(0);
+      uint32_t parentIdx = m_selectedNodeId.value_or(0);
 
-      auto sphere = pt::primitives::sphere(1.0f, 24, 32);
+      auto sphere = pt::primitives::sphere(m_device, 1.0f, 24, 32);
       auto idx = m_store.scene().addMesh(std::move(sphere));
       m_store.scene().addNode(pt::Scene::Node(idx), parentIdx);
 
@@ -382,54 +385,54 @@ void Frontend::sceneExplorer() {
   }
 
   sceneExplorerNode(0);
-  m_selectedNodeIdx = m_nextNodeIdx;
-  m_selectedMeshIdx = m_nextMeshIdx;
+  m_selectedNodeId = m_nextNodeId;
+  m_selectedMeshId = m_nextMeshId;
 
   ImGui::End();
 }
 
-void Frontend::sceneExplorerNode(uint32_t idx) {
-  const Scene::Node& node = m_store.scene().node(idx);
+void Frontend::sceneExplorerNode(Scene::NodeID id) {
+  const Scene::Node* node = m_store.scene().node(id);
   static ImGuiTreeNodeFlags baseFlags =
     ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
     ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding;
 
   auto nodeFlags = baseFlags;
-  bool isSelected = m_selectedNodeIdx == idx;
+  bool isSelected = m_selectedNodeId == id;
   if (isSelected) {
     nodeFlags |= ImGuiTreeNodeFlags_Selected;
   }
 
-  bool isLeaf = !node.meshIdx && node.children.empty();
+  bool isLeaf = !node->meshId && node->children.empty();
   if (isLeaf) {
     nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
   }
 
-  auto label = idx == 0 ? "Root" : std::format("Node [{}]", idx);
+  auto label = id == 0 ? "Root" : std::format("Node [{}]", id);
   bool isOpen = ImGui::TreeNodeEx(label.c_str(), nodeFlags);
   if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-    m_nextNodeIdx = idx;
-    m_nextMeshIdx = std::nullopt;
+    m_nextNodeId = id;
+    m_nextMeshId = std::nullopt;
   }
 
   if (isOpen) {
-    if (node.meshIdx) {
+    if (node->meshId) {
       auto meshFlags = baseFlags;
-      if (m_selectedMeshIdx == idx) {
+      if (m_selectedMeshId == id) {
         meshFlags |= ImGuiTreeNodeFlags_Selected;
       }
       meshFlags |=
         ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
-      auto meshLabel = std::format("Mesh [{}]", node.meshIdx.value());
+      auto meshLabel = std::format("Mesh [{}]", node->meshId.value());
       ImGui::TreeNodeEx(meshLabel.c_str(), meshFlags);
       if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-        m_nextNodeIdx = std::nullopt;
-        m_nextMeshIdx = idx;
+        m_nextNodeId = std::nullopt;
+        m_nextMeshId = id;
       }
     }
-    for (uint32_t childIdx: node.children) {
-      sceneExplorerNode(childIdx);
+    for (Scene::NodeID childId: node->children) {
+      sceneExplorerNode(childId);
     }
     ImGui::TreePop();
   }
@@ -439,21 +442,21 @@ void Frontend::properties() {
   static ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen;
 
   ImGui::Begin("Properties");
-  if (m_selectedNodeIdx) {
-    Scene::Node& node = m_store.scene().node(m_selectedNodeIdx.value());
+  if (m_selectedNodeId) {
+    Scene::Node* node = m_store.scene().node(m_selectedNodeId.value());
 
-    ImGui::Text("Node [index: %u]", m_selectedNodeIdx.value());
+    ImGui::Text("Node [index: %u]", m_selectedNodeId.value());
 
     if (ImGui::CollapsingHeader("Transform", flags)) {
       ImGui::DragFloat3(
         "Translation",
-        (float*) &node.transform.translation,
+        (float*) &node->transform.translation,
         0.01f
       );
 
       ImGui::DragFloat3(
         "Rotation",
-        (float*) &node.transform.rotation,
+        (float*) &node->transform.rotation,
         0.005f,
         0.0f,
         2.0f * std::numbers::pi,
@@ -463,18 +466,18 @@ void Frontend::properties() {
 
       ImGui::DragFloat3(
         "Scale",
-        (float*) &node.transform.scale,
+        (float*) &node->transform.scale,
         0.01f
       );
 
       if (ImGui::Button("Reset", {ImGui::GetContentRegionAvail().x, 0})) {
-        node.transform.translation = {0, 0, 0};
-        node.transform.rotation = {0, 0, 0};
-        node.transform.scale = {1, 1, 1};
+        node->transform.translation = {0, 0, 0};
+        node->transform.rotation = {0, 0, 0};
+        node->transform.scale = {1, 1, 1};
       }
     }
-  } else if (m_selectedMeshIdx) {
-    ImGui::Text("Mesh [index: %u]", m_selectedMeshIdx.value());
+  } else if (m_selectedMeshId) {
+    ImGui::Text("Mesh [index: %u]", m_selectedMeshId.value());
   } else {
     ImGui::Text("[ Nothing selected ]");
   }

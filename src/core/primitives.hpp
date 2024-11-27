@@ -5,9 +5,14 @@
 
 namespace pt::primitives {
 
-[[nodiscard]] Mesh cube(float side);
+[[nodiscard]] Mesh cube(MTL::Device* device, float side);
 
-[[nodiscard]] Mesh sphere(float radius, size_t lat, size_t lng);
+[[nodiscard]] Mesh sphere(
+  MTL::Device* device,
+  float radius,
+  size_t lat,
+  size_t lng
+);
 
 }
 

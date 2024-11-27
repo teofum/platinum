@@ -4,7 +4,7 @@
 
 namespace pt::primitives {
 
-Mesh cube(float side) {
+Mesh cube(MTL::Device* device, float side) {
   float h = side * 0.5f;
   std::vector<float3> vertices(24);
   std::vector<VertexData> vData(24);
@@ -45,10 +45,10 @@ Mesh cube(float side) {
     indices[6 * i + 5] = 4 * i + 3;
   }
 
-  return Mesh(std::move(vertices), std::move(vData), std::move(indices));
+  return {device, vertices, vData, indices};
 }
 
-Mesh sphere(float radius, size_t lat, size_t lng) {
+Mesh sphere(MTL::Device* device, float radius, size_t lat, size_t lng) {
   std::vector<float3> vertices((lat + 1) * (lng + 1));
   std::vector<VertexData> vData((lat + 1) * (lng + 1));
   std::vector<uint32_t> indices(lat * lng * 6);
@@ -94,7 +94,7 @@ Mesh sphere(float radius, size_t lat, size_t lng) {
     }
   }
 
-  return Mesh(std::move(vertices), std::move(vData), std::move(indices));
+  return {device, vertices, vData, indices};
 }
 
 }

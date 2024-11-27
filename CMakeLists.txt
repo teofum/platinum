@@ -82,6 +82,7 @@ add_executable(platinum
 
 target_include_directories(platinum PRIVATE src)
 target_include_directories(platinum PRIVATE ${SDL2}/Headers)
+target_include_directories(platinum PRIVATE ankerl)
 
 target_link_libraries(platinum PRIVATE METAL_CPP)
 target_link_libraries(platinum PRIVATE ${SDL2}/SDL2)

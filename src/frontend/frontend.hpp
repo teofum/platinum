@@ -21,6 +21,8 @@ public:
 
   void start();
 
+  void init();
+
 private:
   static constexpr const std::string m_defaultTitle = "Pt [SDL2 | Metal]";
 
@@ -64,8 +66,8 @@ private:
   bool m_mouseInViewport = false;
 
   // Scene Explorer state
-  std::optional<uint32_t> m_selectedNodeIdx, m_nextNodeIdx;
-  std::optional<uint32_t> m_selectedMeshIdx, m_nextMeshIdx;
+  std::optional<uint32_t> m_selectedNodeId, m_nextNodeId;
+  std::optional<uint32_t> m_selectedMeshId, m_nextMeshId;
 
   void drawImGui();
 
@@ -80,7 +82,7 @@ private:
 
   void sceneExplorer();
 
-  void sceneExplorerNode(uint32_t idx);
+  void sceneExplorerNode(Scene::NodeID idx);
 
   void properties();
 };

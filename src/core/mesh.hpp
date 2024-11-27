@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <simd/simd.h>
+#include <Metal/Metal.hpp>
 
 using namespace simd;
 
@@ -16,28 +17,49 @@ struct VertexData {
 
 class Mesh {
 public:
-  explicit Mesh(
-    std::vector<float3>&& vertexPositions,
-    std::vector<VertexData>&& vertexData,
-    std::vector<uint32_t>&& indices
+  Mesh(
+    MTL::Device* device,
+    const std::vector<float3>& vertexPositions,
+    const std::vector<VertexData>& vertexData,
+    const std::vector<uint32_t>& indices
   ) noexcept;
 
-  [[nodiscard]] constexpr const auto& vertexPositions() const {
+  Mesh(const Mesh& m) noexcept;
+
+  Mesh(Mesh&& m) noexcept;
+
+  Mesh& operator=(const Mesh& m);
+
+  Mesh& operator=(Mesh&& m) noexcept;
+
+  ~Mesh();
+
+  [[nodiscard]] constexpr const MTL::Buffer* vertexPositions() const {
     return m_vertexPositions;
   }
 
-  [[nodiscard]] constexpr const auto& vertexData() const {
+  [[nodiscard]] constexpr const MTL::Buffer* vertexData() const {
     return m_vertexData;
   }
 
-  [[nodiscard]] constexpr const auto& indices() const {
+  [[nodiscard]] constexpr const MTL::Buffer* indices() const {
     return m_indices;
   }
 
+  [[nodiscard]] constexpr size_t indexCount() const {
+    return m_indexCount;
+  }
+
+  [[nodiscard]] constexpr size_t vertexCount() const {
+    return m_vertexCount;
+  }
+
 private:
-  std::vector<float3> m_vertexPositions;
-  std::vector<VertexData> m_vertexData;
-  std::vector<uint32_t> m_indices;
+  size_t m_indexCount, m_vertexCount;
+
+  MTL::Buffer* m_vertexPositions;
+  MTL::Buffer* m_vertexData;
+  MTL::Buffer* m_indices;
 };
 
 }

@@ -64,9 +64,6 @@ Renderer::~Renderer() {
   m_postPassPso->release();
   m_postPassSso->release();
 
-  m_vertexPosBuffer->release();
-  m_vertexDataBuffer->release();
-  m_indexBuffer->release();
   m_constantsBuffer->release();
   m_simpleQuadVertexBuffer->release();
   m_simpleQuadIndexBuffer->release();
@@ -127,7 +124,7 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
 
   NS::AutoreleasePool* autoreleasePool = NS::AutoreleasePool::alloc()->init();
 
-  buildBuffers();
+  rebuildDataBuffer();
   updateConstants();
 
   auto cmd = m_commandQueue->commandBuffer();
@@ -176,15 +173,15 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
 
   size_t dataOffset = 0;
   for (const auto& md: m_meshData) {
-    enc->setVertexBuffer(m_vertexPosBuffer, md.vertexPosOffset, 0);
-    enc->setVertexBuffer(m_vertexDataBuffer, md.vertexDataOffset, 1);
+    enc->setVertexBuffer(md.mesh->vertexPositions(), 0, 0);
+    enc->setVertexBuffer(md.mesh->vertexData(), 0, 1);
     enc->setVertexBuffer(m_dataBuffer, dataOffset, 2);
     enc->drawIndexedPrimitives(
       MTL::PrimitiveTypeTriangle,
-      md.indexCount,
+      md.mesh->indexCount(),
       MTL::IndexTypeUInt32,
-      m_indexBuffer,
-      md.indexOffset
+      md.mesh->indices(),
+      0
     );
 
     dataOffset += sizeof(NodeData);
@@ -204,23 +201,23 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
   rpd->depthAttachment()->setTexture(m_depthTexture);
   rpd->depthAttachment()->setLoadAction(MTL::LoadActionLoad);
 
-  auto encGrid = cmd->renderCommandEncoder(rpd);
+  enc = cmd->renderCommandEncoder(rpd);
 
-  encGrid->setRenderPipelineState(m_gridPassPso);
-  encGrid->setDepthStencilState(m_gridPassDsso);
-  encGrid->setFrontFacingWinding(MTL::WindingCounterClockwise);
-  encGrid->setCullMode(MTL::CullModeNone);
+  enc->setRenderPipelineState(m_gridPassPso);
+  enc->setDepthStencilState(m_gridPassDsso);
+  enc->setFrontFacingWinding(MTL::WindingCounterClockwise);
+  enc->setCullMode(MTL::CullModeNone);
 
-  encGrid->setViewport(viewport);
-  encGrid->setVertexBuffer(m_simpleQuadVertexBuffer, 0, 0);
-  encGrid->setVertexBuffer(m_constantsBuffer, m_constantsOffset, 1);
-  encGrid->setFragmentBytes(&m_camera.position, sizeof(m_camera.position), 1);
+  enc->setViewport(viewport);
+  enc->setVertexBuffer(m_simpleQuadVertexBuffer, 0, 0);
+  enc->setVertexBuffer(m_constantsBuffer, m_constantsOffset, 1);
+  enc->setFragmentBytes(&m_camera.position, sizeof(m_camera.position), 1);
 
   auto grid = m_gridProperties;
   for (int i = 0; i < 6; i++) {
-    encGrid->setVertexBytes(&grid, sizeof(grid), 2);
-    encGrid->setFragmentBytes(&grid, sizeof(grid), 0);
-    encGrid->drawIndexedPrimitives(
+    enc->setVertexBytes(&grid, sizeof(grid), 2);
+    enc->setFragmentBytes(&grid, sizeof(grid), 0);
+    enc->drawIndexedPrimitives(
       MTL::PrimitiveTypeTriangle,
       6,
       MTL::IndexTypeUInt32,
@@ -231,7 +228,7 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
     grid.level++;
     grid.spacing *= 10.0f;
   }
-  encGrid->endEncoding();
+  enc->endEncoding();
 
   /*
    * Post process pass
@@ -242,21 +239,21 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
   colorAttachment->setLoadAction(MTL::LoadActionDontCare);
   colorAttachment->setStoreAction(MTL::StoreActionStore);
 
-  auto encPost = cmd->renderCommandEncoder(rpd);
+  enc = cmd->renderCommandEncoder(rpd);
 
-  encPost->setRenderPipelineState(m_postPassPso);
-  encPost->setFrontFacingWinding(MTL::WindingCounterClockwise);
-  encPost->setCullMode(MTL::CullModeBack);
+  enc->setRenderPipelineState(m_postPassPso);
+  enc->setFrontFacingWinding(MTL::WindingCounterClockwise);
+  enc->setCullMode(MTL::CullModeBack);
 
-  encPost->setFragmentTexture(m_auxRenderTarget, 0);
-  encPost->setFragmentTexture(m_objectIdRenderTarget, 1);
-  encPost->setFragmentSamplerState(m_postPassSso, 0);
+  enc->setFragmentTexture(m_auxRenderTarget, 0);
+  enc->setFragmentTexture(m_objectIdRenderTarget, 1);
+  enc->setFragmentSamplerState(m_postPassSso, 0);
 
-  encPost->setViewport(viewport);
-  encPost->setVertexBuffer(m_simpleQuadVertexBuffer, 0, 0);
-  encPost->setFragmentBytes(&m_viewportSize, sizeof(m_viewportSize), 0);
-  encPost->setFragmentBytes(&selectedNodeId, sizeof(selectedNodeId), 1);
-  encPost->drawIndexedPrimitives(
+  enc->setViewport(viewport);
+  enc->setVertexBuffer(m_simpleQuadVertexBuffer, 0, 0);
+  enc->setFragmentBytes(&m_viewportSize, sizeof(m_viewportSize), 0);
+  enc->setFragmentBytes(&selectedNodeId, sizeof(selectedNodeId), 1);
+  enc->drawIndexedPrimitives(
     MTL::PrimitiveTypeTriangle,
     6,
     MTL::IndexTypeUInt32,
@@ -264,112 +261,12 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
     0
   );
 
-  encPost->endEncoding();
+  enc->endEncoding();
   cmd->commit();
 
   m_frameIdx++;
 
   autoreleasePool->release();
-}
-
-void Renderer::buildBuffers() {
-  /*
-   * Discard existing buffers
-   */
-  if (m_vertexPosBuffer != nullptr) m_vertexPosBuffer->release();
-  if (m_vertexDataBuffer != nullptr) m_vertexDataBuffer->release();
-  if (m_indexBuffer != nullptr) m_indexBuffer->release();
-  if (m_dataBuffer != nullptr) m_dataBuffer->release();
-
-  /*
-   * Calculate buffer sizes and create buffers
-   */
-  auto meshes = m_store.scene().getAllMeshes();
-  size_t vertexPosSize = 0, vertexDataSize = 0, indexSize = 0;
-  size_t meshCount = meshes.size();
-
-  m_meshData.clear();
-  m_meshData.reserve(meshes.size());
-  for (const auto& md: meshes) {
-    const Mesh& mesh = md.mesh;
-    const size_t vc = mesh.vertexPositions().size();
-
-    m_meshData.emplace_back(
-      vertexPosSize,
-      vertexDataSize,
-      vc,
-      indexSize,
-      mesh.indices().size(),
-      static_cast<uint16_t>(md.nodeIdx)
-    );
-
-    vertexPosSize += utils::align(vc * sizeof(float3), 256);
-    vertexDataSize += utils::align(vc * sizeof(VertexData), 256);
-    indexSize += utils::align(mesh.indices().size() * sizeof(uint32_t), 256);
-  }
-
-  size_t vertexPosBufferSize = vertexPosSize * sizeof(float3);
-  m_vertexPosBuffer = m_device
-    ->newBuffer(vertexPosBufferSize, MTL::ResourceStorageModeShared);
-
-  size_t vertexDataBufferSize = vertexDataSize * sizeof(VertexData);
-  m_vertexDataBuffer = m_device
-    ->newBuffer(vertexDataBufferSize, MTL::ResourceStorageModeShared);
-
-  size_t indexBufferSize = indexSize * sizeof(uint32_t);
-  m_indexBuffer = m_device
-    ->newBuffer(indexBufferSize, MTL::ResourceStorageModeShared);
-
-  size_t dataBufferSize = meshCount * sizeof(NodeData);
-  m_dataBuffer = m_device
-    ->newBuffer(dataBufferSize, MTL::ResourceStorageModeShared);
-
-  /*
-   * Fill mesh data and transform buffers
-   */
-  float4x4 view = m_camera.view();
-  for (size_t i = 0; i < m_meshData.size(); i++) {
-    const Mesh& mesh = meshes[i].mesh;
-    const MeshData& data = m_meshData[i];
-
-    float4x4 viewModel = view * meshes[i].transform;
-    float4x4 vmit = transpose(inverse(viewModel));
-    float3x3 normalViewModel(
-      vmit.columns[0].xyz,
-      vmit.columns[1].xyz,
-      vmit.columns[2].xyz
-    );
-
-    const NodeData nodeData = {
-      viewModel,
-      normalViewModel,
-      data.nodeIdx,
-    };
-
-    // Vertices
-    void* vpbw = (char*) m_vertexPosBuffer->contents() + data.vertexPosOffset;
-    memcpy(
-      vpbw,
-      mesh.vertexPositions().data(),
-      data.vertexCount * sizeof(float3)
-    );
-
-    // Vertices
-    void* vdbw = (char*) m_vertexDataBuffer->contents() + data.vertexDataOffset;
-    memcpy(
-      vdbw,
-      mesh.vertexData().data(),
-      data.vertexCount * sizeof(VertexData)
-    );
-
-    // Indices
-    void* ibw = (char*) m_indexBuffer->contents() + data.indexOffset;
-    memcpy(ibw, mesh.indices().data(), data.indexCount * sizeof(uint32_t));
-
-    // Transform
-    void* dbw = (char*) m_dataBuffer->contents() + i * sizeof(NodeData);
-    memcpy(dbw, &nodeData, sizeof(NodeData));
-  }
 }
 
 void Renderer::buildShaders() {
@@ -526,6 +423,49 @@ void Renderer::buildShaders() {
   m_gridPassDsso = m_device->newDepthStencilState(depthStencilDesc);
 
   lib->release();
+}
+
+void Renderer::rebuildDataBuffer() {
+  /*
+   * Discard existing buffer
+   */
+  if (m_dataBuffer != nullptr) m_dataBuffer->release();
+
+  /*
+   * Calculate buffer sizes and create buffers
+   */
+  m_meshData = m_store.scene().getAllMeshes();
+  size_t meshCount = m_meshData.size();
+
+  size_t dataBufferSize = meshCount * sizeof(NodeData);
+  m_dataBuffer = m_device
+    ->newBuffer(dataBufferSize, MTL::ResourceStorageModeShared);
+
+  /*
+   * Fill transform buffer
+   */
+  float4x4 view = m_camera.view();
+  for (size_t i = 0; i < m_meshData.size(); i++) {
+    const auto& md = m_meshData[i];
+
+    float4x4 viewModel = view * md.transform;
+    float4x4 vmit = transpose(inverse(viewModel));
+    float3x3 normalViewModel(
+      vmit.columns[0].xyz,
+      vmit.columns[1].xyz,
+      vmit.columns[2].xyz
+    );
+
+    const NodeData nodeData = {
+      viewModel,
+      normalViewModel,
+      md.nodeId,
+    };
+
+    // Transform
+    void* dbw = (char*) m_dataBuffer->contents() + i * sizeof(NodeData);
+    memcpy(dbw, &nodeData, sizeof(NodeData));
+  }
 }
 
 void Renderer::rebuildRenderTargets() {

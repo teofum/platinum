@@ -2,29 +2,34 @@
 
 namespace pt {
 
-Scene::Scene() noexcept: m_meshes(), m_nodes() {
-  m_nodes.emplace_back(); // Push root node
+Scene::Scene() noexcept
+  : m_nextMeshId(0), m_nextNodeId(1), m_meshes(), m_nodes() {
+  m_nodes[0] = std::make_unique<Node>(); // Create root node
 }
 
-uint32_t Scene::addMesh(Mesh&& mesh) {
-  m_meshes.push_back(std::move(mesh));
-  return m_meshes.size() - 1;
+Scene::MeshID Scene::addMesh(Mesh&& mesh) {
+  MeshID id = m_nextMeshId++;
+  m_meshes[id] = std::make_unique<Mesh>(std::move(mesh));
+  while (m_meshes.contains(m_nextMeshId)) m_nextMeshId++;
+
+  return id;
 }
 
-uint32_t Scene::addNode(Node&& node, uint32_t parent) {
-  m_nodes.push_back(std::move(node));
-  uint32_t idx = m_nodes.size() - 1;
+Scene::NodeID Scene::addNode(Node&& node, Scene::NodeID parent) {
+  NodeID id = m_nextNodeId++;
+  m_nodes[id] = std::make_unique<Node>(std::move(node));
+  while (m_nodes.contains(m_nextNodeId)) m_nextNodeId++;
 
   auto& parentNode = m_nodes[parent];
-  parentNode.children.push_back(idx);
-  return idx;
+  parentNode->children.push_back(id);
+  return id;
 }
 
 std::vector<Scene::MeshData> Scene::getAllMeshes() const {
   std::vector<Scene::MeshData> meshes;
   meshes.reserve(m_meshes.size());
 
-  std::vector<std::pair<uint32_t, float4x4>> stack = {
+  std::vector<std::pair<NodeID, float4x4>> stack = {
     {0, mat::identity()}
   };
 
@@ -32,17 +37,17 @@ std::vector<Scene::MeshData> Scene::getAllMeshes() const {
     const auto& node = stack.back();
     stack.pop_back();
 
-    uint32_t currentIdx = node.first;
-    const Node& current = m_nodes[currentIdx];
+    NodeID currentId = node.first;
+    const auto& current = m_nodes.at(currentId);
     const float4x4& parentMatrix = node.second;
 
-    const float4x4 transformMatrix = parentMatrix * current.transform.matrix();
-    if (current.meshIdx) {
-      const Mesh& mesh = m_meshes[*current.meshIdx];
-      meshes.emplace_back(mesh, transformMatrix, currentIdx);
+    const float4x4 transformMatrix = parentMatrix * current->transform.matrix();
+    if (current->meshId) {
+      const auto& mesh = m_meshes.at(*current->meshId);
+      meshes.emplace_back(mesh.get(), transformMatrix, currentId);
     }
 
-    for (auto childIdx: current.children) {
+    for (auto childIdx: current->children) {
       stack.emplace_back(childIdx, transformMatrix);
     }
   }

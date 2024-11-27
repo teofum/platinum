@@ -10,15 +10,6 @@
 namespace pt::renderer_studio {
 
 class Renderer {
-  struct MeshData {
-    size_t vertexPosOffset;
-    size_t vertexDataOffset;
-    size_t vertexCount;
-    size_t indexOffset;
-    size_t indexCount;
-    uint16_t nodeIdx;
-  };
-
 public:
   Renderer(
     MTL::Device* device,
@@ -67,11 +58,8 @@ private:
   // Main pass pipeline state and buffers
   MTL::RenderPipelineState* m_pso = nullptr;
   MTL::DepthStencilState* m_dsso = nullptr;
-  MTL::Buffer* m_vertexPosBuffer = nullptr;
-  MTL::Buffer* m_vertexDataBuffer = nullptr;
-  MTL::Buffer* m_indexBuffer = nullptr;
   MTL::Buffer* m_dataBuffer = nullptr;
-  std::vector<MeshData> m_meshData;
+  std::vector<Scene::MeshData> m_meshData;
 
   // Grid pass pipeline state
   MTL::RenderPipelineState* m_gridPassPso = nullptr;
@@ -101,7 +89,7 @@ private:
   size_t m_frameIdx = 0;
   std::chrono::time_point<std::chrono::high_resolution_clock> m_startTime;
 
-  void buildBuffers();
+  void rebuildDataBuffer();
 
   void buildShaders();
 
