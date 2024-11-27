@@ -69,6 +69,9 @@ private:
   std::optional<uint32_t> m_selectedNodeId, m_nextNodeId;
   std::optional<uint32_t> m_selectedMeshId, m_nextMeshId;
 
+  // Properties state
+  bool m_keepOrphanedMeshes = false;
+
   void drawImGui();
 
   void handleInput(const SDL_Event& event);

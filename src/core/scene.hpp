@@ -37,11 +37,11 @@ public:
   };
 
   enum RemoveOptions {
-    OrphanedMeshes_Keep = 0,
-    OrphanedMeshes_Remove = 1 << 0,
-    Children_RemoveRecursively = 0,
-    Children_MoveToRoot = 1 << 1,
-    Children_MoveToParent = 1 << 2,
+    RemoveOptions_KeepOrphanedMeshes = 0,
+    RemoveOptions_RemoveOrphanedMeshes = 1 << 0,
+    RemoveOptions_RemoveChildrenRecursively = 0,
+    RemoveOptions_MoveChildrenToRoot = 1 << 1,
+    RemoveOptions_MoveChildrenToParent = 1 << 2,
   };
 
   explicit Scene() noexcept;
@@ -52,7 +52,8 @@ public:
 
   void removeNode(
     NodeID id,
-    int flags = OrphanedMeshes_Remove | Children_RemoveRecursively
+    int flags = RemoveOptions_RemoveOrphanedMeshes |
+                RemoveOptions_RemoveChildrenRecursively
   );
 
   [[nodiscard]] constexpr const Node* root() const {

@@ -21,6 +21,25 @@ bool isExitEvent(const SDL_Event& event, uint32_t windowID) {
   );
 }
 
+void buttonDanger() {
+  ImGui::PushStyleColor(
+    ImGuiCol_Button,
+    (ImVec4) ImColor::HSV(0.0f, 0.6f, 0.9f)
+  );
+  ImGui::PushStyleColor(
+    ImGuiCol_ButtonHovered,
+    (ImVec4) ImColor::HSV(0.0f, 0.7f, 0.8f)
+  );
+  ImGui::PushStyleColor(
+    ImGuiCol_ButtonActive,
+    (ImVec4) ImColor::HSV(0.0f, 0.8f, 0.7f)
+  );
+  ImGui::PushStyleColor(
+    ImGuiCol_Text,
+    (ImVec4) ImColor::HSV(0.0f, 0.0f, 1.0f)
+  );
+}
+
 Frontend::Frontend(Store& store) noexcept: m_store(store) {
 }
 
@@ -42,6 +61,7 @@ void Frontend::init() {
   ImGui::StyleColorsLight();
   auto& style = ImGui::GetStyle();
   style.FrameRounding = 4.0f;
+  style.PopupRounding = 4.0f;
 
   SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
   SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
@@ -407,7 +427,7 @@ void Frontend::sceneExplorer() {
 
 void Frontend::sceneExplorerNode(Scene::NodeID id) {
   const Scene::Node* node = m_store.scene().node(id);
-  static ImGuiTreeNodeFlags baseFlags =
+  static constexpr const ImGuiTreeNodeFlags baseFlags =
     ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
     ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed;
 
@@ -471,9 +491,10 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
 }
 
 void Frontend::properties() {
-  static ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen;
+  static constexpr const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen;
 
   bool markedForDelete = false;
+  int removeOptions = 0;
   ImGui::Begin("Properties");
   if (m_selectedNodeId) {
     Scene::Node* node = m_store.scene().node(m_selectedNodeId.value());
@@ -485,24 +506,33 @@ void Frontend::properties() {
       float buttonWidth = 80.0f;
       ImGui::SameLine(ImGui::GetContentRegionAvail().x - buttonWidth + 12.0f);
 
-      ImGui::PushStyleColor(
-        ImGuiCol_Button,
-        (ImVec4) ImColor::HSV(0.0f, 0.6f, 0.9f)
-      );
-      ImGui::PushStyleColor(
-        ImGuiCol_ButtonHovered,
-        (ImVec4) ImColor::HSV(0.0f, 0.7f, 0.8f)
-      );
-      ImGui::PushStyleColor(
-        ImGuiCol_ButtonActive,
-        (ImVec4) ImColor::HSV(0.0f, 0.8f, 0.7f)
-      );
-      ImGui::PushStyleColor(
-        ImGuiCol_Text,
-        (ImVec4) ImColor::HSV(0.0f, 0.0f, 1.0f)
-      );
-      markedForDelete = ImGui::Button("Delete", {buttonWidth, 0});
+      buttonDanger();
+      if (ImGui::Button("Remove", {buttonWidth, 0})) {
+        if (!node->children.empty()) ImGui::OpenPopup("Delete_Popup");
+        else markedForDelete = true;
+      }
       ImGui::PopStyleColor(4);
+      if (!node->children.empty() && ImGui::BeginPopup("Delete_Popup")) {
+        ImGui::Checkbox("Keep orphaned meshes", &m_keepOrphanedMeshes);
+        ImGui::Separator();
+        ImGui::Text("Action for children:");
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
+        if (ImGui::Selectable("Remove")) {
+          removeOptions = Scene::RemoveOptions_RemoveChildrenRecursively;
+          markedForDelete = true;
+        }
+        if (ImGui::Selectable("Move to root")) {
+          removeOptions = Scene::RemoveOptions_MoveChildrenToRoot;
+          markedForDelete = true;
+        }
+        if (ImGui::Selectable("Move to parent")) {
+          removeOptions = Scene::RemoveOptions_MoveChildrenToParent;
+          markedForDelete = true;
+        }
+        ImGui::PopStyleVar();
+
+        ImGui::EndPopup();
+      }
     }
 
     ImGui::Spacing();
@@ -545,7 +575,11 @@ void Frontend::properties() {
   ImGui::End();
 
   if (markedForDelete) {
-    m_store.scene().removeNode(m_selectedNodeId.value());
+    if (!m_keepOrphanedMeshes) {
+      removeOptions |= Scene::RemoveOptions_RemoveOrphanedMeshes;
+    }
+
+    m_store.scene().removeNode(m_selectedNodeId.value(), removeOptions);
     m_selectedNodeId = m_nextNodeId = std::nullopt;
   }
 }

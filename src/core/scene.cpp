@@ -45,10 +45,10 @@ void Scene::removeNode(Scene::NodeID id, int flags) {
   for (auto childId: removed->children) {
     const auto& child = m_nodes.at(childId);
 
-    if (flags & Children_MoveToRoot) {
+    if (flags & RemoveOptions_MoveChildrenToRoot) {
       child->parent = 0;
       m_nodes[0]->children.push_back(childId);
-    } else if (flags & Children_MoveToParent) {
+    } else if (flags & RemoveOptions_MoveChildrenToParent) {
       child->parent = removed->parent;
       parent->children.push_back(childId);
     } else {
@@ -59,7 +59,7 @@ void Scene::removeNode(Scene::NodeID id, int flags) {
   // Decrease refcount of mesh if present and handle orphaned mesh
   if (removed->meshId) {
     const auto rc = --m_meshRc[removed->meshId.value()];
-    if (rc == 0 && (flags & OrphanedMeshes_Remove)) {
+    if (rc == 0 && (flags & RemoveOptions_RemoveOrphanedMeshes)) {
       m_meshes.erase(removed->meshId.value());
       m_nextMeshId = removed->meshId.value();
     }
