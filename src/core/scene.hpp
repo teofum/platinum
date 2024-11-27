@@ -76,6 +76,10 @@ public:
     return m_meshes.at(id).get();
   }
 
+  [[nodiscard]] constexpr uint16_t meshUsers(MeshID id) {
+    return m_meshRc.at(id);
+  }
+
   [[nodiscard]] std::vector<MeshData> getAllMeshes() const;
 
 private:

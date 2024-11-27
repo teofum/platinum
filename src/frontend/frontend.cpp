@@ -63,6 +63,7 @@ void Frontend::init() {
   style.FrameRounding = 4.0f;
   style.PopupRounding = 4.0f;
   style.WindowRounding = 4.0f;
+  style.IndentSpacing = 12.0f;
   style.TabBarOverlineSize = 0.0f;
 
   SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
@@ -386,8 +387,11 @@ void Frontend::sceneExplorer() {
   ImGui::Begin("Scene Explorer");
 
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-  if (ImGui::BeginCombo("##SEAdd", "Add Objects...")) {
-    if (ImGui::Button("Cube", {ImGui::GetContentRegionAvail().x, 0})) {
+  if (ImGui::Button("Add Objects...", {ImGui::GetContentRegionAvail().x, 0})) {
+    ImGui::OpenPopup("AddObject_Popup");
+  }
+  if (ImGui::BeginPopup("AddObject_Popup")) {
+    if (ImGui::Selectable("Cube")) {
       uint32_t parentIdx = m_selectedNodeId.value_or(0);
 
       auto cube = pt::primitives::cube(m_device, 2.0f);
@@ -396,7 +400,7 @@ void Frontend::sceneExplorer() {
 
       ImGui::CloseCurrentPopup();
     }
-    if (ImGui::Button("Sphere", {ImGui::GetContentRegionAvail().x, 0})) {
+    if (ImGui::Selectable("Sphere")) {
       uint32_t parentIdx = m_selectedNodeId.value_or(0);
 
       auto sphere = pt::primitives::sphere(m_device, 1.0f, 24, 32);
@@ -405,7 +409,7 @@ void Frontend::sceneExplorer() {
 
       ImGui::CloseCurrentPopup();
     }
-    ImGui::EndCombo();
+    ImGui::EndPopup();
   }
 
   ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
@@ -491,7 +495,7 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
       meshFlags |=
         ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
-      bool meshSelected = m_selectedMeshId == id;
+      bool meshSelected = m_selectedMeshId == node->meshId;
       if (meshSelected) {
         meshFlags |= ImGuiTreeNodeFlags_Selected;
       } else {
@@ -505,7 +509,7 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
       ImGui::TreeNodeEx(meshLabel.c_str(), meshFlags);
       if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
         m_nextNodeId = std::nullopt;
-        m_nextMeshId = id;
+        m_nextMeshId = node->meshId;
       }
 
       if (!meshSelected) ImGui::PopStyleColor();
@@ -529,7 +533,7 @@ void Frontend::properties() {
     Scene::Node* node = m_store.scene().node(m_selectedNodeId.value());
 
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("Node [index: %u]", m_selectedNodeId.value());
+    ImGui::Text("Node [id: %u]", m_selectedNodeId.value());
 
     if (m_selectedNodeId != 0) {
       float buttonWidth = 80.0f;
@@ -602,7 +606,24 @@ void Frontend::properties() {
       }
     }
   } else if (m_selectedMeshId) {
-    ImGui::Text("Mesh [index: %u]", m_selectedMeshId.value());
+    Mesh* mesh = m_store.scene().mesh(m_selectedMeshId.value());
+
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("Mesh [id: %u]", m_selectedMeshId.value());
+
+    auto users = std::format(
+      "{} users",
+      m_store.scene().meshUsers(m_selectedMeshId.value())
+    );
+    auto availableWidth = ImGui::GetContentRegionAvail().x;
+    ImGui::SameLine(availableWidth - ImGui::CalcTextSize(users.c_str()).x);
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("%s", users.c_str());
+
+    ImGui::Spacing();
+
+    ImGui::Text("%lu vertices", mesh->vertexCount());
+    ImGui::Text("%lu triangles", mesh->indexCount() / 3);
   } else {
     ImGui::Text("[ Nothing selected ]");
   }
