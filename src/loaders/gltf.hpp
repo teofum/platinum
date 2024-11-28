@@ -28,19 +28,28 @@ struct fastgltf::ElementTraits<float4>
 
 namespace pt::loaders::gltf {
 
+enum LoadOptions {
+  LoadOptions_None = 0,
+  LoadOptions_SkipEmptyNodes = 1 << 0,        // Don't create nodes with no loadable objects or children
+  LoadOptions_CreateSceneNodes = 1 << 1,      // Create a root node for each scene instead of appending nodes directly
+
+  LoadOptions_Default = LoadOptions_SkipEmptyNodes | LoadOptions_CreateSceneNodes,
+};
+
 class GltfLoader {
 public:
   explicit GltfLoader(MTL::Device* device, Scene& scene) noexcept
     : m_device(device), m_scene(scene) {
   }
 
-  void load(const fs::path& path);
+  void load(const fs::path& path, int options = LoadOptions_Default);
 
 private:
   MTL::Device* m_device;
   Scene& m_scene;
   std::unique_ptr<fastgltf::Asset> m_asset;
   std::vector<Scene::MeshID> m_meshIds;
+  int m_options;
 
   void loadMesh(const fastgltf::Mesh& gltfMesh);
 

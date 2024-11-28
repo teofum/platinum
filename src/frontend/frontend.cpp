@@ -459,7 +459,7 @@ void Frontend::sceneExplorer() {
   if (ImGui::BeginPopup("Import_Popup")) {
     if (ImGui::Selectable("glTF", false, 0, {100, 0})) {
       char* path = nullptr;
-      auto result = NFD_OpenDialog(nullptr, "../assets", &path);
+      auto result = NFD_OpenDialog("*.glb, *.gltf", "../assets", &path);
 
       if (result == NFD_OKAY) {
         fs::path filePath(path);

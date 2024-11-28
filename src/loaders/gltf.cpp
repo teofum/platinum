@@ -20,10 +20,15 @@ static float3 eulerFromQuat(fastgltf::math::fquat q) {
   };
 }
 
-void GltfLoader::load(const fs::path& path) {
+void GltfLoader::load(const fs::path& path, int options) {
   auto gltfFile = fastgltf::GltfDataBuffer::FromPath(path);
   if (gltfFile.error() != fastgltf::Error::None) {
-    std::println(stderr, "[Error] gltf: {}", getErrorMessage(gltfFile.error()));
+    std::println(
+      stderr,
+      "[Error] gltf: ({}) {}",
+      getErrorName(gltfFile.error()),
+      getErrorMessage(gltfFile.error())
+    );
     return;
   }
 
@@ -45,18 +50,29 @@ void GltfLoader::load(const fs::path& path) {
   );
 
   if (asset.error() != fastgltf::Error::None) {
-    std::println(stderr, "[Error] gltf: {}", getErrorMessage(gltfFile.error()));
+    std::println(
+      stderr,
+      "[Error] gltf: ({}) {}",
+      getErrorName(gltfFile.error()),
+      getErrorMessage(gltfFile.error())
+    );
     return;
   }
   m_asset = std::make_unique<fastgltf::Asset>(std::move(asset.get()));
+  m_options = options;
 
   m_meshIds.reserve(m_asset->meshes.size());
   for (const auto& mesh: m_asset->meshes)
     loadMesh(mesh);
 
+  Scene::NodeID localRoot = 0;
   for (const auto& scene: m_asset->scenes) {
+    if (m_options & LoadOptions_CreateSceneNodes) {
+      localRoot = m_scene.addNode(Scene::Node());
+    }
+
     for (auto nodeIdx: scene.nodeIndices) {
-      loadNode(m_asset->nodes[nodeIdx]);
+      loadNode(m_asset->nodes[nodeIdx], localRoot);
     }
   }
 }
@@ -178,6 +194,11 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
 void GltfLoader::loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent) {
   std::optional<Scene::MeshID> meshId = std::nullopt;
   if (gltfNode.meshIndex) meshId = m_meshIds[gltfNode.meshIndex.value()];
+
+  // Skip adding empty nodes
+  if ((m_options & LoadOptions_SkipEmptyNodes) && !meshId && gltfNode.children.empty()) {
+    return;
+  }
 
   Scene::Node node(meshId);
   auto trs = std::get_if<fastgltf::TRS>(&gltfNode.transform);
