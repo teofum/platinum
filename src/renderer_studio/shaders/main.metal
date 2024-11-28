@@ -6,7 +6,7 @@ using namespace metal;
 
 struct VertexOut {
     float4 position [[position]];
-    float4 vsPosition;
+    float4 wsPosition;
     float3 vsNormal;
     uint16_t objectId;
 };
@@ -14,6 +14,7 @@ struct VertexOut {
 struct FragmentOut {
     float4 color [[color(0)]];
     uint16_t objectId [[color(1)]];
+    uint32_t stencil [[stencil]];
 };
 
 constant float3 objectColor(0.5, 0.5, 0.5);
@@ -26,20 +27,24 @@ vertex VertexOut vertexShader(
     constant Constants &c [[buffer(3)]]
 ) {
     VertexOut out;
-    out.vsPosition = data.viewModel * float4(in.position, 1.0);
-    out.position = c.projection * out.vsPosition;
+    out.wsPosition = data.model * float4(in.position, 1.0);
+    out.position = c.projection * c.view * out.wsPosition;
     out.vsNormal = normalize(data.normalViewModel * in.normal);
     out.objectId = data.nodeIdx;
 
     return out;
 }
 
-fragment FragmentOut fragmentShader(VertexOut in [[stage_in]]) {
+fragment FragmentOut fragmentShader(
+    VertexOut in [[stage_in]],
+    constant float3& cameraPosition [[buffer(0)]]
+) {
     float shading = mix(abs(dot(vsLightDirection, in.vsNormal)), 1.0, ambientLight);
 
     FragmentOut out;
     out.color = float4(objectColor * shading, 1.0);
     out.objectId = in.objectId;
+    out.stencil = 2 * saturate(sign(cameraPosition.y * (in.wsPosition.y + sign(cameraPosition.y) * 0.001)));
 
     return out;
 }

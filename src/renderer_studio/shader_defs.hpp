@@ -18,14 +18,14 @@ struct Vertex {
 };
 
 struct NodeData {
-  float4x4 viewModel;
+  float4x4 model;
   float3x3 normalViewModel;
   uint16_t nodeIdx = 0;
 };
 
 struct Constants {
   float4x4 projection;
-  float4x4 view; // Used by grid shader
+  float4x4 view;
 };
 
 struct GridProperties {

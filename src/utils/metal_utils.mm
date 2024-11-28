@@ -82,6 +82,7 @@ NS::SharedPtr<MTL::RenderPipelineDescriptor> makeRenderPipelineDescriptor(const 
   }
 
   desc->setDepthAttachmentPixelFormat(params.depthFormat);
+  desc->setStencilAttachmentPixelFormat(params.stencilFormat);
   return desc;
 }
 

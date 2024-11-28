@@ -54,6 +54,7 @@ private:
   MTL::Texture* m_auxRenderTarget = nullptr;
   MTL::Texture* m_objectIdRenderTarget = nullptr;
   MTL::Texture* m_depthTexture = nullptr;
+  MTL::Texture* m_stencilTexture = nullptr;
 
   // Shared buffers
   MTL::Buffer* m_simpleQuadVertexBuffer = nullptr;

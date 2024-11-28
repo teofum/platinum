@@ -46,6 +46,5 @@ fragment float4 gridFragment(
     line *= saturate(1.0 - cameraDistance / fadeDistance);
     line *= 1.0 - saturate(in.position.z - 0.99999) * 100000.0;
 
-    float3 color = mix(float3(0.0), grid.lineColor, line);
-    return float4(color, line);
+    return float4(grid.lineColor, line);
 }

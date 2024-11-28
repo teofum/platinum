@@ -38,6 +38,7 @@ struct RenderPipelineParams {
   MTL::Function* fragmentFunction;
   std::vector<MTL::PixelFormat> colorAttachments;
   MTL::PixelFormat depthFormat = MTL::PixelFormatInvalid;
+  MTL::PixelFormat stencilFormat = MTL::PixelFormatInvalid;
 };
 
 /**

@@ -14,7 +14,7 @@ Renderer::Renderer(
   MTL::CommandQueue* commandQueue,
   Store& store
 ) noexcept
-  : m_store(store), m_camera(float3{-3, 3, 3}),
+  : m_store(store), m_camera(float3{2, 3, 5}),
     m_device(device), m_commandQueue(commandQueue) {
   /*
    * Build the constants buffer
@@ -171,6 +171,9 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
   rpd->depthAttachment()->setTexture(m_depthTexture);
   rpd->depthAttachment()->setStoreAction(MTL::StoreActionStore);
 
+  rpd->stencilAttachment()->setTexture(m_stencilTexture);
+  rpd->stencilAttachment()->setStoreAction(MTL::StoreActionStore);
+
   auto enc = cmd->renderCommandEncoder(rpd);
 
   enc->setRenderPipelineState(m_pso);
@@ -180,6 +183,7 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
 
   enc->setViewport(viewport);
   enc->setVertexBuffer(m_constantsBuffer, m_constantsOffset, 3);
+  enc->setFragmentBytes(&m_camera.position, sizeof(m_camera.position), 0);
 
   size_t dataOffset = 0;
   for (const auto& md: m_meshData) {
@@ -211,12 +215,16 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
   rpd->depthAttachment()->setTexture(m_depthTexture);
   rpd->depthAttachment()->setLoadAction(MTL::LoadActionLoad);
 
+  rpd->stencilAttachment()->setTexture(m_stencilTexture);
+  rpd->stencilAttachment()->setLoadAction(MTL::LoadActionLoad);
+
   enc = cmd->renderCommandEncoder(rpd);
 
   enc->setRenderPipelineState(m_gridPassPso);
   enc->setDepthStencilState(m_gridPassDsso);
   enc->setFrontFacingWinding(MTL::WindingCounterClockwise);
   enc->setCullMode(MTL::CullModeNone);
+  enc->setStencilReferenceValue(1);
 
   enc->setViewport(viewport);
   enc->setVertexBuffer(m_simpleQuadVertexBuffer, 0, 0);
@@ -224,7 +232,7 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
   enc->setFragmentBytes(&m_camera.position, sizeof(m_camera.position), 1);
 
   auto grid = m_gridProperties;
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < 4; i++) {
     enc->setVertexBytes(&grid, sizeof(grid), 2);
     enc->setFragmentBytes(&grid, sizeof(grid), 0);
     enc->drawIndexedPrimitives(
@@ -304,6 +312,7 @@ void Renderer::buildShaders() {
       .fragmentFunction = metal_utils::getFunction(lib, "fragmentShader"),
       .colorAttachments = {MTL::PixelFormatRGBA8Unorm, MTL::PixelFormatR16Uint},
       .depthFormat = MTL::PixelFormatDepth32Float,
+      .stencilFormat = MTL::PixelFormatStencil8,
     }
   );
 
@@ -354,6 +363,7 @@ void Renderer::buildShaders() {
       .fragmentFunction = metal_utils::getFunction(lib, "gridFragment"),
       .colorAttachments = {MTL::PixelFormatRGBA8Unorm},
       .depthFormat = MTL::PixelFormatDepth32Float,
+      .stencilFormat = MTL::PixelFormatStencil8,
     }
   );
 
@@ -425,10 +435,21 @@ void Renderer::buildShaders() {
    * Set up the depth/stencil buffer
    */
   auto depthStencilDesc = ns_shared<MTL::DepthStencilDescriptor>();
+  auto stencilDesc = ns_shared<MTL::StencilDescriptor>();
+
+  // Main pass
+  stencilDesc->setDepthStencilPassOperation(MTL::StencilOperationReplace);
+  depthStencilDesc->setFrontFaceStencil(stencilDesc);
+  depthStencilDesc->setBackFaceStencil(stencilDesc);
   depthStencilDesc->setDepthWriteEnabled(true);
   depthStencilDesc->setDepthCompareFunction(MTL::CompareFunctionLess);
   m_dsso = m_device->newDepthStencilState(depthStencilDesc);
 
+  // Grid pass
+  stencilDesc->setStencilCompareFunction(MTL::CompareFunctionGreater);
+  stencilDesc->setDepthStencilPassOperation(MTL::StencilOperationKeep);
+  depthStencilDesc->setFrontFaceStencil(stencilDesc);
+  depthStencilDesc->setBackFaceStencil(stencilDesc);
   depthStencilDesc->setDepthWriteEnabled(false);
   m_gridPassDsso = m_device->newDepthStencilState(depthStencilDesc);
 
@@ -458,8 +479,7 @@ void Renderer::rebuildDataBuffer() {
   for (size_t i = 0; i < m_meshData.size(); i++) {
     const auto& md = m_meshData[i];
 
-    float4x4 viewModel = view * md.transform;
-    float4x4 vmit = transpose(inverse(viewModel));
+    float4x4 vmit = transpose(inverse(view * md.transform));
     float3x3 normalViewModel(
       vmit.columns[0].xyz,
       vmit.columns[1].xyz,
@@ -467,7 +487,7 @@ void Renderer::rebuildDataBuffer() {
     );
 
     const NodeData nodeData = {
-      viewModel,
+      md.transform,
       normalViewModel,
       md.nodeId,
     };
@@ -483,6 +503,7 @@ void Renderer::rebuildRenderTargets() {
   if (m_auxRenderTarget != nullptr) m_auxRenderTarget->release();
   if (m_objectIdRenderTarget != nullptr) m_objectIdRenderTarget->release();
   if (m_depthTexture != nullptr) m_depthTexture->release();
+  if (m_stencilTexture != nullptr) m_stencilTexture->release();
 
   auto texd = MTL::TextureDescriptor::alloc()->init();
   texd->setTextureType(MTL::TextureType2D);
@@ -500,6 +521,9 @@ void Renderer::rebuildRenderTargets() {
 
   texd->setPixelFormat(MTL::PixelFormatDepth32Float);
   m_depthTexture = m_device->newTexture(texd);
+
+  texd->setPixelFormat(MTL::PixelFormatStencil8);
+  m_stencilTexture = m_device->newTexture(texd);
 
   texd->release();
 }
