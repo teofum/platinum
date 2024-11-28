@@ -42,7 +42,8 @@ void Scene::removeNode(Scene::NodeID id, int flags) {
   );
 
   // Handle removal or moving of the children
-  for (auto childId: removed->children) {
+  auto children = removed->children; // Clone child IDs to prevent modifying while iterating
+  for (auto childId: children) {
     const auto& child = m_nodes.at(childId);
 
     if (flags & RemoveOptions_MoveChildrenToRoot) {
