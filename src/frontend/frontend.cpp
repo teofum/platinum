@@ -7,6 +7,7 @@
 #include <imgui_internal.h>
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_metal.h>
+#include <misc/cpp/imgui_stdlib.h>
 #include <nfd.h>
 
 #include <core/primitives.hpp>
@@ -641,12 +642,17 @@ void Frontend::properties() {
   if (m_selectedNodeId) {
     Scene::Node* node = m_store.scene().node(m_selectedNodeId.value());
 
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+    if (m_selectedNodeId == 0) ImGui::BeginDisabled();
+    ImGui::InputText("##NameInput", &node->name);
+    if (m_selectedNodeId == 0) ImGui::EndDisabled();
+
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("%s: Node [id: %u]", node->name.c_str(), m_selectedNodeId.value());
+    ImGui::Text("Node [id: %u]", m_selectedNodeId.value());
 
     if (m_selectedNodeId != 0) {
-      float buttonWidth = 80.0f;
-      ImGui::SameLine(ImGui::GetContentRegionAvail().x - buttonWidth + 12.0f);
+      float buttonWidth = 60.0f;
+      ImGui::SameLine(ImGui::GetContentRegionAvail().x - buttonWidth + ImGui::GetStyle().ItemSpacing.x);
 
       buttonDanger();
       if (ImGui::Button("Remove", {buttonWidth, 0})) {
