@@ -15,14 +15,21 @@ public:
   using NodeID = uint16_t;
   using MeshID = uint16_t;
 
+  enum NodeFlags {
+    NodeFlags_None = 0,
+    NodeFlags_Visible = 1 << 0,
+    NodeFlags_Default = NodeFlags_Visible,
+  };
+
   struct Node {
     std::optional<MeshID> meshId;
     std::vector<NodeID> children;
-    NodeID parent;
+    NodeID parent = 0;
+    int flags = NodeFlags_Default;
     Transform transform;
 
     constexpr explicit Node(std::optional<MeshID> meshId = std::nullopt) noexcept
-      : meshId(meshId), children(), parent(0), transform() {
+      : meshId(meshId) {
     }
   };
 
@@ -82,7 +89,7 @@ public:
 
   [[nodiscard]] float4x4 worldTransform(NodeID id) const;
 
-  [[nodiscard]] std::vector<MeshData> getAllMeshes() const;
+  [[nodiscard]] std::vector<MeshData> getAllMeshes(int filter = 0) const;
 
 private:
   NodeID m_nextNodeId;

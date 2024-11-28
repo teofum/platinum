@@ -136,7 +136,7 @@ float4x4 Scene::worldTransform(Scene::NodeID id) const {
   return transform;
 }
 
-std::vector<Scene::MeshData> Scene::getAllMeshes() const {
+std::vector<Scene::MeshData> Scene::getAllMeshes(int filter) const {
   std::vector<Scene::MeshData> meshes;
   meshes.reserve(m_meshes.size());
 
@@ -150,8 +150,9 @@ std::vector<Scene::MeshData> Scene::getAllMeshes() const {
 
     NodeID currentId = node.first;
     const auto& current = m_nodes.at(currentId);
-    const float4x4& parentMatrix = node.second;
+    if (filter && !(current->flags & filter)) continue;
 
+    const float4x4& parentMatrix = node.second;
     const float4x4 transformMatrix = parentMatrix * current->transform.matrix();
     if (current->meshId) {
       const auto& mesh = m_meshes.at(*current->meshId);

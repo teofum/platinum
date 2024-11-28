@@ -465,7 +465,7 @@ void Renderer::rebuildDataBuffer() {
   /*
    * Calculate buffer sizes and create buffers
    */
-  m_meshData = m_store.scene().getAllMeshes();
+  m_meshData = m_store.scene().getAllMeshes(Scene::NodeFlags_Visible);
   size_t meshCount = m_meshData.size();
 
   size_t dataBufferSize = meshCount * sizeof(NodeData);

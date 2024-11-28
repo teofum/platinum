@@ -84,7 +84,7 @@ private:
 
   void sceneExplorer();
 
-  void sceneExplorerNode(Scene::NodeID idx);
+  void sceneExplorerNode(Scene::NodeID idx, uint32_t level = 1);
 
   void properties();
 

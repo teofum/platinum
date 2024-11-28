@@ -494,11 +494,11 @@ void Frontend::sceneExplorer() {
   ImGui::End();
 }
 
-void Frontend::sceneExplorerNode(Scene::NodeID id) {
-  const Scene::Node* node = m_store.scene().node(id);
+void Frontend::sceneExplorerNode(Scene::NodeID id, uint32_t level) {
+  Scene::Node* node = m_store.scene().node(id);
   static constexpr const ImGuiTreeNodeFlags baseFlags =
     ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
-    ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed;
+    ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_AllowItemOverlap;
 
   auto nodeFlags = baseFlags;
   bool isSelected = m_selectedNodeId == id;
@@ -514,7 +514,7 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
   /*
    * Tree node item
    */
-  auto label = id == 0 ? "Root" : std::format("Node [{}]", id);
+  auto label = id == 0 ? "Root##Node_0" : std::format("Node [{}]##Node_{}", id, id);
   ImGui::PushID(label.c_str());
 
   if (!isSelected) {
@@ -587,6 +587,17 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
   }
 
   /*
+   * Inline buttons
+   */
+  auto visibleLabel = std::format("{}##Node_{}", node->flags & Scene::NodeFlags_Visible ? 'V' : '-', id);
+  auto inlineButtonWidth = ImGui::GetFrameHeight();
+  auto offset = ImGui::GetStyle().IndentSpacing * static_cast<float>(isOpen ? level + 1 : level);
+  ImGui::SameLine(ImGui::GetContentRegionAvail().x + offset - inlineButtonWidth);
+  if (ImGui::Button(visibleLabel.c_str(), {inlineButtonWidth, 0})) {
+    node->flags ^= Scene::NodeFlags_Visible;
+  }
+
+  /*
    * Render contents: mesh and children
    */
   if (isOpen) {
@@ -615,7 +626,7 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
       if (!meshSelected) ImGui::PopStyleColor();
     }
     for (Scene::NodeID childId: node->children) {
-      sceneExplorerNode(childId);
+      sceneExplorerNode(childId, level + 1);
     }
     ImGui::TreePop();
   }
@@ -650,6 +661,11 @@ void Frontend::properties() {
 
     ImGui::Spacing();
 
+    if (ImGui::CollapsingHeader("View properties", flags)) {
+      ImGui::CheckboxFlags("Visible", &node->flags, Scene::NodeFlags_Visible);
+      ImGui::Spacing();
+    }
+
     if (ImGui::CollapsingHeader("Transform", flags)) {
       ImGui::DragFloat3(
         "Translation",
@@ -678,6 +694,7 @@ void Frontend::properties() {
         node->transform.rotation = {0, 0, 0};
         node->transform.scale = {1, 1, 1};
       }
+      ImGui::Spacing();
     }
   } else if (m_selectedMeshId) {
     Mesh* mesh = m_store.scene().mesh(m_selectedMeshId.value());
