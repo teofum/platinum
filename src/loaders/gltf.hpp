@@ -49,6 +49,7 @@ private:
   Scene& m_scene;
   std::unique_ptr<fastgltf::Asset> m_asset;
   std::vector<Scene::MeshID> m_meshIds;
+  std::vector<Scene::MeshID> m_cameraIds;
   int m_options;
 
   void loadMesh(const fastgltf::Mesh& gltfMesh);

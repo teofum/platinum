@@ -27,6 +27,13 @@ static bool isExitEvent(const SDL_Event& event, uint32_t windowID) {
   );
 }
 
+static float getWidthForItems(uint32_t n) {
+  return (
+           ImGui::GetContentRegionAvail().x
+           - static_cast<float>(n - 1) * ImGui::GetStyle().ItemSpacing.x
+         ) / static_cast<float>(n);
+}
+
 static void buttonDanger() {
   ImGui::PushStyleColor(
     ImGuiCol_Button,
@@ -338,7 +345,7 @@ void Frontend::drawImGui() {
 
   if (m_removeNodeId) {
     if (!m_keepOrphanedMeshes) {
-      m_removeOptions |= Scene::RemoveOptions_RemoveOrphanedMeshes;
+      m_removeOptions |= Scene::RemoveOptions_RemoveOrphanedObjects;
     }
 
     m_store.scene().removeNode(m_removeNodeId.value(), m_removeOptions);
@@ -431,7 +438,7 @@ void Frontend::mainDockSpace() {
 void Frontend::sceneExplorer() {
   ImGui::Begin("Scene Explorer");
 
-  auto buttonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) / 2.0f;
+  auto buttonWidth = getWidthForItems(2);
   if (ImGui::Button("Add Objects...", {buttonWidth, 0})) {
     ImGui::OpenPopup("AddObject_Popup");
   }
@@ -486,6 +493,7 @@ void Frontend::sceneExplorer() {
     ImGui::PopStyleVar();
     m_selectedNodeId = m_nextNodeId;
     m_selectedMeshId = m_nextMeshId;
+    m_selectedCameraId = m_nextCameraId;
   } else {
     ImGui::PopStyleVar();
     ImGui::PopStyleVar();
@@ -507,7 +515,7 @@ void Frontend::sceneExplorerNode(Scene::NodeID id, uint32_t level) {
     nodeFlags |= ImGuiTreeNodeFlags_Selected;
   }
 
-  bool isLeaf = !node->meshId && node->children.empty();
+  bool isLeaf = !node->meshId && !node->cameraId && node->children.empty();
   if (isLeaf) {
     nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
   }
@@ -530,6 +538,7 @@ void Frontend::sceneExplorerNode(Scene::NodeID id, uint32_t level) {
   if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
     m_nextNodeId = id;
     m_nextMeshId = std::nullopt;
+    m_nextCameraId = std::nullopt;
   }
 
   /*
@@ -622,9 +631,35 @@ void Frontend::sceneExplorerNode(Scene::NodeID id, uint32_t level) {
       if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
         m_nextNodeId = std::nullopt;
         m_nextMeshId = node->meshId;
+        m_nextCameraId = std::nullopt;
       }
 
       if (!meshSelected) ImGui::PopStyleColor();
+    }
+    if (node->cameraId) {
+      auto cameraFlags = baseFlags;
+      cameraFlags |=
+        ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+
+      bool cameraSelected = m_selectedMeshId == node->cameraId;
+      if (cameraSelected) {
+        cameraFlags |= ImGuiTreeNodeFlags_Selected;
+      } else {
+        ImGui::PushStyleColor(
+          ImGuiCol_Header,
+          ImGui::GetStyleColorVec4(ImGuiCol_FrameBg)
+        );
+      }
+
+      auto cameraLabel = std::format("Camera [{}]", node->cameraId.value());
+      ImGui::TreeNodeEx(cameraLabel.c_str(), cameraFlags);
+      if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+        m_nextNodeId = std::nullopt;
+        m_nextMeshId = std::nullopt;
+        m_nextCameraId = node->cameraId;
+      }
+
+      if (!cameraSelected) ImGui::PopStyleColor();
     }
     for (Scene::NodeID childId: node->children) {
       sceneExplorerNode(childId, level + 1);
@@ -721,6 +756,37 @@ void Frontend::properties() {
 
     ImGui::Text("%lu vertices", mesh->vertexCount());
     ImGui::Text("%lu triangles", mesh->indexCount() / 3);
+  } else if (m_selectedCameraId) {
+    Camera* camera = m_store.scene().camera(m_selectedCameraId.value());
+
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("Camera [id: %u]", m_selectedCameraId.value());
+
+    auto users = std::format(
+      "{} users",
+      m_store.scene().meshUsers(m_selectedCameraId.value())
+    );
+    auto availableWidth = ImGui::GetContentRegionAvail().x;
+    ImGui::SameLine(availableWidth - ImGui::CalcTextSize(users.c_str()).x);
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("%s", users.c_str());
+
+    ImGui::Spacing();
+
+    ImGui::DragFloat("Focal length", &camera->focalLength, 1.0f, 5.0f, 1200.0f, "%.1fmm");
+    ImGui::DragFloat2("Sensor size", (float*) &camera->sensorSize, 1.0f, 0.0f, 100.0f, "%.1fmm");
+    ImGui::DragFloat("Aperture", &camera->aperture, 0.1f, 0.0f, 32.0f, "f/%.1f");
+    ImGui::Spacing();
+
+    ImGui::SeparatorText("Presets");
+    auto buttonWidth = getWidthForItems(3);
+    if (ImGui::Button("Micro 4/3", {buttonWidth, 0})) camera->sensorSize = float2{18.0f, 13.5f};
+    ImGui::SameLine();
+    if (ImGui::Button("APS-C", {buttonWidth, 0})) camera->sensorSize = float2{23.5f, 15.6f};
+    ImGui::SameLine();
+    if (ImGui::Button("35mm FF", {buttonWidth, 0})) camera->sensorSize = float2{36.0f, 24.0f};
+    ImGui::SameLine();
+    ImGui::Spacing();
   } else {
     ImGui::Text("[ Nothing selected ]");
   }

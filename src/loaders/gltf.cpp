@@ -1,7 +1,5 @@
 #include "gltf.hpp"
 
-#include <numbers>
-
 namespace pt::loaders::gltf {
 
 static float3 eulerFromQuat(fastgltf::math::fquat q) {
@@ -64,6 +62,16 @@ void GltfLoader::load(const fs::path& path, int options) {
   m_meshIds.reserve(m_asset->meshes.size());
   for (const auto& mesh: m_asset->meshes)
     loadMesh(mesh);
+
+  m_cameraIds.reserve(m_asset->cameras.size());
+  for (const auto& camera: m_asset->cameras) {
+    auto perspective = std::get_if<fastgltf::Camera::Perspective>(&camera.camera);
+    if (perspective) {
+      float2 size{24.0f * perspective->aspectRatio.value_or(1.5f), 24.0f};
+      auto id = m_scene.addCamera(Camera::withFov(perspective->yfov, size));
+      m_cameraIds.push_back(id);
+    }
+  }
 
   Scene::NodeID localRoot = 0;
   auto filename = path.stem().string();
@@ -200,13 +208,18 @@ void GltfLoader::loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent) 
   std::optional<Scene::MeshID> meshId = std::nullopt;
   if (gltfNode.meshIndex) meshId = m_meshIds[gltfNode.meshIndex.value()];
 
+  std::optional<Scene::CameraID> cameraId = std::nullopt;
+  if (gltfNode.cameraIndex) cameraId = m_cameraIds[gltfNode.cameraIndex.value()];
+
   // Skip adding empty nodes
-  if ((m_options & LoadOptions_SkipEmptyNodes) && !meshId && gltfNode.children.empty()) {
+  if ((m_options & LoadOptions_SkipEmptyNodes) && !meshId && !cameraId && gltfNode.children.empty()) {
     return;
   }
 
   std::string_view name(gltfNode.name);
   Scene::Node node(name, meshId);
+  node.cameraId = cameraId;
+
   auto trs = std::get_if<fastgltf::TRS>(&gltfNode.transform);
   if (trs) {
     auto& t = trs->translation;

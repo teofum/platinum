@@ -16,6 +16,15 @@ Scene::MeshID Scene::addMesh(Mesh&& mesh) {
   return id;
 }
 
+Scene::CameraID Scene::addCamera(Camera camera) {
+  CameraID id = m_nextCameraId++;
+  m_cameras[id] = camera;
+  m_cameraRc[id] = 0;
+  while (m_cameras.contains(m_nextCameraId)) m_nextCameraId++; // Find next unused ID
+
+  return id;
+}
+
 Scene::NodeID Scene::addNode(Node&& node, Scene::NodeID parent) {
   NodeID id = m_nextNodeId++;
   node.parent = parent;
@@ -25,8 +34,9 @@ Scene::NodeID Scene::addNode(Node&& node, Scene::NodeID parent) {
   auto& parentNode = m_nodes[parent];
   parentNode->children.push_back(id);
 
-  // Increase ref count for mesh
+  // Increase ref counts
   if (node.meshId) m_meshRc[node.meshId.value()]++;
+  if (node.cameraId) m_cameraRc[node.cameraId.value()]++;
   return id;
 }
 
@@ -57,12 +67,19 @@ void Scene::removeNode(Scene::NodeID id, int flags) {
     }
   }
 
-  // Decrease refcount of mesh if present and handle orphaned mesh
+  // Decrease refcount of mesh/camera if present and handle orphaned objects
   if (removed->meshId) {
     const auto rc = --m_meshRc[removed->meshId.value()];
-    if (rc == 0 && (flags & RemoveOptions_RemoveOrphanedMeshes)) {
+    if (rc == 0 && (flags & RemoveOptions_RemoveOrphanedObjects)) {
       m_meshes.erase(removed->meshId.value());
       m_nextMeshId = removed->meshId.value();
+    }
+  }
+  if (removed->cameraId) {
+    const auto rc = --m_cameraRc[removed->cameraId.value()];
+    if (rc == 0 && (flags & RemoveOptions_RemoveOrphanedObjects)) {
+      m_cameras.erase(removed->cameraId.value());
+      m_nextCameraId = removed->cameraId.value();
     }
   }
 

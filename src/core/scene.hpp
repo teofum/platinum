@@ -7,6 +7,7 @@
 #include <unordered_dense.h>
 
 #include "mesh.hpp"
+#include "camera.hpp"
 #include "transform.hpp"
 
 namespace pt {
@@ -15,6 +16,7 @@ class Scene {
 public:
   using NodeID = uint16_t;
   using MeshID = uint16_t;
+  using CameraID = uint16_t;
 
   enum NodeFlags {
     NodeFlags_None = 0,
@@ -25,6 +27,7 @@ public:
   struct Node {
     std::string name;
     std::optional<MeshID> meshId;
+    std::optional<CameraID> cameraId;
     std::vector<NodeID> children;
     NodeID parent = 0;
     int flags = NodeFlags_Default;
@@ -43,7 +46,7 @@ public:
 
   enum RemoveOptions {
     RemoveOptions_KeepOrphanedMeshes = 0,
-    RemoveOptions_RemoveOrphanedMeshes = 1 << 0,
+    RemoveOptions_RemoveOrphanedObjects = 1 << 0,
     RemoveOptions_RemoveChildrenRecursively = 0,
     RemoveOptions_MoveChildrenToRoot = 1 << 1,
     RemoveOptions_MoveChildrenToParent = 1 << 2,
@@ -53,11 +56,13 @@ public:
 
   MeshID addMesh(Mesh&& mesh);
 
+  CameraID addCamera(Camera camera);
+
   NodeID addNode(Node&& node, NodeID parent = 0);
 
   void removeNode(
     NodeID id,
-    int flags = RemoveOptions_RemoveOrphanedMeshes |
+    int flags = RemoveOptions_RemoveOrphanedObjects |
                 RemoveOptions_RemoveChildrenRecursively
   );
 
@@ -89,6 +94,18 @@ public:
     return m_meshRc.at(id);
   }
 
+  [[nodiscard]] constexpr const Camera* camera(CameraID id) const {
+    return &m_cameras.at(id);
+  }
+
+  [[nodiscard]] constexpr Camera* camera(CameraID id) {
+    return &m_cameras.at(id);
+  }
+
+  [[nodiscard]] constexpr uint16_t cameraUsers(CameraID id) {
+    return m_cameraRc.at(id);
+  }
+
   [[nodiscard]] float4x4 worldTransform(NodeID id) const;
 
   [[nodiscard]] std::vector<MeshData> getAllMeshes(int filter = 0) const;
@@ -96,10 +113,13 @@ public:
 private:
   NodeID m_nextNodeId;
   MeshID m_nextMeshId;
+  CameraID m_nextCameraId;
 
   ankerl::unordered_dense::map<NodeID, std::unique_ptr<Node>> m_nodes;
   ankerl::unordered_dense::map<MeshID, std::unique_ptr<Mesh>> m_meshes;
   ankerl::unordered_dense::map<MeshID, uint16_t> m_meshRc; // Refcount
+  ankerl::unordered_dense::map<CameraID, Camera> m_cameras;
+  ankerl::unordered_dense::map<CameraID, uint16_t> m_cameraRc; // Refcount
 };
 
 }

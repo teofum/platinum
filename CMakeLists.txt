@@ -82,7 +82,7 @@ add_executable(platinum
         src/utils/utils.cpp
         src/frontend/frontend.cpp
         src/renderer_studio/renderer_studio.cpp
-        src/renderer_studio/camera.cpp
+        src/renderer_studio/studio_camera.cpp
         src/loaders/gltf.cpp
         renderer_studio.metallib
 )

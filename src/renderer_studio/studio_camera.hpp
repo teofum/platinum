@@ -1,5 +1,5 @@
-#ifndef PLATINUM_CAMERA_HPP
-#define PLATINUM_CAMERA_HPP
+#ifndef PLATINUM_STUDIO_CAMERA_HPP
+#define PLATINUM_STUDIO_CAMERA_HPP
 
 #include <simd/simd.h>
 
@@ -31,4 +31,4 @@ struct Camera {
 
 }
 
-#endif //PLATINUM_CAMERA_HPP
+#endif //PLATINUM_STUDIO_CAMERA_HPP

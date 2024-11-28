@@ -5,7 +5,7 @@
 
 #include <core/store.hpp>
 #include "shader_defs.hpp"
-#include "camera.hpp"
+#include "studio_camera.hpp"
 
 namespace pt::renderer_studio {
 

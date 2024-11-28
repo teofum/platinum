@@ -68,6 +68,7 @@ private:
   // Scene Explorer / Properties state
   std::optional<Scene::NodeID> m_selectedNodeId, m_nextNodeId, m_removeNodeId;
   std::optional<Scene::MeshID> m_selectedMeshId, m_nextMeshId;
+  std::optional<Scene::CameraID> m_selectedCameraId, m_nextCameraId;
   bool m_keepOrphanedMeshes = false;
   int m_removeOptions = 0;
 

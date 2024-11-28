@@ -1,4 +1,4 @@
-#include "camera.hpp"
+#include "studio_camera.hpp"
 
 #include<print>
 #include <utils/matrices.hpp>
