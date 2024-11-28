@@ -66,9 +66,14 @@ void GltfLoader::load(const fs::path& path, int options) {
     loadMesh(mesh);
 
   Scene::NodeID localRoot = 0;
+  auto filename = path.stem().string();
+  uint32_t sceneIdx = 0;
   for (const auto& scene: m_asset->scenes) {
     if (m_options & LoadOptions_CreateSceneNodes) {
-      localRoot = m_scene.addNode(Scene::Node());
+      auto nodeName = m_asset->scenes.size() > 1
+                      ? std::format("{}.{:3}", filename, sceneIdx++)
+                      : filename;
+      localRoot = m_scene.addNode(Scene::Node(nodeName));
     }
 
     for (auto nodeIdx: scene.nodeIndices) {
@@ -200,7 +205,8 @@ void GltfLoader::loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent) 
     return;
   }
 
-  Scene::Node node(meshId);
+  std::string_view name(gltfNode.name);
+  Scene::Node node(name, meshId);
   auto trs = std::get_if<fastgltf::TRS>(&gltfNode.transform);
   if (trs) {
     auto& t = trs->translation;

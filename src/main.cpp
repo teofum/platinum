@@ -9,9 +9,10 @@ int main() {
   pt::frontend::Frontend fe(store);
   fe.init();
 
+  // Default cube
   auto cube = pt::primitives::cube(store.device(), 2.0f);
   auto idx = scene.addMesh(std::move(cube));
-  scene.addNode(pt::Scene::Node(idx));
+  scene.addNode(pt::Scene::Node("Cube", idx));
 
   fe.start();
 

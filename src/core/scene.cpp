@@ -4,7 +4,7 @@ namespace pt {
 
 Scene::Scene() noexcept
   : m_nextNodeId(1), m_nextMeshId(0), m_nodes(), m_meshes() {
-  m_nodes[0] = std::make_unique<Node>(); // Create root node
+  m_nodes[0] = std::make_unique<Node>("Scene"); // Create root node
 }
 
 Scene::MeshID Scene::addMesh(Mesh&& mesh) {
@@ -111,7 +111,7 @@ bool Scene::cloneNode(Scene::NodeID id, Scene::NodeID targetId) {
 
   auto children = node->children;
 
-  Node clone(node->meshId);
+  Node clone(node->name, node->meshId);
   clone.transform = node->transform;
   const auto cloneId = addNode(std::move(clone), targetId);
 

@@ -1,6 +1,7 @@
 #ifndef PLATINUM_SCENE_HPP
 #define PLATINUM_SCENE_HPP
 
+#include <utility>
 #include <vector>
 #include <optional>
 #include <unordered_dense.h>
@@ -22,14 +23,15 @@ public:
   };
 
   struct Node {
+    std::string name;
     std::optional<MeshID> meshId;
     std::vector<NodeID> children;
     NodeID parent = 0;
     int flags = NodeFlags_Default;
     Transform transform;
 
-    constexpr explicit Node(std::optional<MeshID> meshId = std::nullopt) noexcept
-      : meshId(meshId) {
+    constexpr explicit Node(std::string_view name, std::optional<MeshID> meshId = std::nullopt) noexcept
+      : name(name), meshId(meshId) {
     }
   };
 

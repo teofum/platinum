@@ -440,14 +440,14 @@ void Frontend::sceneExplorer() {
 
       auto cube = pt::primitives::cube(m_device, 2.0f);
       auto idx = m_store.scene().addMesh(std::move(cube));
-      m_store.scene().addNode(pt::Scene::Node(idx), parentIdx);
+      m_store.scene().addNode(pt::Scene::Node("Cube", idx), parentIdx);
     }
     if (ImGui::Selectable("Sphere", false, 0, {100, 0})) {
       uint32_t parentIdx = m_selectedNodeId.value_or(0);
 
       auto sphere = pt::primitives::sphere(m_device, 1.0f, 24, 32);
       auto idx = m_store.scene().addMesh(std::move(sphere));
-      m_store.scene().addNode(pt::Scene::Node(idx), parentIdx);
+      m_store.scene().addNode(pt::Scene::Node("Sphere", idx), parentIdx);
     }
     ImGui::EndPopup();
   }
@@ -514,7 +514,7 @@ void Frontend::sceneExplorerNode(Scene::NodeID id, uint32_t level) {
   /*
    * Tree node item
    */
-  auto label = id == 0 ? "Root##Node_0" : std::format("Node [{}]##Node_{}", id, id);
+  auto label = std::format("{}##Node_{}", node->name, id);
   ImGui::PushID(label.c_str());
 
   if (!isSelected) {
@@ -642,7 +642,7 @@ void Frontend::properties() {
     Scene::Node* node = m_store.scene().node(m_selectedNodeId.value());
 
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("Node [id: %u]", m_selectedNodeId.value());
+    ImGui::Text("%s: Node [id: %u]", node->name.c_str(), m_selectedNodeId.value());
 
     if (m_selectedNodeId != 0) {
       float buttonWidth = 80.0f;
