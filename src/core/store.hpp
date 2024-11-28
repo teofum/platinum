@@ -15,7 +15,7 @@ public:
   ~Store();
 
   [[nodiscard]] constexpr auto& scene() {
-    return m_scene;
+    return *m_scene;
   }
 
   [[nodiscard]] constexpr auto device() {
@@ -32,7 +32,7 @@ public:
   }
 
 private:
-  Scene m_scene;
+  std::unique_ptr<Scene> m_scene;
   MTL::Device* m_device = nullptr;
 };
 

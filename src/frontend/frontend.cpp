@@ -2,18 +2,23 @@
 
 #include <numbers>
 #include <print>
+#include <filesystem>
 #include <Foundation/Foundation.hpp>
 #include <imgui_internal.h>
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_metal.h>
+#include <nfd.h>
 
 #include <core/primitives.hpp>
 #include <utils/metal_utils.hpp>
+#include <loaders/gltf.hpp>
+
+namespace fs = std::filesystem;
 
 namespace pt::frontend {
 using metal_utils::operator ""_ns;
 
-bool isExitEvent(const SDL_Event& event, uint32_t windowID) {
+static bool isExitEvent(const SDL_Event& event, uint32_t windowID) {
   return event.type == SDL_QUIT || (
     event.type == SDL_WINDOWEVENT &&
     event.window.event == SDL_WINDOWEVENT_CLOSE &&
@@ -21,7 +26,7 @@ bool isExitEvent(const SDL_Event& event, uint32_t windowID) {
   );
 }
 
-void buttonDanger() {
+static void buttonDanger() {
   ImGui::PushStyleColor(
     ImGuiCol_Button,
     (ImVec4) ImColor::HSV(0.0f, 0.6f, 0.9f)
@@ -40,7 +45,7 @@ void buttonDanger() {
   );
 }
 
-void selectableDanger() {
+static void selectableDanger() {
   ImGui::PushStyleColor(
     ImGuiCol_HeaderHovered,
     (ImVec4) ImColor::HSV(0.0f, 0.15f, 0.95f)
@@ -425,31 +430,50 @@ void Frontend::mainDockSpace() {
 void Frontend::sceneExplorer() {
   ImGui::Begin("Scene Explorer");
 
-  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-  if (ImGui::Button("Add Objects...", {ImGui::GetContentRegionAvail().x, 0})) {
+  auto buttonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) / 2.0f;
+  if (ImGui::Button("Add Objects...", {buttonWidth, 0})) {
     ImGui::OpenPopup("AddObject_Popup");
   }
   if (ImGui::BeginPopup("AddObject_Popup")) {
-    if (ImGui::Selectable("Cube")) {
+    if (ImGui::Selectable("Cube", false, 0, {100, 0})) {
       uint32_t parentIdx = m_selectedNodeId.value_or(0);
 
       auto cube = pt::primitives::cube(m_device, 2.0f);
       auto idx = m_store.scene().addMesh(std::move(cube));
       m_store.scene().addNode(pt::Scene::Node(idx), parentIdx);
-
-      ImGui::CloseCurrentPopup();
     }
-    if (ImGui::Selectable("Sphere")) {
+    if (ImGui::Selectable("Sphere", false, 0, {100, 0})) {
       uint32_t parentIdx = m_selectedNodeId.value_or(0);
 
       auto sphere = pt::primitives::sphere(m_device, 1.0f, 24, 32);
       auto idx = m_store.scene().addMesh(std::move(sphere));
       m_store.scene().addNode(pt::Scene::Node(idx), parentIdx);
-
-      ImGui::CloseCurrentPopup();
     }
     ImGui::EndPopup();
   }
+
+  ImGui::SameLine();
+  if (ImGui::Button("Import...", {buttonWidth, 0})) {
+    ImGui::OpenPopup("Import_Popup");
+  }
+  if (ImGui::BeginPopup("Import_Popup")) {
+    if (ImGui::Selectable("glTF", false, 0, {100, 0})) {
+      char* path = nullptr;
+      auto result = NFD_OpenDialog(nullptr, "../assets", &path);
+
+      if (result == NFD_OKAY) {
+        fs::path filePath(path);
+        free(path);
+
+        loaders::gltf::GltfLoader gltf(m_device, m_store.scene());
+        gltf.load(filePath);
+      } else if (result == NFD_ERROR) {
+        // TODO: handle fs error
+      }
+    }
+    ImGui::EndPopup();
+  }
+
 
   ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {8, 4});

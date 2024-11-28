@@ -42,6 +42,12 @@ add_subdirectory(metal-cmake)
 # SDL2
 set(SDL2 "${CMAKE_SOURCE_DIR}/sdl2/SDL2.framework")
 
+# fastgltf
+set(fastgltf "${CMAKE_SOURCE_DIR}/fastgltf/lib")
+
+# Native file dialog
+set(NFD "${CMAKE_SOURCE_DIR}/nfd")
+
 # ImGui
 file(GLOB IMGUI_SOURCES imgui/*.cpp)
 add_library(ImGui STATIC
@@ -77,16 +83,21 @@ add_executable(platinum
         src/frontend/frontend.cpp
         src/renderer_studio/renderer_studio.cpp
         src/renderer_studio/camera.cpp
+        src/loaders/gltf.cpp
         renderer_studio.metallib
 )
 
 target_include_directories(platinum PRIVATE src)
 target_include_directories(platinum PRIVATE ${SDL2}/Headers)
 target_include_directories(platinum PRIVATE ankerl)
+target_include_directories(platinum PRIVATE fastgltf/include)
+target_include_directories(platinum PRIVATE nfd)
 
 target_link_libraries(platinum PRIVATE METAL_CPP)
 target_link_libraries(platinum PRIVATE ${SDL2}/SDL2)
 target_link_libraries(platinum PRIVATE ImGui)
+target_link_libraries(platinum PRIVATE ${fastgltf}/libfastgltf)
+target_link_libraries(platinum PRIVATE ${NFD}/libnfd)
 
 # metal-cpp
 

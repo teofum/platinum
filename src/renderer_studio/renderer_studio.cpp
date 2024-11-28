@@ -176,7 +176,7 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
   enc->setRenderPipelineState(m_pso);
   enc->setDepthStencilState(m_dsso);
   enc->setFrontFacingWinding(MTL::WindingCounterClockwise);
-  enc->setCullMode(MTL::CullModeBack);
+  enc->setCullMode(MTL::CullModeNone);
 
   enc->setViewport(viewport);
   enc->setVertexBuffer(m_constantsBuffer, m_constantsOffset, 3);
