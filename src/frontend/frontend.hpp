@@ -65,12 +65,11 @@ private:
   float2 m_viewportTopLeft = {0, 0};
   bool m_mouseInViewport = false;
 
-  // Scene Explorer state
-  std::optional<uint32_t> m_selectedNodeId, m_nextNodeId;
-  std::optional<uint32_t> m_selectedMeshId, m_nextMeshId;
-
-  // Properties state
+  // Scene Explorer / Properties state
+  std::optional<Scene::NodeID> m_selectedNodeId, m_nextNodeId, m_removeNodeId;
+  std::optional<Scene::MeshID> m_selectedMeshId, m_nextMeshId;
   bool m_keepOrphanedMeshes = false;
+  int m_removeOptions = 0;
 
   void drawImGui();
 
@@ -88,6 +87,8 @@ private:
   void sceneExplorerNode(Scene::NodeID idx);
 
   void properties();
+
+  bool removeNodePopup(int& removeOptions);
 };
 
 }

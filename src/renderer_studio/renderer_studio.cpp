@@ -91,6 +91,12 @@ void Renderer::handleResizeViewport(const float2& size) {
   }
 }
 
+void Renderer::cameraTo(const float3& pos) {
+  float3 delta = m_camera.position - m_camera.target;
+  m_camera.target = pos;
+  m_camera.position = pos + delta;
+}
+
 const MTL::Texture* Renderer::presentRenderTarget() const {
   return m_primaryRenderTarget;
 }

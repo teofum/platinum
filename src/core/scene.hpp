@@ -80,6 +80,8 @@ public:
     return m_meshRc.at(id);
   }
 
+  [[nodiscard]] float4x4 worldTransform(NodeID id) const;
+
   [[nodiscard]] std::vector<MeshData> getAllMeshes() const;
 
 private:

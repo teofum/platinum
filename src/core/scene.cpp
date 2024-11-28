@@ -122,6 +122,19 @@ bool Scene::cloneNode(Scene::NodeID id, Scene::NodeID targetId) {
   return true;
 }
 
+float4x4 Scene::worldTransform(Scene::NodeID id) const {
+  const auto* node = m_nodes.at(id).get();
+  auto transform = node->transform.matrix();
+
+  while (id != 0) {
+    id = node->parent;
+    node = m_nodes.at(id).get();
+    transform = node->transform.matrix() * transform;
+  }
+
+  return transform;
+}
+
 std::vector<Scene::MeshData> Scene::getAllMeshes() const {
   std::vector<Scene::MeshData> meshes;
   meshes.reserve(m_meshes.size());

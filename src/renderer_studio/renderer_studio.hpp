@@ -29,6 +29,8 @@ public:
 
   void handleResizeViewport(const float2& size);
 
+  void cameraTo(const float3& pos);
+
   [[nodiscard]] const MTL::Texture* presentRenderTarget() const;
 
   [[nodiscard]] uint16_t readbackObjectIdAt(uint32_t x, uint32_t y) const;

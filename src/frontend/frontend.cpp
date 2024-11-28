@@ -40,6 +40,21 @@ void buttonDanger() {
   );
 }
 
+void selectableDanger() {
+  ImGui::PushStyleColor(
+    ImGuiCol_HeaderHovered,
+    (ImVec4) ImColor::HSV(0.0f, 0.15f, 0.95f)
+  );
+  ImGui::PushStyleColor(
+    ImGuiCol_HeaderActive,
+    (ImVec4) ImColor::HSV(0.0f, 0.2f, 0.93f)
+  );
+  ImGui::PushStyleColor(
+    ImGuiCol_Text,
+    (ImVec4) ImColor::HSV(0.0f, 0.8f, 0.5f)
+  );
+}
+
 Frontend::Frontend(Store& store) noexcept: m_store(store) {
 }
 
@@ -315,6 +330,16 @@ void Frontend::drawImGui() {
   sceneExplorer();
   properties();
 
+  if (m_removeNodeId) {
+    if (!m_keepOrphanedMeshes) {
+      m_removeOptions |= Scene::RemoveOptions_RemoveOrphanedMeshes;
+    }
+
+    m_store.scene().removeNode(m_removeNodeId.value(), m_removeOptions);
+    m_selectedNodeId = m_nextNodeId = m_removeNodeId = std::nullopt;
+    m_removeOptions = 0;
+  }
+
   {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 1.0f));
     ImGui::Begin("Viewport");
@@ -462,6 +487,9 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
     nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
   }
 
+  /*
+   * Tree node item
+   */
   auto label = id == 0 ? "Root" : std::format("Node [{}]", id);
   ImGui::PushID(label.c_str());
 
@@ -479,6 +507,37 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
     m_nextMeshId = std::nullopt;
   }
 
+  /*
+   * Context menu
+   */
+  if (ImGui::BeginPopupContextItem()) {
+    if (ImGui::Selectable("Center camera")) {
+      m_renderer->cameraTo(m_store.scene().worldTransform(id).columns[3].xyz);
+    }
+
+    if (id != 0) {
+      selectableDanger();
+      if (ImGui::Selectable(
+        "Remove",
+        false,
+        ImGuiSelectableFlags_NoAutoClosePopups
+      )) {
+        if (!node->children.empty()) ImGui::OpenPopup("Remove_Popup");
+        else m_removeNodeId = id;
+      }
+      ImGui::PopStyleColor(3);
+
+      if (!node->children.empty()) {
+        if (removeNodePopup(m_removeOptions)) m_removeNodeId = id;
+      }
+    }
+
+    ImGui::EndPopup();
+  }
+
+  /*
+   * Drag and drop support
+   */
   if (id != 0 && ImGui::BeginDragDropSource()) {
     ImGui::SetDragDropPayload("PT_NODE", &id, sizeof(Scene::NodeID));
 
@@ -503,6 +562,9 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
     ImGui::EndDragDropTarget();
   }
 
+  /*
+   * Render contents: mesh and children
+   */
   if (isOpen) {
     if (node->meshId) {
       auto meshFlags = baseFlags;
@@ -540,8 +602,6 @@ void Frontend::sceneExplorerNode(Scene::NodeID id) {
 void Frontend::properties() {
   static constexpr const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen;
 
-  bool markedForDelete = false;
-  int removeOptions = 0;
   ImGui::Begin("Properties");
   if (m_selectedNodeId) {
     Scene::Node* node = m_store.scene().node(m_selectedNodeId.value());
@@ -555,36 +615,12 @@ void Frontend::properties() {
 
       buttonDanger();
       if (ImGui::Button("Remove", {buttonWidth, 0})) {
-        if (!node->children.empty()) ImGui::OpenPopup("Delete_Popup");
-        else markedForDelete = true;
+        if (!node->children.empty()) ImGui::OpenPopup("Remove_Popup");
+        else m_removeNodeId = m_selectedNodeId;
       }
       ImGui::PopStyleColor(4);
-      if (!node->children.empty() && ImGui::BeginPopup("Delete_Popup")) {
-        ImGui::PushStyleColor(
-          ImGuiCol_FrameBg,
-          ImGui::GetStyleColorVec4(ImGuiCol_WindowBg)
-        );
-        ImGui::Checkbox("Keep orphaned meshes", &m_keepOrphanedMeshes);
-        ImGui::PopStyleColor();
-
-        ImGui::Separator();
-        ImGui::Text("Action for children:");
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
-        if (ImGui::Selectable("Remove")) {
-          removeOptions = Scene::RemoveOptions_RemoveChildrenRecursively;
-          markedForDelete = true;
-        }
-        if (ImGui::Selectable("Move to root")) {
-          removeOptions = Scene::RemoveOptions_MoveChildrenToRoot;
-          markedForDelete = true;
-        }
-        if (ImGui::Selectable("Move to parent")) {
-          removeOptions = Scene::RemoveOptions_MoveChildrenToParent;
-          markedForDelete = true;
-        }
-        ImGui::PopStyleVar();
-
-        ImGui::EndPopup();
+      if (!node->children.empty()) {
+        if (removeNodePopup(m_removeOptions)) m_removeNodeId = m_selectedNodeId;
       }
     }
 
@@ -643,15 +679,39 @@ void Frontend::properties() {
   }
 
   ImGui::End();
+}
 
-  if (markedForDelete) {
-    if (!m_keepOrphanedMeshes) {
-      removeOptions |= Scene::RemoveOptions_RemoveOrphanedMeshes;
+bool Frontend::removeNodePopup(int& removeOptions) {
+  bool markedForDelete = false;
+  if (ImGui::BeginPopup("Remove_Popup")) {
+    ImGui::PushStyleColor(
+      ImGuiCol_FrameBg,
+      ImGui::GetStyleColorVec4(ImGuiCol_WindowBg)
+    );
+    ImGui::Checkbox("Keep orphaned meshes", &m_keepOrphanedMeshes);
+    ImGui::PopStyleColor();
+
+    ImGui::Separator();
+    ImGui::Text("Action for children:");
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
+    if (ImGui::Selectable("Remove")) {
+      removeOptions = Scene::RemoveOptions_RemoveChildrenRecursively;
+      markedForDelete = true;
     }
+    if (ImGui::Selectable("Move to root")) {
+      removeOptions = Scene::RemoveOptions_MoveChildrenToRoot;
+      markedForDelete = true;
+    }
+    if (ImGui::Selectable("Move to parent")) {
+      removeOptions = Scene::RemoveOptions_MoveChildrenToParent;
+      markedForDelete = true;
+    }
+    ImGui::PopStyleVar();
 
-    m_store.scene().removeNode(m_selectedNodeId.value(), removeOptions);
-    m_selectedNodeId = m_nextNodeId = std::nullopt;
+    ImGui::EndPopup();
   }
+
+  return markedForDelete;
 }
 
 }
