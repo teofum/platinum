@@ -75,6 +75,8 @@ private:
     .lineWidth = 1.0f,
     .fadeDistance = 1.0f,
     .lineColor = {0.3f, 0.3f, 0.3f},
+    .xAxisColor = {0.4f, 0.05f, 0.08f},
+    .zAxisColor = {0.05f, 0.08f, 0.4f},
   };
 
   // Post process pass pipeline state

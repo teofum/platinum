@@ -34,6 +34,8 @@ struct GridProperties {
   float lineWidth = 1.0;
   float fadeDistance = 1.0;
   float3 lineColor = {0, 0, 0};
+  float3 xAxisColor = {0.4, 0, 0};
+  float3 zAxisColor = {0, 0, 0.4};
   uint32_t level = 0;
 };
 

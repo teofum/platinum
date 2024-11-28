@@ -44,7 +44,9 @@ fragment FragmentOut fragmentShader(
     FragmentOut out;
     out.color = float4(objectColor * shading, 1.0);
     out.objectId = in.objectId;
-    out.stencil = 2 * saturate(sign(cameraPosition.y * (in.wsPosition.y + sign(cameraPosition.y) * 0.001)));
+
+    // Stencil buffer trick to eliminate grid z-fighting
+    out.stencil = saturate(sign(cameraPosition.y * (in.wsPosition.y + sign(cameraPosition.y) * 0.001)));
 
     return out;
 }
