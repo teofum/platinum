@@ -44,6 +44,12 @@ public:
     NodeID nodeId = 0;
   };
 
+  struct CameraData {
+    const Camera* camera = nullptr;
+    float4x4 transform;
+    NodeID nodeId = 0;
+  };
+
   enum RemoveOptions {
     RemoveOptions_KeepOrphanedMeshes = 0,
     RemoveOptions_RemoveOrphanedObjects = 1 << 0,
@@ -110,6 +116,8 @@ public:
 
   [[nodiscard]] std::vector<MeshData> getAllMeshes(int filter = 0) const;
 
+  [[nodiscard]] std::vector<CameraData> getAllCameras(int filter = 0) const;
+
 private:
   NodeID m_nextNodeId;
   MeshID m_nextMeshId;
@@ -120,6 +128,11 @@ private:
   ankerl::unordered_dense::map<MeshID, uint16_t> m_meshRc; // Refcount
   ankerl::unordered_dense::map<CameraID, Camera> m_cameras;
   ankerl::unordered_dense::map<CameraID, uint16_t> m_cameraRc; // Refcount
+
+  void traverseHierarchy(
+    const std::function<void(NodeID id, const Node*, const float4x4&)>& cb,
+    int filter = 0
+  ) const;
 };
 
 }

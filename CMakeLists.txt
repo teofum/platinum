@@ -66,6 +66,7 @@ target_link_libraries(ImGui PRIVATE ${SDL2}/SDL2)
 # Build shaders
 build_shaders(renderer_studio.metallib
         src/renderer_studio/shaders/main.metal
+        src/renderer_studio/shaders/camera.metal
         src/renderer_studio/shaders/grid.metal
         src/renderer_studio/shaders/edge_pass.metal
 )

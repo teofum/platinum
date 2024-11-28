@@ -28,22 +28,46 @@ Renderer::Renderer(
     MTL::ResourceStorageModeShared
   );
 
+  /*
+   * Build quad buffers, for rendering grid and postprocess pass
+   */
   m_simpleQuadVertexBuffer = m_device->newBuffer(
     4 * sizeof(float2),
     MTL::ResourceStorageModeShared
   );
-  float2 vertices[] = {{-1.0, 1.0},
-                       {1.0,  1.0},
-                       {-1.0, -1.0},
-                       {1.0,  -1.0}};
-  memcpy(m_simpleQuadVertexBuffer->contents(), vertices, 4 * sizeof(float2));
+  float2 quadVertices[] = {{-1.0, 1.0},
+                           {1.0,  1.0},
+                           {-1.0, -1.0},
+                           {1.0,  -1.0}};
+  memcpy(m_simpleQuadVertexBuffer->contents(), quadVertices, 4 * sizeof(float2));
 
   m_simpleQuadIndexBuffer = m_device->newBuffer(
     6 * sizeof(uint32_t),
     MTL::ResourceStorageModeShared
   );
-  uint32_t indices[] = {0, 2, 1, 1, 2, 3};
-  memcpy(m_simpleQuadIndexBuffer->contents(), indices, 6 * sizeof(uint32_t));
+  uint32_t quadIndices[] = {0, 2, 1, 1, 2, 3};
+  memcpy(m_simpleQuadIndexBuffer->contents(), quadIndices, 6 * sizeof(uint32_t));
+
+  /*
+   * Build the camera object buffer
+   */
+  m_cameraVertexBuffer = m_device->newBuffer(
+    5 * sizeof(float3),
+    MTL::ResourceStorageModeShared
+  );
+  float3 cameraVertices[] = {{0,    0,    0},
+                             {-0.5, 0.5,  -1},
+                             {0.5,  0.5,  -1},
+                             {-0.5, -0.5, -1},
+                             {0.5,  -0.5, -1}};
+  memcpy(m_cameraVertexBuffer->contents(), cameraVertices, 5 * sizeof(float3));
+
+  m_cameraIndexBuffer = m_device->newBuffer(
+    16 * sizeof(uint32_t),
+    MTL::ResourceStorageModeShared
+  );
+  uint32_t cameraIndices[] = {0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 3, 4, 1, 3, 2, 4};
+  memcpy(m_cameraIndexBuffer->contents(), cameraIndices, 16 * sizeof(uint32_t));
 
   /*
    * Build the readback buffer
@@ -61,10 +85,16 @@ Renderer::~Renderer() {
 
   m_pso->release();
   m_dsso->release();
+  m_cameraPso->release();
+  m_cameraDsso->release();
   m_postPassPso->release();
   m_postPassSso->release();
 
   m_constantsBuffer->release();
+  m_dataBuffer->release();
+  m_cameraDataBuffer->release();
+  m_cameraVertexBuffer->release();
+  m_cameraIndexBuffer->release();
   m_simpleQuadVertexBuffer->release();
   m_simpleQuadIndexBuffer->release();
   m_objectIdReadbackBuffer->release();
@@ -134,7 +164,7 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
 
   NS::AutoreleasePool* autoreleasePool = NS::AutoreleasePool::alloc()->init();
 
-  rebuildDataBuffer();
+  rebuildDataBuffers();
   updateConstants();
 
   auto cmd = m_commandQueue->commandBuffer();
@@ -195,6 +225,53 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
       md.mesh->indexCount(),
       MTL::IndexTypeUInt32,
       md.mesh->indices(),
+      0
+    );
+
+    dataOffset += sizeof(NodeData);
+  }
+
+  enc->endEncoding();
+
+  /*
+   * Camera pass
+   */
+  rpd = ns_shared<MTL::RenderPassDescriptor>();
+  colorAttachment = rpd->colorAttachments()->object(0);
+  colorAttachment->setTexture(m_auxRenderTarget);
+  colorAttachment->setLoadAction(MTL::LoadActionLoad);
+  colorAttachment->setStoreAction(MTL::StoreActionStore);
+
+  rpd->depthAttachment()->setTexture(m_depthTexture);
+  rpd->depthAttachment()->setLoadAction(MTL::LoadActionLoad);
+  rpd->depthAttachment()->setStoreAction(MTL::StoreActionStore);
+
+  rpd->stencilAttachment()->setTexture(m_stencilTexture);
+  rpd->stencilAttachment()->setLoadAction(MTL::LoadActionLoad);
+  rpd->stencilAttachment()->setStoreAction(MTL::StoreActionStore);
+
+  enc = cmd->renderCommandEncoder(rpd);
+
+  enc->setRenderPipelineState(m_cameraPso);
+  enc->setDepthStencilState(m_cameraDsso);
+  enc->setFrontFacingWinding(MTL::WindingCounterClockwise);
+  enc->setCullMode(MTL::CullModeNone);
+
+  enc->setViewport(viewport);
+  enc->setVertexBuffer(m_cameraVertexBuffer, 0, 0);
+  enc->setVertexBuffer(m_constantsBuffer, m_constantsOffset, 2);
+  enc->setFragmentBytes(&selectedNodeId, sizeof(selectedNodeId), 0);
+
+  // TODO this can use instanced rendering
+  // probably no big deal because we won't ever have more than a few cameras
+  dataOffset = 0;
+  for (const auto& cd: m_cameraData) {
+    enc->setVertexBuffer(m_cameraDataBuffer, dataOffset, 1);
+    enc->drawIndexedPrimitives(
+      MTL::PrimitiveTypeLine,
+      16,
+      MTL::IndexTypeUInt32,
+      m_cameraIndexBuffer,
       0
     );
 
@@ -355,6 +432,41 @@ void Renderer::buildShaders() {
   }
 
   /*
+   * Create the camera pass pipeline state object
+   */
+  desc = metal_utils::makeRenderPipelineDescriptor(
+    {
+      .vertexFunction = metal_utils::getFunction(lib, "cameraVertex"),
+      .fragmentFunction = metal_utils::getFunction(lib, "cameraFragment"),
+      .colorAttachments = {MTL::PixelFormatRGBA8Unorm},
+      .depthFormat = MTL::PixelFormatDepth32Float,
+      .stencilFormat = MTL::PixelFormatStencil8,
+    }
+  );
+
+  vertexDesc = metal_utils::makeVertexDescriptor(
+    {
+      .attributes = {
+        {.format = MTL::VertexFormatFloat3},
+      },
+      .layouts = {
+        {.stride = sizeof(float3)},
+      }
+    }
+  );
+
+  desc->setVertexDescriptor(vertexDesc);
+
+  m_cameraPso = m_device->newRenderPipelineState(desc, &error);
+  if (!m_cameraPso) {
+    std::println(
+      "renderer_studio: Failed to create camera render pass PSO: {}\n",
+      error->localizedDescription()->utf8String()
+    );
+    assert(false);
+  }
+
+  /*
    * Create the grid pass pipeline state object
    */
   desc = metal_utils::makeRenderPipelineDescriptor(
@@ -445,6 +557,14 @@ void Renderer::buildShaders() {
   depthStencilDesc->setDepthCompareFunction(MTL::CompareFunctionLess);
   m_dsso = m_device->newDepthStencilState(depthStencilDesc);
 
+  // Camera pass
+  stencilDesc->setDepthStencilPassOperation(MTL::StencilOperationKeep);
+  depthStencilDesc->setFrontFaceStencil(stencilDesc);
+  depthStencilDesc->setBackFaceStencil(stencilDesc);
+  depthStencilDesc->setDepthWriteEnabled(true);
+  depthStencilDesc->setDepthCompareFunction(MTL::CompareFunctionLess);
+  m_cameraDsso = m_device->newDepthStencilState(depthStencilDesc);
+
   // Grid pass
   stencilDesc->setStencilCompareFunction(MTL::CompareFunctionGreater);
   stencilDesc->setDepthStencilPassOperation(MTL::StencilOperationKeep);
@@ -456,11 +576,12 @@ void Renderer::buildShaders() {
   lib->release();
 }
 
-void Renderer::rebuildDataBuffer() {
+void Renderer::rebuildDataBuffers() {
   /*
-   * Discard existing buffer
+   * Discard existing buffers
    */
   if (m_dataBuffer != nullptr) m_dataBuffer->release();
+  if (m_cameraDataBuffer != nullptr) m_cameraDataBuffer->release();
 
   /*
    * Calculate buffer sizes and create buffers
@@ -472,8 +593,15 @@ void Renderer::rebuildDataBuffer() {
   m_dataBuffer = m_device
     ->newBuffer(dataBufferSize, MTL::ResourceStorageModeShared);
 
+  m_cameraData = m_store.scene().getAllCameras(Scene::NodeFlags_Visible);
+  size_t cameraCount = m_cameraData.size();
+
+  size_t cameraDataBufferSize = cameraCount * sizeof(NodeData);
+  m_cameraDataBuffer = m_device
+    ->newBuffer(cameraDataBufferSize, MTL::ResourceStorageModeShared);
+
   /*
-   * Fill transform buffer
+   * Fill transform buffers
    */
   float4x4 view = m_camera.view();
   for (size_t i = 0; i < m_meshData.size(); i++) {
@@ -487,13 +615,43 @@ void Renderer::rebuildDataBuffer() {
     );
 
     const NodeData nodeData = {
-      md.transform,
-      normalViewModel,
-      md.nodeId,
+      .model = md.transform,
+      .normalViewModel = normalViewModel,
+      .nodeIdx = md.nodeId,
     };
 
     // Transform
     void* dbw = (char*) m_dataBuffer->contents() + i * sizeof(NodeData);
+    memcpy(dbw, &nodeData, sizeof(NodeData));
+  }
+
+  for (size_t i = 0; i < m_cameraData.size(); i++) {
+    const auto& cd = m_cameraData[i];
+
+    // Rescale the camera according to its parameters
+    const float3 scale = {
+      length(cd.transform.columns[0]),
+      length(cd.transform.columns[1]),
+      length(cd.transform.columns[2]),
+    };
+    float4x4 transform = {
+      cd.transform.columns[0] * scale.x,
+      cd.transform.columns[1] * scale.y,
+      cd.transform.columns[2] * scale.z,
+      cd.transform.columns[3],
+    };
+
+    auto newScale = make_float3(cd.camera->sensorSize, cd.camera->focalLength) * 0.1f;
+    transform *= mat::scaling(newScale);
+
+    // Don't need a normal transform matrix, leave it empty
+    const NodeData nodeData = {
+      .model = transform,
+      .nodeIdx = cd.nodeId,
+    };
+
+    // Transform
+    void* dbw = (char*) m_cameraDataBuffer->contents() + i * sizeof(NodeData);
     memcpy(dbw, &nodeData, sizeof(NodeData));
   }
 }

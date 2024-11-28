@@ -66,6 +66,14 @@ private:
   MTL::Buffer* m_dataBuffer = nullptr;
   std::vector<Scene::MeshData> m_meshData;
 
+  // Camera pass pipeline state and buffers
+  MTL::RenderPipelineState* m_cameraPso = nullptr;
+  MTL::DepthStencilState* m_cameraDsso = nullptr;
+  MTL::Buffer* m_cameraVertexBuffer = nullptr;
+  MTL::Buffer* m_cameraIndexBuffer = nullptr;
+  MTL::Buffer* m_cameraDataBuffer = nullptr;
+  std::vector<Scene::CameraData> m_cameraData;
+
   // Grid pass pipeline state
   MTL::RenderPipelineState* m_gridPassPso = nullptr;
   MTL::DepthStencilState* m_gridPassDsso = nullptr;
@@ -96,7 +104,7 @@ private:
   size_t m_frameIdx = 0;
   std::chrono::time_point<std::chrono::high_resolution_clock> m_startTime;
 
-  void rebuildDataBuffer();
+  void rebuildDataBuffers();
 
   void buildShaders();
 

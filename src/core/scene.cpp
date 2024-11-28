@@ -157,6 +157,40 @@ std::vector<Scene::MeshData> Scene::getAllMeshes(int filter) const {
   std::vector<Scene::MeshData> meshes;
   meshes.reserve(m_meshes.size());
 
+  traverseHierarchy(
+    [&](NodeID id, const Node* node, const float4x4& transform) {
+      if (node->meshId) {
+        const auto& mesh = m_meshes.at(*node->meshId);
+        meshes.emplace_back(mesh.get(), transform, id);
+      }
+    },
+    filter
+  );
+
+  return meshes;
+}
+
+std::vector<Scene::CameraData> Scene::getAllCameras(int filter) const {
+  std::vector<Scene::CameraData> cameras;
+  cameras.reserve(m_cameras.size());
+
+  traverseHierarchy(
+    [&](NodeID id, const Node* node, const float4x4& transform) {
+      if (node->cameraId) {
+        const auto& camera = m_cameras.at(*node->cameraId);
+        cameras.emplace_back(&camera, transform, id);
+      }
+    },
+    filter
+  );
+
+  return cameras;
+}
+
+void Scene::traverseHierarchy(
+  const std::function<void(NodeID id, const Node*, const float4x4&)>& cb,
+  int filter
+) const {
   std::vector<std::pair<NodeID, float4x4>> stack = {
     {0, mat::identity()}
   };
@@ -171,17 +205,12 @@ std::vector<Scene::MeshData> Scene::getAllMeshes(int filter) const {
 
     const float4x4& parentMatrix = node.second;
     const float4x4 transformMatrix = parentMatrix * current->transform.matrix();
-    if (current->meshId) {
-      const auto& mesh = m_meshes.at(*current->meshId);
-      meshes.emplace_back(mesh.get(), transformMatrix, currentId);
-    }
+    cb(currentId, current.get(), transformMatrix);
 
     for (auto childIdx: current->children) {
       stack.emplace_back(childIdx, transformMatrix);
     }
   }
-
-  return meshes;
 }
 
 }
