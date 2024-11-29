@@ -86,9 +86,32 @@ NS::SharedPtr<MTL::RenderPipelineDescriptor> makeRenderPipelineDescriptor(const 
   return desc;
 }
 
+NS::SharedPtr<MTL::ComputePipelineDescriptor> makeComputePipelineDescriptor(const ComputePipelineParams& params) {
+  auto desc = ns_shared<MTL::ComputePipelineDescriptor>();
+  desc->setComputeFunction(params.function);
+
+  desc->setThreadGroupSizeIsMultipleOfThreadExecutionWidth(params.threadGroupSizeIsMultipleOfExecutionWidth);
+  return desc;
+}
+
 NS::SharedPtr<MTL::Function> getFunction(MTL::Library* lib, const char* name) {
   auto nsName = NS::String::string(name, NS::UTF8StringEncoding);
   return NS::TransferPtr(lib->newFunction(nsName));
+}
+
+NS::SharedPtr<MTL::Function> metal_utils::getFunction(
+  MTL::Library* lib,
+  const char* name,
+  const FunctionParams& params
+) {
+  auto constantValues = ns_shared<MTL::FunctionConstantValues>();
+  size_t idx = 0;
+  for (const auto& constant: params.constants) {
+    constantValues->setConstantValue(constant.value, constant.type, idx++);
+  }
+
+  auto nsName = NS::String::string(name, NS::UTF8StringEncoding);
+  return NS::TransferPtr(lib->newFunction(nsName, constantValues, (NS::Error**) nullptr));
 }
 
 }

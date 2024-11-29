@@ -1,6 +1,7 @@
 #ifndef PLATINUM_TRANSFORM_HPP
 #define PLATINUM_TRANSFORM_HPP
 
+#include <numbers>
 #include <simd/simd.h>
 
 #include <utils/matrices.hpp>
@@ -55,6 +56,15 @@ struct Transform {
   ) const {
     if (type == TransformType::Normal) return normalMatrix() * vec;
     return (matrix() * make_float4(vec, static_cast<float>(type))).xyz;
+  }
+
+  constexpr void lookAtEuler(float3 target) {
+    const auto delta = normalize(target - translation);
+    rotation.y = atan2(delta.x, delta.z);
+
+    auto hyp = sqrt(delta.x * delta.x + delta.z * delta.z);
+    rotation.x = atan2(hyp, delta.y) + std::numbers::pi_v<float> * 0.5f;
+    rotation.z = 0;
   }
 };
 

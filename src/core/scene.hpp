@@ -40,8 +40,14 @@ public:
 
   struct MeshData {
     const Mesh* mesh = nullptr;
-    float4x4 transform;
+    MeshID meshId = 0;
+  };
+
+  struct InstanceData {
+    const Mesh* mesh = nullptr;
     NodeID nodeId = 0;
+    MeshID meshId = 0;
+    float4x4 transform;
   };
 
   struct CameraData {
@@ -114,7 +120,9 @@ public:
 
   [[nodiscard]] float4x4 worldTransform(NodeID id) const;
 
-  [[nodiscard]] std::vector<MeshData> getAllMeshes(int filter = 0) const;
+  [[nodiscard]] std::vector<MeshData> getAllMeshes() const;
+
+  [[nodiscard]] std::vector<InstanceData> getAllInstances(int filter = 0) const;
 
   [[nodiscard]] std::vector<CameraData> getAllCameras(int filter = 0) const;
 

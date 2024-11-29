@@ -25,7 +25,7 @@ function(build_shaders LIB_NAME)
 
     message(STATUS "  Building: ${SHADER_AIRS}")
     add_custom_command(
-            OUTPUT ${LIB_NAME} ___
+            OUTPUT ${LIB_NAME} ___${LIB_NAME} # generate dummy target, this causes cmake to always run the command
             COMMAND xcrun -sdk macosx metallib -o ${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME} ${SHADER_AIRS}
             DEPENDS ${SHADER_AIRS}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
@@ -71,6 +71,11 @@ build_shaders(renderer_studio.metallib
         src/renderer_studio/shaders/edge_pass.metal
 )
 
+build_shaders(renderer_pt.metallib
+        src/renderer_pt/shaders/kernel.metal
+        src/renderer_pt/shaders/postprocess.metal
+)
+
 # Main executable
 add_executable(platinum
         src/main.cpp
@@ -86,6 +91,9 @@ add_executable(platinum
         src/renderer_studio/studio_camera.cpp
         src/loaders/gltf.cpp
         renderer_studio.metallib
+        renderer_pt.metallib
+        src/renderer_pt/renderer_pt.cpp
+        src/renderer_pt/renderer_pt.hpp
 )
 
 target_include_directories(platinum PRIVATE src)

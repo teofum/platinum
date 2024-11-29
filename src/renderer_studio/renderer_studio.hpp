@@ -19,7 +19,7 @@ public:
 
   ~Renderer();
 
-  void render(uint16_t selectedNodeId = 0) noexcept;
+  void render(Scene::NodeID selectedNodeId = 0);
 
   void handleScrollEvent(const float2& delta);
 
@@ -33,7 +33,7 @@ public:
 
   [[nodiscard]] const MTL::Texture* presentRenderTarget() const;
 
-  [[nodiscard]] uint16_t readbackObjectIdAt(uint32_t x, uint32_t y) const;
+  [[nodiscard]] Scene::NodeID readbackObjectIdAt(uint32_t x, uint32_t y) const;
 
 private:
   // Store
@@ -64,7 +64,7 @@ private:
   MTL::RenderPipelineState* m_pso = nullptr;
   MTL::DepthStencilState* m_dsso = nullptr;
   MTL::Buffer* m_dataBuffer = nullptr;
-  std::vector<Scene::MeshData> m_meshData;
+  std::vector<Scene::InstanceData> m_meshData;
 
   // Camera pass pipeline state and buffers
   MTL::RenderPipelineState* m_cameraPso = nullptr;
@@ -106,7 +106,7 @@ private:
 
   void rebuildDataBuffers();
 
-  void buildShaders();
+  void buildPipelines();
 
   void rebuildRenderTargets();
 

@@ -153,15 +153,26 @@ float4x4 Scene::worldTransform(Scene::NodeID id) const {
   return transform;
 }
 
-std::vector<Scene::MeshData> Scene::getAllMeshes(int filter) const {
-  std::vector<Scene::MeshData> meshes;
+std::vector<Scene::MeshData> Scene::getAllMeshes() const {
+  std::vector<MeshData> meshes;
+  meshes.reserve(m_meshes.size());
+
+  for (const auto& mesh: m_meshes) {
+    meshes.emplace_back(mesh.second.get(), mesh.first);
+  }
+
+  return meshes;
+}
+
+std::vector<Scene::InstanceData> Scene::getAllInstances(int filter) const {
+  std::vector<Scene::InstanceData> meshes;
   meshes.reserve(m_meshes.size());
 
   traverseHierarchy(
     [&](NodeID id, const Node* node, const float4x4& transform) {
       if (node->meshId) {
         const auto& mesh = m_meshes.at(*node->meshId);
-        meshes.emplace_back(mesh.get(), transform, id);
+        meshes.emplace_back(mesh.get(), id, node->meshId.value(), transform);
       }
     },
     filter

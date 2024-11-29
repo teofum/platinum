@@ -158,9 +158,18 @@ void Frontend::init() {
   m_commandQueue = m_device->newCommandQueue();
 
   /*
-   * Initialize renderer
+   * Initialize studio renderer
    */
   m_renderer = std::make_unique<renderer_studio::Renderer>(
+    m_device,
+    m_commandQueue,
+    m_store
+  );
+
+  /*
+   * Initialize PT renderer
+   */
+  m_ptRenderer = std::make_unique<renderer_pt::Renderer>(
     m_device,
     m_commandQueue,
     m_store
@@ -342,6 +351,37 @@ void Frontend::drawImGui() {
   mainDockSpace();
   sceneExplorer();
   properties();
+
+  /*
+   * PT render window
+   * TODO: move this to a function or class
+   */
+  ImGui::Begin("Render");
+
+  if (ImGui::Button("Render")) {
+    auto size = ImGui::GetContentRegionAvail();
+    auto cameras = m_store.scene().getAllCameras();
+
+    if (!cameras.empty()) {
+      m_ptRenderer->render(
+        cameras[0].nodeId,
+        {size.x * m_dpiScaling, size.y * m_dpiScaling}
+      );
+    } else {
+      std::println("Cannot render: no camera in scene!");
+    }
+  }
+
+  auto vsize = ImGui::GetContentRegionAvail();
+  auto renderTarget = m_ptRenderer->presentRenderTarget();
+  if (renderTarget != nullptr) {
+    ImGui::Image(
+      (ImTextureID) renderTarget,
+      {vsize.x, vsize.y}
+    );
+  }
+
+  ImGui::End();
 
   if (m_removeNodeId) {
     if (!m_keepOrphanedMeshes) {

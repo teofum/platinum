@@ -75,7 +75,7 @@ Renderer::Renderer(
   m_objectIdReadbackBuffer = m_device
     ->newBuffer(m_objectIdPixelSize, MTL::ResourceStorageModeShared);
 
-  buildShaders();
+  buildPipelines();
 }
 
 Renderer::~Renderer() {
@@ -131,7 +131,7 @@ const MTL::Texture* Renderer::presentRenderTarget() const {
   return m_primaryRenderTarget;
 }
 
-uint16_t Renderer::readbackObjectIdAt(uint32_t x, uint32_t y) const {
+Scene::NodeID Renderer::readbackObjectIdAt(uint32_t x, uint32_t y) const {
   auto cmd = m_commandQueue->commandBuffer();
   auto benc = cmd->blitCommandEncoder();
 
@@ -157,7 +157,7 @@ uint16_t Renderer::readbackObjectIdAt(uint32_t x, uint32_t y) const {
   return objectId;
 }
 
-void Renderer::render(uint16_t selectedNodeId) noexcept {
+void Renderer::render(Scene::NodeID selectedNodeId) {
   // Don't render if the render targets are not initialized: this should only
   // happen in the first frame before handleResizeViewport() is called
   if (!m_primaryRenderTarget) return;
@@ -364,9 +364,9 @@ void Renderer::render(uint16_t selectedNodeId) noexcept {
   autoreleasePool->release();
 }
 
-void Renderer::buildShaders() {
+void Renderer::buildPipelines() {
   /*
-   * Load the shader library, then load the shader functions
+   * Load the shader library
    */
   NS::Error* error = nullptr;
   MTL::Library* lib = m_device
@@ -586,7 +586,7 @@ void Renderer::rebuildDataBuffers() {
   /*
    * Calculate buffer sizes and create buffers
    */
-  m_meshData = m_store.scene().getAllMeshes(Scene::NodeFlags_Visible);
+  m_meshData = m_store.scene().getAllInstances(Scene::NodeFlags_Visible);
   size_t meshCount = m_meshData.size();
 
   size_t dataBufferSize = meshCount * sizeof(NodeData);
@@ -635,9 +635,9 @@ void Renderer::rebuildDataBuffers() {
       length(cd.transform.columns[2]),
     };
     float4x4 transform = {
-      cd.transform.columns[0] * scale.x,
-      cd.transform.columns[1] * scale.y,
-      cd.transform.columns[2] * scale.z,
+      cd.transform.columns[0] / scale.x,
+      cd.transform.columns[1] / scale.y,
+      cd.transform.columns[2] / scale.z,
       cd.transform.columns[3],
     };
 

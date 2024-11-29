@@ -39,6 +39,11 @@ struct Camera {
   [[nodiscard]] constexpr float yFov() const {
     return 2.0f * atan(sensorSize.y / (2.0f * focalLength));
   }
+
+  [[nodiscard]] constexpr float croppedSensorHeight(float aspect) const {
+    float sensorAspect = sensorSize.x / sensorSize.y;
+    return sensorSize.x / max(sensorAspect, aspect);
+  };
 };
 
 }

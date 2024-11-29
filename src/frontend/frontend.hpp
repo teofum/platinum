@@ -10,6 +10,7 @@
 
 #include <core/store.hpp>
 #include <renderer_studio/renderer_studio.hpp>
+#include <renderer_pt/renderer_pt.hpp>
 
 namespace pt::frontend {
 
@@ -56,6 +57,7 @@ private:
 
   // Renderer
   std::unique_ptr<renderer_studio::Renderer> m_renderer;
+  std::unique_ptr<renderer_pt::Renderer> m_ptRenderer;
 
   // ImGui
   bool m_initialized = false;

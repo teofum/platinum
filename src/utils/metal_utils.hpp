@@ -26,12 +26,32 @@ void setupLayer(CA::MetalLayer* layer) noexcept;
 
 void setDrawableSize(CA::MetalLayer* layer, int width, int height) noexcept;
 
+struct FunctionConstantParams {
+  void* value;
+  MTL::DataType type;
+};
+
+struct FunctionParams {
+  std::vector<FunctionConstantParams> constants;
+};
+
 /**
  * Returns a NS::SharedPtr to a shader function.
  * @param lib library
  * @param name function name
  */
 NS::SharedPtr<MTL::Function> getFunction(MTL::Library* lib, const char* name);
+
+/**
+ * Returns a NS::SharedPtr to a shader function.
+ * @param lib library
+ * @param name function name
+ */
+NS::SharedPtr<MTL::Function> getFunction(
+  MTL::Library* lib,
+  const char* name,
+  const FunctionParams& params
+);
 
 struct RenderPipelineParams {
   MTL::Function* vertexFunction;
@@ -47,6 +67,18 @@ struct RenderPipelineParams {
  * @return NS::SharedPtr to a render pipeline descriptor.
  */
 NS::SharedPtr<MTL::RenderPipelineDescriptor> makeRenderPipelineDescriptor(const RenderPipelineParams& params);
+
+struct ComputePipelineParams {
+  MTL::Function* function;
+  bool threadGroupSizeIsMultipleOfExecutionWidth;
+};
+
+/**
+ * Utility function to make a compute pipeline descriptor in a less verbose way.
+ * @param params
+ * @return NS::SharedPtr to a compute pipeline descriptor.
+ */
+NS::SharedPtr<MTL::ComputePipelineDescriptor> makeComputePipelineDescriptor(const ComputePipelineParams& params);
 
 struct VertexAttribParams {
   MTL::VertexFormat format = MTL::VertexFormatInvalid;
