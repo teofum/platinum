@@ -21,15 +21,27 @@ struct Transform {
   float3 rotation;
   float3 scale;
 
+  // Constraints
+  float3 target;
+  bool track;
+
   constexpr explicit Transform() noexcept {
     translation = {0, 0, 0};
     rotation = {0, 0, 0};
     scale = {1, 1, 1};
+    target = {0, 0, 0};
+    track = false;
   }
 
   [[nodiscard]] constexpr float4x4 matrix() const {
     const auto T = mat::translation(translation);
     const auto S = mat::scaling(scale);
+
+    if (track) {
+      const auto L = inverse(mat::lookAt(translation, target, {0, -1, 0}));
+      return L * S;
+    }
+
     const auto Rx = mat::rotation_x(rotation.x);
     const auto Ry = mat::rotation_y(rotation.y);
     const auto Rz = mat::rotation_z(rotation.z);
@@ -39,6 +51,12 @@ struct Transform {
 
   [[nodiscard]] constexpr float3x3 normalMatrix() const {
     const auto S = simd_diagonal_matrix(scale);
+
+    if (track) {
+      const auto L = inverse(mat::lookAt(translation, target, {0, -1, 0}));
+      return mat::submatrix3(L) * S;
+    }
+
     const auto Rx = mat::rotation3_x(rotation.x);
     const auto Ry = mat::rotation3_y(rotation.y);
     const auto Rz = mat::rotation3_z(rotation.z);
@@ -56,15 +74,6 @@ struct Transform {
   ) const {
     if (type == TransformType::Normal) return normalMatrix() * vec;
     return (matrix() * make_float4(vec, static_cast<float>(type))).xyz;
-  }
-
-  constexpr void lookAtEuler(float3 target) {
-    const auto delta = normalize(target - translation);
-    rotation.y = atan2(delta.x, delta.z);
-
-    auto hyp = sqrt(delta.x * delta.x + delta.z * delta.z);
-    rotation.x = atan2(hyp, delta.y) + std::numbers::pi_v<float> * 0.5f;
-    rotation.z = 0;
   }
 };
 

@@ -157,6 +157,14 @@ float4x4 perspective(float fov, float aspect, float near, float far) {
   };
 }
 
+float3x3 submatrix3(float4x4 m) {
+  return {
+    m.columns[0].xyz,
+    m.columns[1].xyz,
+    m.columns[2].xyz,
+  };
+}
+
 float4x4 perspectiveInf(float fov, float aspect, float near) {
   const float sy = 1.0f / std::tan(fov * 0.5f);
   const float sx = sy / aspect;

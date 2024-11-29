@@ -754,6 +754,7 @@ void Frontend::properties() {
         0.01f
       );
 
+      ImGui::BeginDisabled(node->transform.track);
       ImGui::DragFloat3(
         "Rotation",
         (float*) &node->transform.rotation,
@@ -763,6 +764,7 @@ void Frontend::properties() {
         "%.3f",
         ImGuiSliderFlags_WrapAround
       );
+      ImGui::EndDisabled();
 
       ImGui::DragFloat3(
         "Scale",
@@ -770,10 +772,21 @@ void Frontend::properties() {
         0.01f
       );
 
+      ImGui::SeparatorText("Constraints");
+
+      ImGui::Checkbox("Track", &node->transform.track);
+      ImGui::DragFloat3(
+        "Target",
+        (float*) &node->transform.target,
+        0.01f
+      );
+
       if (ImGui::Button("Reset", {ImGui::GetContentRegionAvail().x, 0})) {
         node->transform.translation = {0, 0, 0};
         node->transform.rotation = {0, 0, 0};
         node->transform.scale = {1, 1, 1};
+        node->transform.target = {1, 1, 1};
+        node->transform.track = false;
       }
       ImGui::Spacing();
     }

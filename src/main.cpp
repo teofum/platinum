@@ -21,7 +21,7 @@ int main() {
   pt::Scene::Node cameraNode("Camera");
   cameraNode.cameraId = cameraId;
   cameraNode.transform.translation = {-5, 5, 5};
-  cameraNode.transform.lookAtEuler({0, 0, 0});
+  cameraNode.transform.track = true;
   scene.addNode(std::move(cameraNode));
 
   fe.start();
