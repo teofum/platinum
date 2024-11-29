@@ -1,5 +1,9 @@
 #include <metal_stdlib>
 
+// Header files use this guard to only include what the shader needs
+#define METAL_SHADER
+
+#include <core/mesh.hpp>
 #include "../pt_shader_defs.hpp"
 
 using namespace metal;
@@ -8,7 +12,7 @@ using namespace raytracing;
 constant uint32_t resourcesStride [[function_constant(0)]];
 
 struct VertexResource {
-    device VertexData* data;
+    device pt::VertexData* data;
 };
 
 kernel void pathtracingKernel(
@@ -51,7 +55,9 @@ kernel void pathtracingKernel(
             auto instanceIdx = intersection.instance_id;
             auto geometryIdx = instances[instanceIdx].accelerationStructureIndex;
             
-            device auto& vertexResource = *(device VertexResource*)((device char *)resources + resourcesStride * geometryIdx);
+            float2 barycentric_coords = intersection.triangle_barycentric_coord;
+            
+            device auto& vertexResource = *(device VertexResource*)((device uint64_t*)resources + geometryIdx);
             device auto& data = *(device PrimitiveData*) intersection.primitive_data;
             
             acc = vertexResource.data[data.indices[0]].normal * 0.5 + 0.5;

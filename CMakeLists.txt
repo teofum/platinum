@@ -17,7 +17,7 @@ function(build_shaders LIB_NAME)
         list(APPEND SHADER_AIRS ${SHADER_AIR})
         add_custom_command(
                 OUTPUT ${SHADER_AIR}
-                COMMAND xcrun -sdk macosx metal -o ${SHADER_AIR} -c ${SHADER_SRC}
+                COMMAND xcrun -sdk macosx metal -o ${SHADER_AIR} -c ${SHADER_SRC} -I "${CMAKE_CURRENT_SOURCE_DIR}/src"
                 DEPENDS ${SHADER_SRC}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         )

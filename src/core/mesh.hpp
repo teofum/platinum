@@ -1,9 +1,14 @@
 #ifndef PLATINUM_MESH_HPP
 #define PLATINUM_MESH_HPP
 
+#ifndef METAL_SHADER
+
 #include <vector>
-#include <simd/simd.h>
 #include <Metal/Metal.hpp>
+
+#endif
+
+#include <simd/simd.h>
 
 using namespace simd;
 
@@ -14,6 +19,8 @@ struct VertexData {
   float4 tangent;
   float2 texCoords;
 };
+
+#ifndef METAL_SHADER
 
 class Mesh {
 public:
@@ -61,6 +68,8 @@ private:
   MTL::Buffer* m_vertexData;
   MTL::Buffer* m_indices;
 };
+
+#endif
 
 }
 

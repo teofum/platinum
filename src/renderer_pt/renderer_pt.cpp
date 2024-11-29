@@ -261,7 +261,7 @@ void Renderer::rebuildResourcesBuffer() {
 
   size_t idx = 0;
   for (const auto& md: meshes) {
-    auto resourceHandle = (uint64_t*) ((uint8_t*) m_resourcesBuffer->contents() + m_resourcesStride * idx);
+    auto resourceHandle = (uint64_t*) m_resourcesBuffer->contents() + idx++;
     *resourceHandle = md.mesh->vertexData()->gpuAddress();
   }
 }

@@ -8,12 +8,6 @@
 
 using namespace simd;
 
-struct VertexData {
-  float3 normal;
-  float4 tangent;
-  float2 texCoords;
-};
-
 struct PrimitiveData {
   uint32_t indices[3];
 };
