@@ -259,6 +259,7 @@ void Frontend::start() {
 void Frontend::handleInput(const SDL_Event& event) {
   ImGuiIO& io = ImGui::GetIO();
   bool allowMouseEvents = !io.WantCaptureMouse || m_mouseInViewport;
+  bool allowKeyboardEvents = !io.WantCaptureKeyboard;
 
   switch (event.type) {
     case SDL_MAC_MAGNIFY: {
@@ -315,6 +316,8 @@ void Frontend::handleInput(const SDL_Event& event) {
     }
     case SDL_KEYDOWN:
     case SDL_KEYUP: {
+      if (!allowKeyboardEvents) return;
+
       auto sc = event.key.keysym.scancode;
       if (sc == SDL_SCANCODE_LSHIFT || sc == SDL_SCANCODE_RSHIFT) {
         m_scrolling = false;
@@ -322,6 +325,7 @@ void Frontend::handleInput(const SDL_Event& event) {
         m_zooming = false;
         m_zoomSpeed = 0.0f;
       }
+      break;
     }
   }
 }
@@ -358,7 +362,7 @@ void Frontend::drawImGui() {
    */
   ImGui::Begin("Render");
 
-  if (ImGui::Button("Render")) {
+  if (ImGui::Button("Render") || ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
     auto size = ImGui::GetContentRegionAvail();
     auto cameras = m_store.scene().getAllCameras();
 
