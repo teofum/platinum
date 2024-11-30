@@ -28,6 +28,8 @@ public:
 
   [[nodiscard]] std::pair<size_t, size_t> renderProgress() const;
 
+  [[nodiscard]] size_t renderTime() const;
+
 private:
   // Store
   Store& m_store;
@@ -64,7 +66,9 @@ private:
 
   // Frame data
   static constexpr const size_t m_maxFramesInFlight = 3;
-  size_t m_frameIdx = 0, m_accumulationFrames = 100, m_accumulatedFrames = 0;
+  size_t m_frameIdx = 0, m_accumulationFrames = 128, m_accumulatedFrames = 0;
+  size_t m_timer = 0;
+  std::chrono::time_point<std::chrono::high_resolution_clock> m_renderStart;
 
   MTL::AccelerationStructure* makeAccelStruct(MTL::AccelerationStructureDescriptor* desc);
 

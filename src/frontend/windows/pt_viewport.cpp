@@ -122,6 +122,9 @@ void RenderViewport::render() {
 
   ImGui::EndChild();
 
+  /*
+   * Progress info
+   */
   auto [accumulated, total] = m_renderer->renderProgress();
   auto progress = (float) accumulated / (float) total;
   auto progressStr = accumulated == total
@@ -131,6 +134,11 @@ void RenderViewport::render() {
                        : std::format("{} / {}", accumulated, total);
   auto width = min(ImGui::GetContentRegionAvail().x, 300.0f);
   ImGui::ProgressBar(progress, {width, 0}, progressStr.c_str());
+
+  auto time = std::format("{:3}s", (float) m_renderer->renderTime() / 1000.0f);
+  auto textWidth = ImGui::CalcTextSize(time.c_str()).x;
+  ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetStyle().ItemSpacing.x - textWidth);
+  ImGui::Text("%s", time.c_str());
 
   ImGui::End();
 }

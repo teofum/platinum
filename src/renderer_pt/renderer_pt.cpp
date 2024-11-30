@@ -78,6 +78,11 @@ void Renderer::render() {
 
     std::swap(m_accumulator[0], m_accumulator[1]);
     m_accumulatedFrames++;
+
+    auto now = std::chrono::high_resolution_clock::now();
+    auto time = now - m_renderStart;
+    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(time);
+    m_timer = millis.count();
   }
 
   /*
@@ -113,6 +118,8 @@ void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize) {
   rebuildAccelerationStructures();
 
   m_accumulatedFrames = 0;
+  m_timer = 0;
+  m_renderStart = std::chrono::high_resolution_clock::now();
 }
 
 const MTL::Texture* Renderer::presentRenderTarget() const {
@@ -447,6 +454,10 @@ bool Renderer::isRendering() const {
 
 std::pair<size_t, size_t> Renderer::renderProgress() const {
   return {m_accumulatedFrames, m_accumulationFrames};
+}
+
+size_t Renderer::renderTime() const {
+  return m_timer;
 }
 
 }
