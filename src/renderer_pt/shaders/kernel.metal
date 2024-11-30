@@ -3,7 +3,7 @@
 // Header files use this guard to only include what the shader needs
 #define METAL_SHADER
 
-#include <core/mesh.hpp>
+#include "../../core/mesh.hpp"
 #include "../pt_shader_defs.hpp"
 
 #define MAX_BOUNCES 15

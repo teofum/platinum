@@ -60,6 +60,7 @@ private:
   // Render settings
   std::optional<Scene::NodeID> m_cameraNodeId;
   float2 m_nextRenderSize = {1280, 800};
+  int32_t m_nextRenderSampleCount = 128;
   bool m_useViewportSizeForRender = true;
 
   void updateScrollAndZoomState();

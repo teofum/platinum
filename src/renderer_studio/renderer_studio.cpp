@@ -1,7 +1,6 @@
 #include "renderer_studio.hpp"
 
 #include <print>
-#include <tracy/Tracy.hpp>
 
 #include <utils/metal_utils.hpp>
 #include <utils/matrices.hpp>
@@ -160,8 +159,6 @@ Scene::NodeID Renderer::readbackObjectIdAt(uint32_t x, uint32_t y) const {
 }
 
 void Renderer::render(Scene::NodeID selectedNodeId) {
-  ZoneScoped;
-
   // Don't render if the render targets are not initialized: this should only
   // happen in the first frame before handleResizeViewport() is called
   if (!m_primaryRenderTarget) return;
@@ -282,25 +279,10 @@ void Renderer::render(Scene::NodeID selectedNodeId) {
     dataOffset += sizeof(shaders_studio::NodeData);
   }
 
-  enc->endEncoding();
-
   /*
    * Grid pass
+   * The pass is identical, so we can reuse the same command encoder
    */
-  rpd = ns_shared<MTL::RenderPassDescriptor>();
-  colorAttachment = rpd->colorAttachments()->object(0);
-  colorAttachment->setTexture(m_auxRenderTarget);
-  colorAttachment->setLoadAction(MTL::LoadActionLoad);
-  colorAttachment->setStoreAction(MTL::StoreActionStore);
-
-  rpd->depthAttachment()->setTexture(m_depthTexture);
-  rpd->depthAttachment()->setLoadAction(MTL::LoadActionLoad);
-
-  rpd->stencilAttachment()->setTexture(m_stencilTexture);
-  rpd->stencilAttachment()->setLoadAction(MTL::LoadActionLoad);
-
-  enc = cmd->renderCommandEncoder(rpd);
-
   enc->setRenderPipelineState(m_gridPassPso);
   enc->setDepthStencilState(m_gridPassDsso);
   enc->setFrontFacingWinding(MTL::WindingCounterClockwise);
@@ -581,8 +563,6 @@ void Renderer::buildPipelines() {
 }
 
 void Renderer::rebuildDataBuffers() {
-  ZoneScoped;
-
   /*
    * Discard existing buffers
    */
@@ -693,8 +673,6 @@ void Renderer::rebuildRenderTargets() {
 }
 
 void Renderer::updateConstants() {
-  ZoneScoped;
-  
   shaders_studio::Constants constants = {
     m_camera.projection(m_aspect),
     m_camera.view(),

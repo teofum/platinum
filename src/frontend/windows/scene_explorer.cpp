@@ -3,7 +3,6 @@
 #include <filesystem>
 #include <nfd.h>
 #include <SDL.h>
-#include <tracy/Tracy.hpp>
 
 #include <core/primitives.hpp>
 #include <loaders/gltf.hpp>
@@ -13,8 +12,6 @@ namespace fs = std::filesystem;
 namespace pt::frontend::windows {
 
 void SceneExplorer::render() {
-  ZoneScoped;
-
   ImGui::Begin("Scene Explorer");
 
   auto buttonWidth = widgets::getWidthForItems(2);
@@ -46,7 +43,7 @@ void SceneExplorer::render() {
   if (widgets::popup("Import_Popup")) {
     if (widgets::selectable("glTF", false, 0, {100, 0})) {
       char* path = nullptr;
-      auto result = NFD_OpenDialog("*.glb, *.gltf", "../assets", &path);
+      auto result = NFD_OpenDialog("glb, gltf", "../assets", &path);
 
       if (result == NFD_OKAY) {
         fs::path filePath(path);

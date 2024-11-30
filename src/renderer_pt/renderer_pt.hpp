@@ -20,7 +20,7 @@ public:
 
   void render();
 
-  void startRender(Scene::NodeID cameraNodeId, float2 viewportSize);
+  void startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint32_t sampleCount);
 
   [[nodiscard]] const MTL::Texture* presentRenderTarget() const;
 

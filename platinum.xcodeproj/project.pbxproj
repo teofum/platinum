@@ -1,0 +1,999 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AB5133E92CFB72A3005738C1 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB5133E82CFB72A3005738C1 /* Metal.framework */; };
+		AB5133EB2CFB72A9005738C1 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB5133EA2CFB72A9005738C1 /* MetalKit.framework */; };
+		AB5133ED2CFB72AD005738C1 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB5133EC2CFB72AD005738C1 /* AppKit.framework */; };
+		AB5133EF2CFB72B1005738C1 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB5133EE2CFB72B1005738C1 /* QuartzCore.framework */; };
+		AB5133F12CFB72C5005738C1 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB5133F02CFB72C5005738C1 /* Foundation.framework */; };
+		AB86A7572CFBAE1C00CC5BA3 /* SDL2.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB86A6F42CFBA80F00CC5BA3 /* SDL2.framework */; };
+		AB86A7582CFBAE1C00CC5BA3 /* SDL2.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = AB86A6F42CFBA80F00CC5BA3 /* SDL2.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		ABE00B762CFB893A00DA8AED /* libmetal-cpp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ABE00B692CFB891B00DA8AED /* libmetal-cpp.a */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		AB5136C92CFB7893005738C1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AB5132AF2CFB7024005738C1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AB51358D2CFB77EE005738C1;
+			remoteInfo = renderer_pt;
+		};
+		AB5136CB2CFB7893005738C1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AB5132AF2CFB7024005738C1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AB51357F2CFB7791005738C1;
+			remoteInfo = renderer_studio;
+		};
+		ABE00B742CFB892B00DA8AED /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AB5132AF2CFB7024005738C1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ABE00B682CFB891B00DA8AED;
+			remoteInfo = "metal-cpp";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		AB5133BE2CFB7108005738C1 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		AB86A7592CFBAE1C00CC5BA3 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				AB86A7582CFBAE1C00CC5BA3 /* SDL2.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		AB5133C02CFB7108005738C1 /* platinum */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = platinum; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB5133E82CFB72A3005738C1 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		AB5133EA2CFB72A9005738C1 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+		AB5133EC2CFB72AD005738C1 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
+		AB5133EE2CFB72B1005738C1 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		AB5133F02CFB72C5005738C1 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		AB5135802CFB7791005738C1 /* renderer_studio.metallib */ = {isa = PBXFileReference; explicitFileType = "archive.metal-library"; includeInIndex = 0; path = renderer_studio.metallib; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB51358E2CFB77EE005738C1 /* renderer_pt.metallib */ = {isa = PBXFileReference; explicitFileType = "archive.metal-library"; includeInIndex = 0; path = renderer_pt.metallib; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB86A6F42CFBA80F00CC5BA3 /* SDL2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2.framework; path = ../../../../Library/Frameworks/SDL2.framework; sourceTree = "<group>"; };
+		ABD2D3272CFB9B1900AE082A /* SDL2 */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = SDL2; path = sdl2/SDL2.framework/Versions/A/SDL2; sourceTree = "<group>"; };
+		ABE00B692CFB891B00DA8AED /* libmetal-cpp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libmetal-cpp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		AB5133DB2CFB71A4005738C1 /* Exceptions for "src" folder in "platinum" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				core/mesh.cpp,
+				core/primitives.cpp,
+				core/scene.cpp,
+				core/store.cpp,
+				frontend/frontend.cpp,
+				frontend/state.cpp,
+				frontend/widgets.cpp,
+				frontend/window.cpp,
+				frontend/windows/properties.cpp,
+				frontend/windows/pt_viewport.cpp,
+				frontend/windows/scene_explorer.cpp,
+				frontend/windows/studio_viewport.cpp,
+				loaders/gltf.cpp,
+				main.cpp,
+				renderer_pt/renderer_pt.cpp,
+				renderer_studio/renderer_studio.cpp,
+				renderer_studio/studio_camera.cpp,
+				utils/matrices.cpp,
+				utils/metal_utils.mm,
+				utils/utils.cpp,
+			);
+			target = AB5133BF2CFB7108005738C1 /* platinum */;
+		};
+		AB5133DE2CFB7254005738C1 /* Exceptions for "fastgltf" folder in "platinum" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				lib/libfastgltf,
+			);
+			target = AB5133BF2CFB7108005738C1 /* platinum */;
+		};
+		AB5133E02CFB7270005738C1 /* Exceptions for "nfd" folder in "platinum" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				libnfd,
+			);
+			target = AB5133BF2CFB7108005738C1 /* platinum */;
+		};
+		AB51358B2CFB77D2005738C1 /* Exceptions for "src" folder in "renderer_studio" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				renderer_studio/shaders/camera.metal,
+				renderer_studio/shaders/edge_pass.metal,
+				renderer_studio/shaders/grid.metal,
+				renderer_studio/shaders/main.metal,
+			);
+			target = AB51357F2CFB7791005738C1 /* renderer_studio */;
+		};
+		AB5135972CFB7805005738C1 /* Exceptions for "src" folder in "renderer_pt" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				renderer_pt/shaders/kernel.metal,
+				renderer_pt/shaders/postprocess.metal,
+			);
+			target = AB51358D2CFB77EE005738C1 /* renderer_pt */;
+		};
+		AB8F69EC2CFBA43A00C69CF6 /* Exceptions for "imgui" folder in "platinum" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				backends/imgui_impl_metal.mm,
+				backends/imgui_impl_sdl2.cpp,
+				imgui_demo.cpp,
+				imgui_draw.cpp,
+				imgui_tables.cpp,
+				imgui_widgets.cpp,
+				imgui.cpp,
+				misc/cpp/imgui_stdlib.cpp,
+			);
+			target = AB5133BF2CFB7108005738C1 /* platinum */;
+		};
+		ABE00B782CFB895400DA8AED /* Exceptions for "metal-cmake" folder in "metal-cpp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				definition.cpp,
+				"metal-cpp-extensions/AppKit/AppKit.hpp",
+				"metal-cpp-extensions/AppKit/AppKitPrivate.hpp",
+				"metal-cpp-extensions/AppKit/NSApplication.hpp",
+				"metal-cpp-extensions/AppKit/NSMenu.hpp",
+				"metal-cpp-extensions/AppKit/NSMenuItem.hpp",
+				"metal-cpp-extensions/AppKit/NSRunningApplication.hpp",
+				"metal-cpp-extensions/AppKit/NSView.hpp",
+				"metal-cpp-extensions/AppKit/NSWindow.hpp",
+				"metal-cpp-extensions/MetalKit/MetalKit.hpp",
+				"metal-cpp-extensions/MetalKit/MetalKitPrivate.hpp",
+				"metal-cpp-extensions/MetalKit/MTKView.hpp",
+				"metal-cpp/Foundation/Foundation.hpp",
+				"metal-cpp/Foundation/NSArray.hpp",
+				"metal-cpp/Foundation/NSAutoreleasePool.hpp",
+				"metal-cpp/Foundation/NSBundle.hpp",
+				"metal-cpp/Foundation/NSData.hpp",
+				"metal-cpp/Foundation/NSDate.hpp",
+				"metal-cpp/Foundation/NSDefines.hpp",
+				"metal-cpp/Foundation/NSDictionary.hpp",
+				"metal-cpp/Foundation/NSEnumerator.hpp",
+				"metal-cpp/Foundation/NSError.hpp",
+				"metal-cpp/Foundation/NSLock.hpp",
+				"metal-cpp/Foundation/NSNotification.hpp",
+				"metal-cpp/Foundation/NSNumber.hpp",
+				"metal-cpp/Foundation/NSObjCRuntime.hpp",
+				"metal-cpp/Foundation/NSObject.hpp",
+				"metal-cpp/Foundation/NSPrivate.hpp",
+				"metal-cpp/Foundation/NSProcessInfo.hpp",
+				"metal-cpp/Foundation/NSRange.hpp",
+				"metal-cpp/Foundation/NSSet.hpp",
+				"metal-cpp/Foundation/NSSharedPtr.hpp",
+				"metal-cpp/Foundation/NSString.hpp",
+				"metal-cpp/Foundation/NSTypes.hpp",
+				"metal-cpp/Foundation/NSURL.hpp",
+				"metal-cpp/Metal/Metal.hpp",
+				"metal-cpp/Metal/MTLAccelerationStructure.hpp",
+				"metal-cpp/Metal/MTLAccelerationStructureCommandEncoder.hpp",
+				"metal-cpp/Metal/MTLAccelerationStructureTypes.hpp",
+				"metal-cpp/Metal/MTLAllocation.hpp",
+				"metal-cpp/Metal/MTLArgument.hpp",
+				"metal-cpp/Metal/MTLArgumentEncoder.hpp",
+				"metal-cpp/Metal/MTLBinaryArchive.hpp",
+				"metal-cpp/Metal/MTLBlitCommandEncoder.hpp",
+				"metal-cpp/Metal/MTLBlitPass.hpp",
+				"metal-cpp/Metal/MTLBuffer.hpp",
+				"metal-cpp/Metal/MTLCaptureManager.hpp",
+				"metal-cpp/Metal/MTLCaptureScope.hpp",
+				"metal-cpp/Metal/MTLCommandBuffer.hpp",
+				"metal-cpp/Metal/MTLCommandEncoder.hpp",
+				"metal-cpp/Metal/MTLCommandQueue.hpp",
+				"metal-cpp/Metal/MTLComputeCommandEncoder.hpp",
+				"metal-cpp/Metal/MTLComputePass.hpp",
+				"metal-cpp/Metal/MTLComputePipeline.hpp",
+				"metal-cpp/Metal/MTLCounters.hpp",
+				"metal-cpp/Metal/MTLDefines.hpp",
+				"metal-cpp/Metal/MTLDepthStencil.hpp",
+				"metal-cpp/Metal/MTLDevice.hpp",
+				"metal-cpp/Metal/MTLDrawable.hpp",
+				"metal-cpp/Metal/MTLDynamicLibrary.hpp",
+				"metal-cpp/Metal/MTLEvent.hpp",
+				"metal-cpp/Metal/MTLFence.hpp",
+				"metal-cpp/Metal/MTLFunctionConstantValues.hpp",
+				"metal-cpp/Metal/MTLFunctionDescriptor.hpp",
+				"metal-cpp/Metal/MTLFunctionHandle.hpp",
+				"metal-cpp/Metal/MTLFunctionLog.hpp",
+				"metal-cpp/Metal/MTLFunctionStitching.hpp",
+				"metal-cpp/Metal/MTLHeaderBridge.hpp",
+				"metal-cpp/Metal/MTLHeap.hpp",
+				"metal-cpp/Metal/MTLIndirectCommandBuffer.hpp",
+				"metal-cpp/Metal/MTLIndirectCommandEncoder.hpp",
+				"metal-cpp/Metal/MTLIntersectionFunctionTable.hpp",
+				"metal-cpp/Metal/MTLIOCommandBuffer.hpp",
+				"metal-cpp/Metal/MTLIOCommandQueue.hpp",
+				"metal-cpp/Metal/MTLIOCompressor.hpp",
+				"metal-cpp/Metal/MTLLibrary.hpp",
+				"metal-cpp/Metal/MTLLinkedFunctions.hpp",
+				"metal-cpp/Metal/MTLLogState.hpp",
+				"metal-cpp/Metal/MTLParallelRenderCommandEncoder.hpp",
+				"metal-cpp/Metal/MTLPipeline.hpp",
+				"metal-cpp/Metal/MTLPixelFormat.hpp",
+				"metal-cpp/Metal/MTLPrivate.hpp",
+				"metal-cpp/Metal/MTLRasterizationRate.hpp",
+				"metal-cpp/Metal/MTLRenderCommandEncoder.hpp",
+				"metal-cpp/Metal/MTLRenderPass.hpp",
+				"metal-cpp/Metal/MTLRenderPipeline.hpp",
+				"metal-cpp/Metal/MTLResidencySet.hpp",
+				"metal-cpp/Metal/MTLResource.hpp",
+				"metal-cpp/Metal/MTLResourceStateCommandEncoder.hpp",
+				"metal-cpp/Metal/MTLResourceStatePass.hpp",
+				"metal-cpp/Metal/MTLSampler.hpp",
+				"metal-cpp/Metal/MTLStageInputOutputDescriptor.hpp",
+				"metal-cpp/Metal/MTLTexture.hpp",
+				"metal-cpp/Metal/MTLTypes.hpp",
+				"metal-cpp/Metal/MTLVersion.hpp",
+				"metal-cpp/Metal/MTLVertexDescriptor.hpp",
+				"metal-cpp/Metal/MTLVisibleFunctionTable.hpp",
+				"metal-cpp/MetalFX/MetalFX.hpp",
+				"metal-cpp/MetalFX/MTLFXDefines.hpp",
+				"metal-cpp/MetalFX/MTLFXPrivate.hpp",
+				"metal-cpp/MetalFX/MTLFXSpatialScaler.hpp",
+				"metal-cpp/MetalFX/MTLFXTemporalScaler.hpp",
+				"metal-cpp/QuartzCore/CADefines.hpp",
+				"metal-cpp/QuartzCore/CAMetalDrawable.hpp",
+				"metal-cpp/QuartzCore/CAMetalLayer.hpp",
+				"metal-cpp/QuartzCore/CAPrivate.hpp",
+				"metal-cpp/QuartzCore/QuartzCore.hpp",
+			);
+			target = ABE00B682CFB891B00DA8AED /* metal-cpp */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		AB5132EF2CFB7042005738C1 /* src */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AB5133DB2CFB71A4005738C1 /* Exceptions for "src" folder in "platinum" target */,
+				AB51358B2CFB77D2005738C1 /* Exceptions for "src" folder in "renderer_studio" target */,
+				AB5135972CFB7805005738C1 /* Exceptions for "src" folder in "renderer_pt" target */,
+			);
+			path = src;
+			sourceTree = "<group>";
+		};
+		AB5132F22CFB7091005738C1 /* ankerl */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ankerl;
+			sourceTree = "<group>";
+		};
+		AB5133032CFB7091005738C1 /* fastgltf */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AB5133DE2CFB7254005738C1 /* Exceptions for "fastgltf" folder in "platinum" target */,
+			);
+			path = fastgltf;
+			sourceTree = "<group>";
+		};
+		AB51333C2CFB7091005738C1 /* imgui */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AB8F69EC2CFBA43A00C69CF6 /* Exceptions for "imgui" folder in "platinum" target */,
+			);
+			path = imgui;
+			sourceTree = "<group>";
+		};
+		AB5133B52CFB7091005738C1 /* metal-cmake */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				ABE00B782CFB895400DA8AED /* Exceptions for "metal-cmake" folder in "metal-cpp" target */,
+			);
+			path = "metal-cmake";
+			sourceTree = "<group>";
+		};
+		AB5133B82CFB7091005738C1 /* nfd */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AB5133E02CFB7270005738C1 /* Exceptions for "nfd" folder in "platinum" target */,
+			);
+			path = nfd;
+			sourceTree = "<group>";
+		};
+		AB5133BB2CFB7091005738C1 /* sdl2 */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = sdl2;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		AB5133BD2CFB7108005738C1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AB86A7572CFBAE1C00CC5BA3 /* SDL2.framework in Frameworks */,
+				ABE00B762CFB893A00DA8AED /* libmetal-cpp.a in Frameworks */,
+				AB5133EF2CFB72B1005738C1 /* QuartzCore.framework in Frameworks */,
+				AB5133E92CFB72A3005738C1 /* Metal.framework in Frameworks */,
+				AB5133ED2CFB72AD005738C1 /* AppKit.framework in Frameworks */,
+				AB5133EB2CFB72A9005738C1 /* MetalKit.framework in Frameworks */,
+				AB5133F12CFB72C5005738C1 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ABE00B672CFB891B00DA8AED /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		AB5132AE2CFB7024005738C1 = {
+			isa = PBXGroup;
+			children = (
+				AB5132EF2CFB7042005738C1 /* src */,
+				AB5132F22CFB7091005738C1 /* ankerl */,
+				AB5133032CFB7091005738C1 /* fastgltf */,
+				AB51333C2CFB7091005738C1 /* imgui */,
+				AB5133B52CFB7091005738C1 /* metal-cmake */,
+				AB5133B82CFB7091005738C1 /* nfd */,
+				AB5133BB2CFB7091005738C1 /* sdl2 */,
+				AB5133DC2CFB7253005738C1 /* Frameworks */,
+				AB5133C12CFB7108005738C1 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		AB5133C12CFB7108005738C1 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AB5133C02CFB7108005738C1 /* platinum */,
+				AB5135802CFB7791005738C1 /* renderer_studio.metallib */,
+				AB51358E2CFB77EE005738C1 /* renderer_pt.metallib */,
+				ABE00B692CFB891B00DA8AED /* libmetal-cpp.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AB5133DC2CFB7253005738C1 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				AB86A6F42CFBA80F00CC5BA3 /* SDL2.framework */,
+				ABD2D3272CFB9B1900AE082A /* SDL2 */,
+				AB5133F02CFB72C5005738C1 /* Foundation.framework */,
+				AB5133EE2CFB72B1005738C1 /* QuartzCore.framework */,
+				AB5133EC2CFB72AD005738C1 /* AppKit.framework */,
+				AB5133EA2CFB72A9005738C1 /* MetalKit.framework */,
+				AB5133E82CFB72A3005738C1 /* Metal.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		ABE00B652CFB891B00DA8AED /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		AB5133BF2CFB7108005738C1 /* platinum */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AB5133C52CFB7108005738C1 /* Build configuration list for PBXNativeTarget "platinum" */;
+			buildPhases = (
+				AB5133BC2CFB7108005738C1 /* Sources */,
+				AB5133BD2CFB7108005738C1 /* Frameworks */,
+				AB5133BE2CFB7108005738C1 /* CopyFiles */,
+				AB86A7592CFBAE1C00CC5BA3 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				ABE00B752CFB892B00DA8AED /* PBXTargetDependency */,
+				AB5136CA2CFB7893005738C1 /* PBXTargetDependency */,
+				AB5136CC2CFB7893005738C1 /* PBXTargetDependency */,
+			);
+			name = platinum;
+			packageProductDependencies = (
+			);
+			productName = platinum;
+			productReference = AB5133C02CFB7108005738C1 /* platinum */;
+			productType = "com.apple.product-type.tool";
+		};
+		AB51357F2CFB7791005738C1 /* renderer_studio */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AB5135842CFB7791005738C1 /* Build configuration list for PBXNativeTarget "renderer_studio" */;
+			buildPhases = (
+				AB51357E2CFB7791005738C1 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = renderer_studio;
+			packageProductDependencies = (
+			);
+			productName = renderer_studio;
+			productReference = AB5135802CFB7791005738C1 /* renderer_studio.metallib */;
+			productType = "com.apple.product-type.metal-library";
+		};
+		AB51358D2CFB77EE005738C1 /* renderer_pt */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AB5135922CFB77EE005738C1 /* Build configuration list for PBXNativeTarget "renderer_pt" */;
+			buildPhases = (
+				AB51358C2CFB77EE005738C1 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = renderer_pt;
+			packageProductDependencies = (
+			);
+			productName = renderer_pt;
+			productReference = AB51358E2CFB77EE005738C1 /* renderer_pt.metallib */;
+			productType = "com.apple.product-type.metal-library";
+		};
+		ABE00B682CFB891B00DA8AED /* metal-cpp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ABE00B712CFB891B00DA8AED /* Build configuration list for PBXNativeTarget "metal-cpp" */;
+			buildPhases = (
+				ABE00B652CFB891B00DA8AED /* Headers */,
+				ABE00B662CFB891B00DA8AED /* Sources */,
+				ABE00B672CFB891B00DA8AED /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "metal-cpp";
+			packageProductDependencies = (
+			);
+			productName = "metal-cpp";
+			productReference = ABE00B692CFB891B00DA8AED /* libmetal-cpp.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AB5132AF2CFB7024005738C1 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1610;
+				TargetAttributes = {
+					AB5133BF2CFB7108005738C1 = {
+						CreatedOnToolsVersion = 16.1;
+					};
+					AB51357F2CFB7791005738C1 = {
+						CreatedOnToolsVersion = 16.1;
+					};
+					AB51358D2CFB77EE005738C1 = {
+						CreatedOnToolsVersion = 16.1;
+					};
+					ABE00B682CFB891B00DA8AED = {
+						CreatedOnToolsVersion = 16.1;
+					};
+				};
+			};
+			buildConfigurationList = AB5132B22CFB7024005738C1 /* Build configuration list for PBXProject "platinum" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = AB5132AE2CFB7024005738C1;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = AB5133C12CFB7108005738C1 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AB5133BF2CFB7108005738C1 /* platinum */,
+				ABE00B682CFB891B00DA8AED /* metal-cpp */,
+				AB51357F2CFB7791005738C1 /* renderer_studio */,
+				AB51358D2CFB77EE005738C1 /* renderer_pt */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AB5133BC2CFB7108005738C1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AB51357E2CFB7791005738C1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AB51358C2CFB77EE005738C1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ABE00B662CFB891B00DA8AED /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AB5136CA2CFB7893005738C1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AB51358D2CFB77EE005738C1 /* renderer_pt */;
+			targetProxy = AB5136C92CFB7893005738C1 /* PBXContainerItemProxy */;
+		};
+		AB5136CC2CFB7893005738C1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AB51357F2CFB7791005738C1 /* renderer_studio */;
+			targetProxy = AB5136CB2CFB7893005738C1 /* PBXContainerItemProxy */;
+		};
+		ABE00B752CFB892B00DA8AED /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = ABE00B682CFB891B00DA8AED /* metal-cpp */;
+			targetProxy = ABE00B742CFB892B00DA8AED /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		AB5132B32CFB7024005738C1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		AB5132B42CFB7024005738C1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		AB5133C62CFB7108005738C1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++23";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/sdl2",
+					"$(LOCAL_LIBRARY_DIR)/Frameworks",
+				);
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/src",
+					"$(PROJECT_DIR)/ankerl",
+					"$(PROJECT_DIR)/fastgltf/include",
+					"$(PROJECT_DIR)/metal-cmake/metal-cpp",
+					"$(PROJECT_DIR)/metal-cmake/metal-cpp-extensions",
+					"$(PROJECT_DIR)/nfd",
+					"$(PROJECT_DIR)/imgui",
+					"$(PROJECT_DIR)/tracy",
+					"$(PROJECT_DIR)/sdl2/include",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/fastgltf/lib",
+					"$(PROJECT_DIR)/nfd",
+					"$(PROJECT_DIR)/sdl2/SDL2.framework/Versions/A",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		AB5133C72CFB7108005738C1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++23";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/sdl2",
+					"$(LOCAL_LIBRARY_DIR)/Frameworks",
+				);
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/src",
+					"$(PROJECT_DIR)/ankerl",
+					"$(PROJECT_DIR)/fastgltf/include",
+					"$(PROJECT_DIR)/metal-cmake/metal-cpp",
+					"$(PROJECT_DIR)/metal-cmake/metal-cpp-extensions",
+					"$(PROJECT_DIR)/nfd",
+					"$(PROJECT_DIR)/imgui",
+					"$(PROJECT_DIR)/tracy",
+					"$(PROJECT_DIR)/sdl2/include",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/fastgltf/lib",
+					"$(PROJECT_DIR)/nfd",
+					"$(PROJECT_DIR)/sdl2/SDL2.framework/Versions/A",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		AB5135852CFB7791005738C1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				HEADER_SEARCH_PATHS = "$(inherited)";
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				VERSIONING_SYSTEM = "";
+			};
+			name = Debug;
+		};
+		AB5135862CFB7791005738C1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				HEADER_SEARCH_PATHS = "$(inherited)";
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				VERSIONING_SYSTEM = "";
+			};
+			name = Release;
+		};
+		AB5135932CFB77EE005738C1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				HEADER_SEARCH_PATHS = "$(inherited)";
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				VERSIONING_SYSTEM = "";
+			};
+			name = Debug;
+		};
+		AB5135942CFB77EE005738C1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				HEADER_SEARCH_PATHS = "$(inherited)";
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				VERSIONING_SYSTEM = "";
+			};
+			name = Release;
+		};
+		ABE00B722CFB891B00DA8AED /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				EXECUTABLE_PREFIX = lib;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = YES;
+				GCC_ENABLE_CPP_RTTI = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/metal-cmake/metal-cpp",
+					"$(PROJECT_DIR)/metal-cmake/metal-cpp-extensions",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		ABE00B732CFB891B00DA8AED /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				EXECUTABLE_PREFIX = lib;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_ENABLE_CPP_EXCEPTIONS = YES;
+				GCC_ENABLE_CPP_RTTI = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/metal-cmake/metal-cpp",
+					"$(PROJECT_DIR)/metal-cmake/metal-cpp-extensions",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AB5132B22CFB7024005738C1 /* Build configuration list for PBXProject "platinum" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB5132B32CFB7024005738C1 /* Debug */,
+				AB5132B42CFB7024005738C1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AB5133C52CFB7108005738C1 /* Build configuration list for PBXNativeTarget "platinum" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB5133C62CFB7108005738C1 /* Debug */,
+				AB5133C72CFB7108005738C1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AB5135842CFB7791005738C1 /* Build configuration list for PBXNativeTarget "renderer_studio" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB5135852CFB7791005738C1 /* Debug */,
+				AB5135862CFB7791005738C1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AB5135922CFB77EE005738C1 /* Build configuration list for PBXNativeTarget "renderer_pt" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB5135932CFB77EE005738C1 /* Debug */,
+				AB5135942CFB77EE005738C1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		ABE00B712CFB891B00DA8AED /* Build configuration list for PBXNativeTarget "metal-cpp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ABE00B722CFB891B00DA8AED /* Debug */,
+				ABE00B732CFB891B00DA8AED /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AB5132AF2CFB7024005738C1 /* Project object */;
+}

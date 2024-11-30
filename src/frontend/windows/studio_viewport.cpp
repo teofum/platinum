@@ -1,7 +1,5 @@
 #include "studio_viewport.hpp"
 
-#include <tracy/Tracy.hpp>
-
 namespace pt::frontend::windows {
 
 void StudioViewport::init(MTL::Device* device, MTL::CommandQueue* commandQueue) {
@@ -16,8 +14,6 @@ void StudioViewport::init(MTL::Device* device, MTL::CommandQueue* commandQueue) 
 }
 
 void StudioViewport::render() {
-  ZoneScoped;
-  
   updateScrollAndZoomState();
 
   auto [action, nodeId] = m_state.getNodeAction();

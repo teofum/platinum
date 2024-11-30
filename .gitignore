@@ -3,3 +3,4 @@ profile.json
 .DS_Store
 *.metallib
 assets/
+build

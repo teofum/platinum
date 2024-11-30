@@ -2,7 +2,6 @@
 #include "utils/utils.hpp"
 
 #include <span>
-#include <tracy/Tracy.hpp>
 
 #include <utils/metal_utils.hpp>
 
@@ -30,8 +29,6 @@ Renderer::~Renderer() {
 }
 
 void Renderer::render() {
-  ZoneScoped;
-
   if (!m_renderTarget) return;
 
   auto cmd = m_commandQueue->commandBuffer();
@@ -39,7 +36,7 @@ void Renderer::render() {
   /*
    * Update frame index and write constants buffer
    */
-  m_constants.frameIdx = m_accumulatedFrames;
+  m_constants.frameIdx = (uint32_t) m_accumulatedFrames;
   m_constantsOffset = (m_frameIdx % m_maxFramesInFlight) * m_constantsStride;
   void* bufferWrite = (char*) m_constantsBuffer->contents() + m_constantsOffset;
   memcpy(bufferWrite, &m_constants, m_constantsSize);
@@ -109,9 +106,7 @@ void Renderer::render() {
   cmd->commit();
 }
 
-void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize) {
-  ZoneScoped;
-
+void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint32_t sampleCount) {
   if (!equal(viewportSize, m_viewportSize)) {
     m_viewportSize = viewportSize;
     m_aspect = m_viewportSize.x / m_viewportSize.y;
@@ -123,6 +118,7 @@ void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize) {
   rebuildAccelerationStructures();
 
   m_accumulatedFrames = 0;
+  m_accumulationFrames = sampleCount;
   m_timer = 0;
   m_renderStart = std::chrono::high_resolution_clock::now();
 }
@@ -134,8 +130,6 @@ const MTL::Texture* Renderer::presentRenderTarget() const {
 NS::SharedPtr<MTL::AccelerationStructureGeometryDescriptor> Renderer::makeGeometryDescriptor(
   const Mesh* mesh
 ) {
-  ZoneScoped;
-
   auto desc = ns_shared<MTL::AccelerationStructureTriangleGeometryDescriptor>();
 
   desc->setIndexBuffer(mesh->indices());
@@ -160,8 +154,6 @@ NS::SharedPtr<MTL::AccelerationStructureGeometryDescriptor> Renderer::makeGeomet
 MTL::AccelerationStructure* Renderer::makeAccelStruct(
   MTL::AccelerationStructureDescriptor* desc
 ) {
-  ZoneScoped;
-
   /*
    * Create buffers and accel structure object
    */
@@ -214,8 +206,6 @@ MTL::AccelerationStructure* Renderer::makeAccelStruct(
 }
 
 void Renderer::buildPipelines() {
-  ZoneScoped;
-
   /*
    * Load the shader library
    */
@@ -282,8 +272,6 @@ void Renderer::buildPipelines() {
 }
 
 void Renderer::buildConstantsBuffer() {
-  ZoneScoped;
-
   m_constantsSize = sizeof(shaders_pt::Constants);
   m_constantsStride = utils::align(m_constantsSize, 256);
   m_constantsOffset = 0;
@@ -295,8 +283,6 @@ void Renderer::buildConstantsBuffer() {
 }
 
 void Renderer::rebuildResourcesBuffer() {
-  ZoneScoped;
-
   // Clear old buffer if present
   if (m_resourcesBuffer != nullptr) m_resourcesBuffer->release();
 
@@ -314,8 +300,6 @@ void Renderer::rebuildResourcesBuffer() {
 }
 
 void Renderer::rebuildAccelerationStructures() {
-  ZoneScoped;
-
   // Clear old acceleration structures, if any
 //  if (m_meshAccelStructs != nullptr) m_meshAccelStructs->release();
   if (m_instanceAccelStruct != nullptr) m_instanceAccelStruct->release();
@@ -360,13 +344,13 @@ void Renderer::rebuildAccelerationStructures() {
   idx = 0;
   for (const auto& instance: instances) {
     auto& id = instanceDescriptors[idx++];
-    uint32_t meshIdx = std::find_if(
+    auto meshIdx = std::find_if(
       meshIds.begin(), meshIds.end(), [&](Scene::MeshID id) {
         return id == instance.meshId;
       }
     ) - meshIds.begin();
 
-    id.accelerationStructureIndex = meshIdx;
+    id.accelerationStructureIndex = (uint32_t) meshIdx;
     id.intersectionFunctionTableOffset = 0;
     id.mask = 1;
 
@@ -386,8 +370,6 @@ void Renderer::rebuildAccelerationStructures() {
 }
 
 void Renderer::rebuildRenderTargets() {
-  ZoneScoped;
-
   if (m_renderTarget != nullptr) m_renderTarget->release();
   if (m_accumulator[0] != nullptr) m_accumulator[0]->release();
   if (m_accumulator[1] != nullptr) m_accumulator[1]->release();
@@ -398,18 +380,20 @@ void Renderer::rebuildRenderTargets() {
   texd->setTextureType(MTL::TextureType2D);
   texd->setWidth(static_cast<uint32_t>(m_viewportSize.x));
   texd->setHeight(static_cast<uint32_t>(m_viewportSize.y));
-  texd->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
   texd->setStorageMode(MTL::StorageModeShared);
 
+  texd->setUsage(MTL::TextureUsageShaderWrite | MTL::TextureUsageShaderRead);
   texd->setPixelFormat(MTL::PixelFormatRGBA32Float);
   m_accumulator[0] = m_device->newTexture(texd);
   m_accumulator[1] = m_device->newTexture(texd);
 
+  texd->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
   texd->setPixelFormat(MTL::PixelFormatRGBA16Float);
   m_renderTarget = m_device->newTexture(texd);
 
   // Temporary crap way of getting randomness into the shader
   // TODO: get a better source of scrambling (fast owen?)
+  texd->setUsage(MTL::TextureUsageShaderRead);
   texd->setPixelFormat(MTL::PixelFormatR32Uint);
   m_randomSource = m_device->newTexture(texd);
 
@@ -427,8 +411,6 @@ void Renderer::rebuildRenderTargets() {
 }
 
 void Renderer::updateConstants(Scene::NodeID cameraNodeId) {
-  ZoneScoped;
-
   auto node = m_store.scene().node(cameraNodeId);
   auto transform = m_store.scene().worldTransform(cameraNodeId);
   auto camera = m_store.scene().camera(node->cameraId.value());

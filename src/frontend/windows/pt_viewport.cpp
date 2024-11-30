@@ -1,7 +1,5 @@
 #include "pt_viewport.hpp"
 
-#include <tracy/Tracy.hpp>
-
 namespace pt::frontend::windows {
 
 
@@ -17,8 +15,6 @@ void RenderViewport::init(MTL::Device* device, MTL::CommandQueue* commandQueue) 
 }
 
 void RenderViewport::render() {
-  ZoneScoped;
-  
   updateScrollAndZoomState();
 
   ImGui::Begin("Render");
@@ -59,18 +55,6 @@ void RenderViewport::render() {
   }
   ImGui::EndDisabled();
 
-  ImGui::SameLine();
-  if (ImGui::GetContentRegionAvail().x < 380) ImGui::NewLine();
-  ImGui::BeginDisabled(m_useViewportSizeForRender);
-  ImGui::SetNextItemWidth(80.0f);
-  auto scaledSize = m_viewportSize * m_dpiScaling;
-  ImGui::InputFloat2("Render size", (float*) (m_useViewportSizeForRender ? &scaledSize : &m_nextRenderSize), "%.0f");
-  ImGui::EndDisabled();
-
-  ImGui::SameLine();
-  if (ImGui::GetContentRegionAvail().x < 220) ImGui::NewLine();
-  ImGui::Checkbox("Use viewport size", &m_useViewportSizeForRender);
-
   ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetStyle().ItemSpacing.x - 80);
   ImGui::BeginDisabled(!m_cameraNodeId || m_renderer->isRendering());
   bool render = ImGui::Button("Render", {80, 0})
@@ -93,7 +77,7 @@ void RenderViewport::render() {
     m_renderSize = m_useViewportSizeForRender
                    ? float2{size.x * m_dpiScaling, size.y * m_dpiScaling}
                    : m_nextRenderSize;
-    m_renderer->startRender(m_cameraNodeId.value(), m_renderSize);
+    m_renderer->startRender(m_cameraNodeId.value(), m_renderSize, (uint32_t) m_nextRenderSampleCount);
     m_state.setRendering(true);
   }
   m_renderer->render();
@@ -137,7 +121,7 @@ void RenderViewport::render() {
                      : accumulated == 0
                        ? "Ready"
                        : std::format("{} / {}", accumulated, total);
-  auto width = min(ImGui::GetContentRegionAvail().x, 300.0f);
+  auto width = min(ImGui::GetContentRegionAvail().x - 80.0f, 300.0f);
   ImGui::ProgressBar(progress, {width, 0}, progressStr.c_str());
 
   if (accumulated == total) m_state.setRendering(false);
@@ -147,6 +131,45 @@ void RenderViewport::render() {
   ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetStyle().ItemSpacing.x - textWidth);
   ImGui::Text("%s", time.c_str());
 
+  ImGui::End();
+  
+  /*
+   * Render settings window
+   */
+  
+  ImGui::Begin("Render Settings");
+  
+  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+  ImGui::BeginDisabled(cameras.empty());
+  if (ImGui::BeginCombo("##CameraSelect", label.c_str())) {
+    for (const auto& cd: cameras) {
+      auto name = std::format("{}##Camera_{}", m_store.scene().node(cd.nodeId)->name, cd.nodeId);
+      const bool isSelected = cd.nodeId == m_cameraNodeId;
+
+      if (widgets::selectable(name.c_str(), isSelected)) {
+        m_cameraNodeId = cd.nodeId;
+      }
+
+      if (isSelected) ImGui::SetItemDefaultFocus();
+    }
+    ImGui::EndCombo();
+  }
+  ImGui::EndDisabled();
+  
+  ImGui::SeparatorText("Output size");
+  
+  auto scaledSize = m_viewportSize * m_dpiScaling;
+  ImGui::BeginDisabled(m_useViewportSizeForRender);
+  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+  ImGui::InputFloat2("##OutputSize", (float*) (m_useViewportSizeForRender ? &scaledSize : &m_nextRenderSize), "%.0fpx");
+  ImGui::EndDisabled();
+
+  ImGui::Checkbox("Use viewport size", &m_useViewportSizeForRender);
+  
+  ImGui::SeparatorText("Renderer");
+  
+  ImGui::DragInt("Samples", &m_nextRenderSampleCount, 1, 0, 1 << 16);
+  
   ImGui::End();
 }
 

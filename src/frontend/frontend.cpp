@@ -5,7 +5,6 @@
 #include <imgui_internal.h>
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_metal.h>
-#include <tracy/Tracy.hpp>
 
 #include <utils/metal_utils.hpp>
 
@@ -198,8 +197,6 @@ void Frontend::start() {
     cmd->commit();
 
     autoreleasePool->release();
-
-    FrameMark;
   }
 
   /**
@@ -215,15 +212,11 @@ void Frontend::start() {
 }
 
 void Frontend::handleInput(const SDL_Event& event) {
-  ZoneScoped;
-
   if (m_studioViewport.handleInputs(event)) return;
   if (m_renderViewport.handleInputs(event)) return;
 }
 
 void Frontend::drawImGui() {
-  ZoneScoped;
-
   // Render main dockspace
   mainDockSpace();
 
@@ -250,7 +243,7 @@ void Frontend::drawImGui() {
 void Frontend::mainDockSpace() {
   ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDocking;
   windowFlags |= ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration;
-  windowFlags |= ImGuiWindowFlags_NoBackground;
+  windowFlags |= ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_MenuBar;
   windowFlags |=
     ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
@@ -291,9 +284,19 @@ void Frontend::mainDockSpace() {
         dockIdLeft, ImGuiDir_Down, 0.4f,
         nullptr, &dockIdLeft
       );
+      auto dockIdRight = ImGui::DockBuilderSplitNode(
+        dockSpaceId, ImGuiDir_Right, 0.35f,
+        nullptr, &dockSpaceId
+      );
+      auto dockIdRightLower = ImGui::DockBuilderSplitNode(
+        dockIdRight, ImGuiDir_Down, 0.6f,
+        nullptr, &dockIdRight
+      );
 
       ImGui::DockBuilderDockWindow("Scene Explorer", dockIdLeft);
       ImGui::DockBuilderDockWindow("Properties", dockIdLeftLower);
+      ImGui::DockBuilderDockWindow("Render", dockIdRight);
+      ImGui::DockBuilderDockWindow("Render Settings", dockIdRightLower);
       ImGui::DockBuilderDockWindow("Viewport", dockSpaceId);
       ImGui::DockBuilderFinish(dockSpaceId);
     }
