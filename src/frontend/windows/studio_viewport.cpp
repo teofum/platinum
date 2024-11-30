@@ -1,5 +1,7 @@
 #include "studio_viewport.hpp"
 
+#include <tracy/Tracy.hpp>
+
 namespace pt::frontend::windows {
 
 void StudioViewport::init(MTL::Device* device, MTL::CommandQueue* commandQueue) {
@@ -14,6 +16,8 @@ void StudioViewport::init(MTL::Device* device, MTL::CommandQueue* commandQueue) 
 }
 
 void StudioViewport::render() {
+  ZoneScoped;
+  
   updateScrollAndZoomState();
 
   auto [action, nodeId] = m_state.getNodeAction();
@@ -25,19 +29,25 @@ void StudioViewport::render() {
   ImGui::Begin("Viewport");
   ImGui::PopStyleVar();
 
-  auto pos = ImGui::GetCursorScreenPos();
-  m_viewportTopLeft = {pos.x, pos.y};
+  if (ImGui::IsItemVisible()) {
+    auto pos = ImGui::GetCursorScreenPos();
+    m_viewportTopLeft = {pos.x, pos.y};
 
-  auto size = ImGui::GetContentRegionAvail();
-  m_viewportSize = {size.x, size.y};
-  m_renderer->handleResizeViewport(m_viewportSize * m_dpiScaling);
+    auto size = ImGui::GetContentRegionAvail();
+    m_viewportSize = {size.x, size.y};
+    m_renderer->handleResizeViewport(m_viewportSize * m_dpiScaling);
 
-  m_renderer->render(m_state.selectedNode().value_or(0));
-  ImGui::Image(
-    (ImTextureID) m_renderer->presentRenderTarget(),
-    {m_viewportSize.x, m_viewportSize.y}
-  );
-  m_mouseInViewport = ImGui::IsItemHovered();
+    if (!m_state.rendering()) {
+      m_renderer->render(m_state.selectedNode().value_or(0));
+    }
+
+    ImGui::Image(
+      (ImTextureID) m_renderer->presentRenderTarget(),
+      {m_viewportSize.x, m_viewportSize.y}
+    );
+    m_mouseInViewport = ImGui::IsItemHovered();
+  }
+
   ImGui::End();
 }
 

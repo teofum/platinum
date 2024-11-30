@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <nfd.h>
 #include <SDL.h>
+#include <tracy/Tracy.hpp>
 
 #include <core/primitives.hpp>
 #include <loaders/gltf.hpp>
@@ -12,6 +13,8 @@ namespace fs = std::filesystem;
 namespace pt::frontend::windows {
 
 void SceneExplorer::render() {
+  ZoneScoped;
+
   ImGui::Begin("Scene Explorer");
 
   auto buttonWidth = widgets::getWidthForItems(2);

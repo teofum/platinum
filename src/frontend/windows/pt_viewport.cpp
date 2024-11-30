@@ -1,5 +1,7 @@
 #include "pt_viewport.hpp"
 
+#include <tracy/Tracy.hpp>
+
 namespace pt::frontend::windows {
 
 
@@ -15,6 +17,8 @@ void RenderViewport::init(MTL::Device* device, MTL::CommandQueue* commandQueue) 
 }
 
 void RenderViewport::render() {
+  ZoneScoped;
+  
   updateScrollAndZoomState();
 
   ImGui::Begin("Render");
@@ -90,6 +94,7 @@ void RenderViewport::render() {
                    ? float2{size.x * m_dpiScaling, size.y * m_dpiScaling}
                    : m_nextRenderSize;
     m_renderer->startRender(m_cameraNodeId.value(), m_renderSize);
+    m_state.setRendering(true);
   }
   m_renderer->render();
 
@@ -134,6 +139,8 @@ void RenderViewport::render() {
                        : std::format("{} / {}", accumulated, total);
   auto width = min(ImGui::GetContentRegionAvail().x, 300.0f);
   ImGui::ProgressBar(progress, {width, 0}, progressStr.c_str());
+
+  if (accumulated == total) m_state.setRendering(false);
 
   auto time = std::format("{:.3f}s", (float) m_renderer->renderTime() / 1000.0f);
   auto textWidth = ImGui::CalcTextSize(time.c_str()).x;

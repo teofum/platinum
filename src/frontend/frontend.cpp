@@ -5,6 +5,7 @@
 #include <imgui_internal.h>
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_metal.h>
+#include <tracy/Tracy.hpp>
 
 #include <utils/metal_utils.hpp>
 
@@ -197,6 +198,8 @@ void Frontend::start() {
     cmd->commit();
 
     autoreleasePool->release();
+
+    FrameMark;
   }
 
   /**
@@ -212,11 +215,15 @@ void Frontend::start() {
 }
 
 void Frontend::handleInput(const SDL_Event& event) {
+  ZoneScoped;
+
   if (m_studioViewport.handleInputs(event)) return;
   if (m_renderViewport.handleInputs(event)) return;
 }
 
 void Frontend::drawImGui() {
+  ZoneScoped;
+
   // Render main dockspace
   mainDockSpace();
 

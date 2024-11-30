@@ -2,6 +2,7 @@
 #include "utils/utils.hpp"
 
 #include <span>
+#include <tracy/Tracy.hpp>
 
 #include <utils/metal_utils.hpp>
 
@@ -29,6 +30,8 @@ Renderer::~Renderer() {
 }
 
 void Renderer::render() {
+  ZoneScoped;
+
   if (!m_renderTarget) return;
 
   auto cmd = m_commandQueue->commandBuffer();
@@ -107,6 +110,8 @@ void Renderer::render() {
 }
 
 void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize) {
+  ZoneScoped;
+
   if (!equal(viewportSize, m_viewportSize)) {
     m_viewportSize = viewportSize;
     m_aspect = m_viewportSize.x / m_viewportSize.y;
@@ -129,6 +134,8 @@ const MTL::Texture* Renderer::presentRenderTarget() const {
 NS::SharedPtr<MTL::AccelerationStructureGeometryDescriptor> Renderer::makeGeometryDescriptor(
   const Mesh* mesh
 ) {
+  ZoneScoped;
+
   auto desc = ns_shared<MTL::AccelerationStructureTriangleGeometryDescriptor>();
 
   desc->setIndexBuffer(mesh->indices());
@@ -153,6 +160,8 @@ NS::SharedPtr<MTL::AccelerationStructureGeometryDescriptor> Renderer::makeGeomet
 MTL::AccelerationStructure* Renderer::makeAccelStruct(
   MTL::AccelerationStructureDescriptor* desc
 ) {
+  ZoneScoped;
+
   /*
    * Create buffers and accel structure object
    */
@@ -205,6 +214,8 @@ MTL::AccelerationStructure* Renderer::makeAccelStruct(
 }
 
 void Renderer::buildPipelines() {
+  ZoneScoped;
+
   /*
    * Load the shader library
    */
@@ -271,6 +282,8 @@ void Renderer::buildPipelines() {
 }
 
 void Renderer::buildConstantsBuffer() {
+  ZoneScoped;
+
   m_constantsSize = sizeof(shaders_pt::Constants);
   m_constantsStride = utils::align(m_constantsSize, 256);
   m_constantsOffset = 0;
@@ -282,6 +295,8 @@ void Renderer::buildConstantsBuffer() {
 }
 
 void Renderer::rebuildResourcesBuffer() {
+  ZoneScoped;
+
   // Clear old buffer if present
   if (m_resourcesBuffer != nullptr) m_resourcesBuffer->release();
 
@@ -299,6 +314,8 @@ void Renderer::rebuildResourcesBuffer() {
 }
 
 void Renderer::rebuildAccelerationStructures() {
+  ZoneScoped;
+
   // Clear old acceleration structures, if any
 //  if (m_meshAccelStructs != nullptr) m_meshAccelStructs->release();
   if (m_instanceAccelStruct != nullptr) m_instanceAccelStruct->release();
@@ -369,6 +386,8 @@ void Renderer::rebuildAccelerationStructures() {
 }
 
 void Renderer::rebuildRenderTargets() {
+  ZoneScoped;
+
   if (m_renderTarget != nullptr) m_renderTarget->release();
   if (m_accumulator[0] != nullptr) m_accumulator[0]->release();
   if (m_accumulator[1] != nullptr) m_accumulator[1]->release();
@@ -408,6 +427,8 @@ void Renderer::rebuildRenderTargets() {
 }
 
 void Renderer::updateConstants(Scene::NodeID cameraNodeId) {
+  ZoneScoped;
+
   auto node = m_store.scene().node(cameraNodeId);
   auto transform = m_store.scene().worldTransform(cameraNodeId);
   auto camera = m_store.scene().camera(node->cameraId.value());

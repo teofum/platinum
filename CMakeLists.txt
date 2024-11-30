@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.29)
 project(platinum VERSION 0.1.0)
 
+include(FetchContent)
+
 # Build shaders using external tools
 function(build_shaders LIB_NAME)
     message(STATUS "Building shader lib: ${LIB_NAME}")
@@ -63,6 +65,16 @@ target_include_directories(ImGui PRIVATE ${SDL2}/Headers)
 target_link_libraries(ImGui PRIVATE METAL_CPP)
 target_link_libraries(ImGui PRIVATE ${SDL2}/SDL2)
 
+# Tracy
+#option(TRACY_ENABLE " " ON)
+FetchContent_Declare(tracy
+        GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+        GIT_TAG master
+        GIT_SHALLOW true
+        GIT_PROGRESS true
+)
+FetchContent_MakeAvailable(tracy)
+
 # Build shaders
 build_shaders(renderer_studio.metallib
         src/renderer_studio/shaders/main.metal
@@ -121,6 +133,7 @@ target_link_libraries(platinum PRIVATE ${SDL2}/SDL2)
 target_link_libraries(platinum PRIVATE ImGui)
 target_link_libraries(platinum PRIVATE ${fastgltf}/libfastgltf)
 target_link_libraries(platinum PRIVATE ${NFD}/libnfd)
+target_link_libraries(platinum PRIVATE Tracy::TracyClient)
 
 # metal-cpp
 

@@ -72,6 +72,14 @@ public:
     setNodeAction(NodeAction_Remove, id);
   }
 
+  [[nodiscard]] constexpr bool rendering() const {
+    return m_rendering;
+  }
+
+  constexpr void setRendering(bool rendering) {
+    m_rendering = rendering;
+  }
+
   void update();
 
 private:
@@ -83,6 +91,7 @@ private:
 
   int m_nodeAction = NodeAction_None;
   int m_removeOptions = 0;
+  bool m_rendering;
 };
 
 }

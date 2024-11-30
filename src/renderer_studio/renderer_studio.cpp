@@ -1,6 +1,8 @@
 #include "renderer_studio.hpp"
 
 #include <print>
+#include <tracy/Tracy.hpp>
+
 #include <utils/metal_utils.hpp>
 #include <utils/matrices.hpp>
 #include <utils/utils.hpp>
@@ -158,6 +160,8 @@ Scene::NodeID Renderer::readbackObjectIdAt(uint32_t x, uint32_t y) const {
 }
 
 void Renderer::render(Scene::NodeID selectedNodeId) {
+  ZoneScoped;
+
   // Don't render if the render targets are not initialized: this should only
   // happen in the first frame before handleResizeViewport() is called
   if (!m_primaryRenderTarget) return;
@@ -577,6 +581,8 @@ void Renderer::buildPipelines() {
 }
 
 void Renderer::rebuildDataBuffers() {
+  ZoneScoped;
+
   /*
    * Discard existing buffers
    */
@@ -687,6 +693,8 @@ void Renderer::rebuildRenderTargets() {
 }
 
 void Renderer::updateConstants() {
+  ZoneScoped;
+  
   shaders_studio::Constants constants = {
     m_camera.projection(m_aspect),
     m_camera.view(),

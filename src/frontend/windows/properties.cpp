@@ -1,10 +1,13 @@
 #include "properties.hpp"
 
 #include <misc/cpp/imgui_stdlib.h>
+#include <tracy/Tracy.hpp>
 
 namespace pt::frontend::windows {
 
 void Properties::render() {
+  ZoneScoped;
+  
   ImGui::Begin("Properties");
   if (m_state.selectedNode()) {
     renderNodeProperties(m_state.selectedNode().value());
