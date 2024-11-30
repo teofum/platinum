@@ -48,6 +48,7 @@ Frontend::InitResult Frontend::init() {
   style.PopupRounding = 4.0f;
   style.WindowRounding = 4.0f;
   style.IndentSpacing = 12.0f;
+  style.ChildBorderSize = 1.0f;
   style.TabBarOverlineSize = 0.0f;
   style.SeparatorTextBorderSize = 1.0f;
 
