@@ -17,9 +17,15 @@ public:
 
   ~Renderer();
 
-  void render(Scene::NodeID cameraNodeId, float2 viewportSize);
+  void render();
+
+  void startRender(Scene::NodeID cameraNodeId, float2 viewportSize);
 
   [[nodiscard]] const MTL::Texture* presentRenderTarget() const;
+
+  [[nodiscard]] bool isRendering() const;
+
+  [[nodiscard]] std::pair<size_t, size_t> renderProgress() const;
 
 private:
   // Store
@@ -55,7 +61,7 @@ private:
 
   // Frame data
   static constexpr const size_t m_maxFramesInFlight = 3;
-  size_t m_frameIdx = 0;
+  size_t m_frameIdx = 0, m_accumulationFrames = 100, m_accumulatedFrames = 0;
 
   MTL::AccelerationStructure* makeAccelStruct(MTL::AccelerationStructureDescriptor* desc);
 

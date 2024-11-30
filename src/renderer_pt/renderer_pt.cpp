@@ -29,50 +29,53 @@ Renderer::~Renderer() {
   if (m_constantsBuffer != nullptr) m_constantsBuffer->release();
 }
 
-void Renderer::render(Scene::NodeID cameraNodeId, float2 viewportSize) {
-  if (!equal(viewportSize, m_viewportSize)) {
-    m_viewportSize = viewportSize;
-    m_aspect = m_viewportSize.x / m_viewportSize.y;
-    rebuildRenderTargets();
-  }
-
-  updateConstants(cameraNodeId);
-  rebuildResourcesBuffer();
-  rebuildAccelerationStructures();
-
-  uint2 size{(uint32_t) m_viewportSize.x, (uint32_t) m_viewportSize.y};
-  auto threadsPerThreadgroup = MTL::Size(32, 32, 1);
-  auto threadgroups = MTL::Size(
-    (size.x + threadsPerThreadgroup.width - 1) / threadsPerThreadgroup.width,
-    (size.y + threadsPerThreadgroup.height - 1) / threadsPerThreadgroup.height,
-    1
-  );
+void Renderer::render() {
+  if (!m_renderTarget) return;
 
   auto cmd = m_commandQueue->commandBuffer();
-  auto computeEnc = cmd->computeCommandEncoder();
 
-  computeEnc->setBuffer(m_constantsBuffer, m_constantsOffset, 0);
-  computeEnc->setBuffer(m_resourcesBuffer, 0, 1);
-  computeEnc->setBuffer(m_instanceBuffer, 0, 2);
-
-  computeEnc->setAccelerationStructure(m_instanceAccelStruct, 3);
-
-  computeEnc->setTexture(m_accumulator[0], 0);
-  computeEnc->setTexture(m_accumulator[1], 1);
-
-  for (uint32_t i = 0; i < m_meshAccelStructs->count(); i++) {
-    computeEnc->useResource(
-      (MTL::AccelerationStructure*) m_meshAccelStructs->object(i),
-      MTL::ResourceUsageRead
+  /*
+   * If rendering the scene, run the path tracing kernel to accumulate samples
+   */
+  if (m_accumulatedFrames < m_accumulationFrames) {
+    uint2 size{(uint32_t) m_viewportSize.x, (uint32_t) m_viewportSize.y};
+    auto threadsPerThreadgroup = MTL::Size(32, 32, 1);
+    auto threadgroups = MTL::Size(
+      (size.x + threadsPerThreadgroup.width - 1) / threadsPerThreadgroup.width,
+      (size.y + threadsPerThreadgroup.height - 1) / threadsPerThreadgroup.height,
+      1
     );
+
+    auto computeEnc = cmd->computeCommandEncoder();
+
+    computeEnc->setBuffer(m_constantsBuffer, m_constantsOffset, 0);
+    computeEnc->setBuffer(m_resourcesBuffer, 0, 1);
+    computeEnc->setBuffer(m_instanceBuffer, 0, 2);
+
+    computeEnc->setAccelerationStructure(m_instanceAccelStruct, 3);
+
+    computeEnc->setTexture(m_accumulator[0], 0);
+    computeEnc->setTexture(m_accumulator[1], 1);
+
+    for (uint32_t i = 0; i < m_meshAccelStructs->count(); i++) {
+      computeEnc->useResource(
+        (MTL::AccelerationStructure*) m_meshAccelStructs->object(i),
+        MTL::ResourceUsageRead
+      );
+    }
+
+    computeEnc->setComputePipelineState(m_pathtracingPipeline);
+    computeEnc->dispatchThreadgroups(threadgroups, threadsPerThreadgroup);
+    computeEnc->endEncoding();
+
+    std::swap(m_accumulator[0], m_accumulator[1]);
+    m_accumulatedFrames++;
   }
 
-  computeEnc->setComputePipelineState(m_pathtracingPipeline);
-  computeEnc->dispatchThreadgroups(threadgroups, threadsPerThreadgroup);
-  computeEnc->endEncoding();
-
-  std::swap(m_accumulator[0], m_accumulator[1]);
-
+  /*
+   * Always run the post processing pass — this lets us change post process
+   * settings without rendering again
+   */
   auto rpd = ns_shared<MTL::RenderPassDescriptor>();
 
   rpd->colorAttachments()->object(0)->setTexture(m_renderTarget);
@@ -88,6 +91,20 @@ void Renderer::render(Scene::NodeID cameraNodeId, float2 viewportSize) {
   postEnc->endEncoding();
 
   cmd->commit();
+}
+
+void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize) {
+  if (!equal(viewportSize, m_viewportSize)) {
+    m_viewportSize = viewportSize;
+    m_aspect = m_viewportSize.x / m_viewportSize.y;
+    rebuildRenderTargets();
+  }
+
+  updateConstants(cameraNodeId);
+  rebuildResourcesBuffer();
+  rebuildAccelerationStructures();
+
+  m_accumulatedFrames = 0;
 }
 
 const MTL::Texture* Renderer::presentRenderTarget() const {
@@ -296,7 +313,7 @@ void Renderer::rebuildAccelerationStructures() {
   m_meshAccelStructs = NS::Array::array(
     (NS::Object**) meshAccelStructs.data(),
     meshAccelStructs.size()
-  );
+  )->retain();
 
   /*
    * Get instance data and build instance acceleration structure (TLAS)
@@ -400,6 +417,14 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId) {
   m_constantsOffset = (m_frameIdx % m_maxFramesInFlight) * m_constantsStride;
   void* bufferWrite = (char*) m_constantsBuffer->contents() + m_constantsOffset;
   memcpy(bufferWrite, &constants, m_constantsSize);
+}
+
+bool Renderer::isRendering() const {
+  return m_renderTarget != nullptr && m_accumulatedFrames < m_accumulationFrames;
+}
+
+std::pair<size_t, size_t> Renderer::renderProgress() const {
+  return {m_accumulatedFrames, m_accumulationFrames};
 }
 
 }

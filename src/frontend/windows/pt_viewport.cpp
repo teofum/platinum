@@ -68,25 +68,30 @@ void RenderViewport::render() {
   ImGui::Checkbox("Use viewport size", &m_useViewportSizeForRender);
 
   ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetStyle().ItemSpacing.x - 80);
-  ImGui::BeginDisabled(!m_cameraNodeId);
+  ImGui::BeginDisabled(!m_cameraNodeId || m_renderer->isRendering());
   bool render = ImGui::Button("Render", {80, 0})
                 || (ImGui::IsKeyPressed(ImGuiKey_Space, false) && !ImGui::IsAnyItemActive());
   ImGui::EndDisabled();
 
   ImGui::Spacing();
 
+  /*
+   * Start or continue render
+   */
   auto pos = ImGui::GetCursorScreenPos();
   m_viewportTopLeft = {pos.x, pos.y};
 
   auto size = ImGui::GetContentRegionAvail();
+  size.y -= ImGui::GetFrameHeight();
   m_viewportSize = {size.x, size.y};
 
-  if (render && m_cameraNodeId) {
+  if (render && m_cameraNodeId && !m_renderer->isRendering()) {
     m_renderSize = m_useViewportSizeForRender
                    ? float2{size.x * m_dpiScaling, size.y * m_dpiScaling}
                    : m_nextRenderSize;
-    m_renderer->render(m_cameraNodeId.value(), m_renderSize);
+    m_renderer->startRender(m_cameraNodeId.value(), m_renderSize);
   }
+  m_renderer->render();
 
   /*
    * Render viewport
@@ -95,7 +100,7 @@ void RenderViewport::render() {
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
   ImGui::BeginChild(
     "RenderView",
-    {0, 0},
+    size,
     ImGuiChildFlags_Borders,
     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
   );
@@ -116,6 +121,16 @@ void RenderViewport::render() {
   }
 
   ImGui::EndChild();
+
+  auto [accumulated, total] = m_renderer->renderProgress();
+  auto progress = (float) accumulated / (float) total;
+  auto progressStr = accumulated == total
+                     ? "Done!"
+                     : accumulated == 0
+                       ? "Ready"
+                       : std::format("{} / {}", accumulated, total);
+  auto width = min(ImGui::GetContentRegionAvail().x, 300.0f);
+  ImGui::ProgressBar(progress, {width, 0}, progressStr.c_str());
 
   ImGui::End();
 }
