@@ -148,8 +148,13 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
     primitiveVertexData.reserve(texAccessor.count);
 
     i = 0;
-    auto texCoordIt = fastgltf::iterateAccessor<float2>(*m_asset, texAccessor);
-    for (auto texCoords: texCoordIt) primitiveVertexData[i++].texCoords = texCoords;
+    if (texAccessor.type == fastgltf::AccessorType::Vec2) {
+      auto texCoordIt = fastgltf::iterateAccessor<float2>(*m_asset, texAccessor);
+      for (auto texCoords: texCoordIt) primitiveVertexData[i++].texCoords = texCoords;
+    } else {
+      auto texCoordIt = fastgltf::iterateAccessor<float3>(*m_asset, texAccessor);
+      for (auto texCoords: texCoordIt) primitiveVertexData[i++].texCoords = texCoords.xy;
+    }
 
     /*
      * Copy primitive vertex tangents, if present

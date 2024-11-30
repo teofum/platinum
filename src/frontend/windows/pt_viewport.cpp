@@ -82,7 +82,7 @@ void RenderViewport::render() {
   m_viewportTopLeft = {pos.x, pos.y};
 
   auto size = ImGui::GetContentRegionAvail();
-  size.y -= ImGui::GetFrameHeight();
+  size.y -= ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.y;
   m_viewportSize = {size.x, size.y};
 
   if (render && m_cameraNodeId && !m_renderer->isRendering()) {
