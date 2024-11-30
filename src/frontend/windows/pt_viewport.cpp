@@ -17,19 +17,48 @@ void RenderViewport::init(MTL::Device* device, MTL::CommandQueue* commandQueue) 
 void RenderViewport::render() {
   ImGui::Begin("Render");
 
-  if (ImGui::Button("Render") || ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
-    auto size = ImGui::GetContentRegionAvail();
-    auto cameras = m_store.scene().getAllCameras();
+  if (m_cameraNodeId && !m_store.scene().hasNode(m_cameraNodeId.value())) {
+    m_cameraNodeId = std::nullopt;
+  }
 
-    if (!cameras.empty()) {
+  auto cameras = m_store.scene().getAllCameras();
+  if (!m_cameraNodeId && !cameras.empty()) {
+    m_cameraNodeId = cameras[0].nodeId;
+  }
+
+  const auto& label = m_cameraNodeId
+                      ? m_store.scene().node(m_cameraNodeId.value())->name
+                      : "[No camera selected]";
+
+  ImGui::SetNextItemWidth(160.0);
+  ImGui::BeginDisabled(cameras.empty());
+  if (ImGui::BeginCombo("##CameraSelect", label.c_str())) {
+    for (const auto& cd: cameras) {
+      const auto& name = m_store.scene().node(cd.nodeId)->name;
+      const bool isSelected = cd.nodeId == m_cameraNodeId;
+
+      if (widgets::selectable(name.c_str(), isSelected)) {
+        m_cameraNodeId = cd.nodeId;
+      }
+
+      if (isSelected) ImGui::SetItemDefaultFocus();
+    }
+    ImGui::EndCombo();
+  }
+  ImGui::EndDisabled();
+
+  ImGui::SameLine();
+  ImGui::BeginDisabled(!m_cameraNodeId);
+  if (ImGui::Button("Render") || ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
+    if (m_cameraNodeId) {
+      auto size = ImGui::GetContentRegionAvail();
       m_renderer->render(
-        cameras[0].nodeId,
+        m_cameraNodeId.value(),
         {size.x * m_dpiScaling, size.y * m_dpiScaling}
       );
-    } else {
-      std::println("Cannot render: no camera in scene!");
     }
   }
+  ImGui::EndDisabled();
 
   auto vsize = ImGui::GetContentRegionAvail();
   auto renderTarget = m_renderer->presentRenderTarget();

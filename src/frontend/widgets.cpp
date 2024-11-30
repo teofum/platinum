@@ -10,7 +10,7 @@ float getWidthForItems(uint32_t n) {
 }
 
 void removeNodePopup(pt::frontend::State& state, pt::Scene::NodeID id) {
-  if (ImGui::BeginPopup("Remove_Popup")) {
+  if (popup("Remove_Popup")) {
     ImGui::PushStyleColor(
       ImGuiCol_FrameBg,
       ImGui::GetStyleColorVec4(ImGuiCol_WindowBg)
@@ -25,13 +25,13 @@ void removeNodePopup(pt::frontend::State& state, pt::Scene::NodeID id) {
     ImGui::Separator();
     ImGui::TextDisabled("Action for children:");
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
-    if (ImGui::Selectable("Remove")) {
+    if (selectable("Remove")) {
       state.removeNode(id, Scene::RemoveOptions_RemoveChildrenRecursively);
     }
-    if (ImGui::Selectable("Move to root")) {
+    if (selectable("Move to root")) {
       state.removeNode(id, Scene::RemoveOptions_MoveChildrenToRoot);
     }
-    if (ImGui::Selectable("Move to parent")) {
+    if (selectable("Move to parent")) {
       state.removeNode(id, Scene::RemoveOptions_MoveChildrenToParent);
     }
     ImGui::PopStyleVar();
@@ -111,19 +111,40 @@ bool buttonDanger(const char* label, const ImVec2& size) {
 bool selectableDanger(const char* label, bool selected, ImGuiSelectableFlags flags, const ImVec2& size) {
   ImGui::PushStyleColor(
     ImGuiCol_HeaderHovered,
-    (ImVec4) ImColor::HSV(0.0f, 0.15f, 0.95f)
+    (ImVec4) ImColor::HSV(0.0f, 0.3f, 0.95f)
   );
   ImGui::PushStyleColor(
     ImGuiCol_HeaderActive,
-    (ImVec4) ImColor::HSV(0.0f, 0.2f, 0.93f)
+    (ImVec4) ImColor::HSV(0.0f, 0.4f, 0.93f)
   );
   ImGui::PushStyleColor(
     ImGuiCol_Text,
     (ImVec4) ImColor::HSV(0.0f, 0.8f, 0.5f)
   );
-  const bool clicked = ImGui::Selectable(label, selected, flags, size);
+  const bool clicked = selectable(label, selected, flags, size);
   ImGui::PopStyleColor(3);
   return clicked;
+}
+
+bool selectable(const char* label, bool selected, ImGuiSelectableFlags flags, const ImVec2& size) {
+  ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
+  const bool clicked = ImGui::Selectable(label, selected, flags, size);
+  ImGui::PopStyleVar();
+  return clicked;
+}
+
+bool popup(const char* str_id, ImGuiWindowFlags flags) {
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8, 6});
+  bool open = ImGui::BeginPopup(str_id, flags);
+  ImGui::PopStyleVar();
+  return open;
+}
+
+bool context(const char* str_id, ImGuiPopupFlags flags) {
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8, 6});
+  bool open = ImGui::BeginPopupContextItem(str_id, flags);
+  ImGui::PopStyleVar();
+  return open;
 }
 
 }

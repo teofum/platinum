@@ -49,6 +49,9 @@ private:
   float2 m_viewportTopLeft = {0, 0};
   float& m_dpiScaling;
 
+  // Render settings
+  std::optional<Scene::NodeID> m_cameraNodeId;
+
   void updateScrollAndZoomState();
 };
 

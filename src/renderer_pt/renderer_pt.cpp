@@ -381,7 +381,7 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId) {
 
   auto u = transform.columns[0].xyz;
   auto v = transform.columns[1].xyz;
-  auto w = -transform.columns[2].xyz;
+  auto w = transform.columns[2].xyz;
   auto pos = transform.columns[3].xyz;
 
   auto vu = u * vw;

@@ -19,7 +19,19 @@ bool selectableDanger(
   const char* label,
   bool selected = false,
   ImGuiSelectableFlags flags = 0,
-  const ImVec2& size = ImVec2(0, 0));
+  const ImVec2& size = ImVec2(0, 0)
+);
+
+bool selectable(
+  const char* label,
+  bool selected = false,
+  ImGuiSelectableFlags flags = 0,
+  const ImVec2& size = ImVec2(0, 0)
+);
+
+bool popup(const char* str_id, ImGuiWindowFlags flags = 0);
+
+bool context(const char* str_id = nullptr, ImGuiPopupFlags flags = 1);
 
 }
 

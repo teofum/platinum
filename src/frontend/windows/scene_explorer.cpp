@@ -18,15 +18,15 @@ void SceneExplorer::render() {
   if (ImGui::Button("Add Objects...", {buttonWidth, 0})) {
     ImGui::OpenPopup("AddObject_Popup");
   }
-  if (ImGui::BeginPopup("AddObject_Popup")) {
-    if (ImGui::Selectable("Cube", false, 0, {100, 0})) {
+  if (widgets::popup("AddObject_Popup")) {
+    if (widgets::selectable("Cube", false, 0, {100, 0})) {
       uint32_t parentIdx = m_state.selectedNode().value_or(0);
 
       auto cube = pt::primitives::cube(m_store.device(), 2.0f);
       auto idx = m_store.scene().addMesh(std::move(cube));
       m_store.scene().addNode(pt::Scene::Node("Cube", idx), parentIdx);
     }
-    if (ImGui::Selectable("Sphere", false, 0, {100, 0})) {
+    if (widgets::selectable("Sphere", false, 0, {100, 0})) {
       uint32_t parentIdx = m_state.selectedNode().value_or(0);
 
       auto sphere = pt::primitives::sphere(m_store.device(), 1.0f, 24, 32);
@@ -40,8 +40,8 @@ void SceneExplorer::render() {
   if (ImGui::Button("Import...", {buttonWidth, 0})) {
     ImGui::OpenPopup("Import_Popup");
   }
-  if (ImGui::BeginPopup("Import_Popup")) {
-    if (ImGui::Selectable("glTF", false, 0, {100, 0})) {
+  if (widgets::popup("Import_Popup")) {
+    if (widgets::selectable("glTF", false, 0, {100, 0})) {
       char* path = nullptr;
       auto result = NFD_OpenDialog("*.glb, *.gltf", "../assets", &path);
 
@@ -115,8 +115,8 @@ void SceneExplorer::renderNode(Scene::NodeID id, uint32_t level) {
   /*
    * Context menu
    */
-  if (ImGui::BeginPopupContextItem()) {
-    if (ImGui::Selectable("Center camera")) {
+  if (widgets::context()) {
+    if (widgets::selectable("Center camera")) {
       m_state.setNodeAction(State::NodeAction_CenterCamera, id);
     }
 

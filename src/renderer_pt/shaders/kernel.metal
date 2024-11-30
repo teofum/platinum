@@ -33,7 +33,7 @@ kernel void pathtracingKernel(
          */
         ray ray;
         ray.origin = camera.position;
-        ray.direction = -normalize((camera.topLeft
+        ray.direction = normalize((camera.topLeft
                                    + pixel.x * camera.pixelDeltaU
                                    + pixel.y * camera.pixelDeltaV
                                    ) - camera.position);

@@ -82,6 +82,10 @@ public:
     return m_nodes.at(0).get();
   }
 
+  [[nodiscard]] constexpr bool hasNode(NodeID id) const {
+    return m_nodes.contains(id);
+  }
+
   [[nodiscard]] constexpr const Node* node(NodeID id) const {
     return m_nodes.at(id).get();
   }

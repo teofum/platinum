@@ -38,7 +38,7 @@ struct Transform {
     const auto S = mat::scaling(scale);
 
     if (track) {
-      const auto up = equal(translation.xz, target.xz) ? float3{0, 0, 1} : float3{0, -1, 0};
+      const auto up = equal(translation.xz, target.xz) ? float3{0, 0, 1} : float3{0, 1, 0};
       const auto L = inverse(mat::lookAt(translation, target, up));
       return L * S;
     }
@@ -54,7 +54,7 @@ struct Transform {
     const auto S = simd_diagonal_matrix(scale);
 
     if (track) {
-      const auto up = equal(translation.xz, target.xz) ? float3{0, 0, 1} : float3{0, -1, 0};
+      const auto up = equal(translation.xz, target.xz) ? float3{0, 0, 1} : float3{0, 1, 0};
       const auto L = inverse(mat::lookAt(translation, target, up));
       return mat::submatrix3(L) * S;
     }
