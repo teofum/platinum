@@ -34,7 +34,7 @@ void RenderViewport::render() {
   ImGui::BeginDisabled(cameras.empty());
   if (ImGui::BeginCombo("##CameraSelect", label.c_str())) {
     for (const auto& cd: cameras) {
-      const auto& name = m_store.scene().node(cd.nodeId)->name;
+      auto name = std::format("{}##Camera_{}", m_store.scene().node(cd.nodeId)->name, cd.nodeId);
       const bool isSelected = cd.nodeId == m_cameraNodeId;
 
       if (widgets::selectable(name.c_str(), isSelected)) {
@@ -49,7 +49,7 @@ void RenderViewport::render() {
 
   ImGui::SameLine();
   ImGui::BeginDisabled(!m_cameraNodeId);
-  if (ImGui::Button("Render") || ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
+  if (ImGui::Button("Render") || (ImGui::IsKeyPressed(ImGuiKey_Space, false) && !ImGui::IsAnyItemActive())) {
     if (m_cameraNodeId) {
       auto size = ImGui::GetContentRegionAvail();
       m_renderer->render(
