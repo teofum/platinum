@@ -130,6 +130,8 @@ float4x4 scaling(float s) {
 }
 
 float4x4 lookAt(float3 position, float3 target, float3 up) {
+  if (equal(position, target)) return identity();
+
   const float3 f = normalize(position - target);
   const float3 s = normalize(cross(up, f));
   const float3 u = cross(f, s);
@@ -162,18 +164,6 @@ float3x3 submatrix3(float4x4 m) {
     m.columns[0].xyz,
     m.columns[1].xyz,
     m.columns[2].xyz,
-  };
-}
-
-float4x4 perspectiveInf(float fov, float aspect, float near) {
-  const float sy = 1.0f / std::tan(fov * 0.5f);
-  const float sx = sy / aspect;
-
-  return {
-    float4{sx, 0.0f, 0.0f, 0.0f},
-    float4{0.0f, sy, 0.0f, 0.0f},
-    float4{0.0f, 0.0f, -1.0f, -1.0f},
-    float4{0.0f, 0.0f, -2.0f * near, 0.0f},
   };
 }
 

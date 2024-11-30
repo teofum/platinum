@@ -57,8 +57,8 @@ public:
   };
 
   enum RemoveOptions {
-    RemoveOptions_KeepOrphanedMeshes = 0,
-    RemoveOptions_RemoveOrphanedObjects = 1 << 0,
+    RemoveOptions_RemoveOrphanedObjects = 0,
+    RemoveOptions_KeepOrphanedObjects = 1 << 0,
     RemoveOptions_RemoveChildrenRecursively = 0,
     RemoveOptions_MoveChildrenToRoot = 1 << 1,
     RemoveOptions_MoveChildrenToParent = 1 << 2,
@@ -72,11 +72,7 @@ public:
 
   NodeID addNode(Node&& node, NodeID parent = 0);
 
-  void removeNode(
-    NodeID id,
-    int flags = RemoveOptions_RemoveOrphanedObjects |
-                RemoveOptions_RemoveChildrenRecursively
-  );
+  void removeNode(NodeID id, int flags = 0);
 
   bool moveNode(NodeID id, NodeID targetId);
 

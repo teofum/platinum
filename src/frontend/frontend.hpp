@@ -9,20 +9,31 @@
 #include <QuartzCore/QuartzCore.hpp>
 
 #include <core/store.hpp>
-#include <renderer_studio/renderer_studio.hpp>
 #include <renderer_pt/renderer_pt.hpp>
+#include <frontend/state.hpp>
+#include <frontend/windows/properties.hpp>
+#include <frontend/windows/scene_explorer.hpp>
+#include <frontend/windows/studio_viewport.hpp>
+#include <frontend/windows/pt_viewport.hpp>
 
 namespace pt::frontend {
 
 class Frontend {
 public:
+  enum InitResult {
+    InitResult_Ok = 0,
+    InitResult_SDLInitFailed,
+    InitResult_SDLCreateWindowFailed,
+    InitResult_SDLCreateRendererFailed,
+  };
+
   explicit Frontend(Store& store) noexcept;
 
   ~Frontend();
 
-  void start();
+  InitResult init();
 
-  void init();
+  void start();
 
 private:
   static constexpr const std::string m_defaultTitle = "Pt [SDL2 | Metal]";
@@ -32,66 +43,31 @@ private:
   SDL_Renderer* m_sdlRenderer = nullptr;
   const uint8_t* m_keys = nullptr;
 
-  // Scroll state (smooth scrolling/trackpad support)
-  static constexpr const float m_scrollSensitivity = 10.0f;
-  static constexpr const float m_scrollFriction = 0.001f;
-  static constexpr const float m_scrollStop = 0.001f;
-  bool m_scrolling = false;
-  float2 m_scrollLastPos = {0, 0};
-  float2 m_scrollSpeed = {0, 0};
-
-  // Pinch state (pinch-to-zoom support)
-  static constexpr const float m_zoomSensitivity = 1.0f;
-  static constexpr const float m_zoomFriction = 0.001f;
-  static constexpr const float m_zoomStop = 0.001f;
-  bool m_zooming = false;
-  float m_zoomSpeed = 0.0f;
-
   // Metal
   CA::MetalLayer* m_layer = nullptr;
   MTL::Device* m_device = nullptr;
   MTL::CommandQueue* m_commandQueue = nullptr;
 
-  // Store
+  // Store and frontend shared state
   Store& m_store;
+  State m_state;
 
-  // Renderer
-  std::unique_ptr<renderer_studio::Renderer> m_renderer;
-  std::unique_ptr<renderer_pt::Renderer> m_ptRenderer;
+  // Windows
+  windows::Properties m_properties;
+  windows::SceneExplorer m_sceneExplorer;
+  windows::StudioViewport m_studioViewport;
+  windows::RenderViewport m_renderViewport;
 
   // ImGui
   bool m_initialized = false;
   float m_clearColor[4] = {0.45f, 0.55f, 0.6f, 1.0f};
   float m_dpiScaling = 1.0f;
-  float2 m_viewportSize = {1, 1};
-  float2 m_viewportTopLeft = {0, 0};
-  bool m_mouseInViewport = false;
-
-  // Scene Explorer / Properties state
-  std::optional<Scene::NodeID> m_selectedNodeId, m_nextNodeId, m_removeNodeId;
-  std::optional<Scene::MeshID> m_selectedMeshId, m_nextMeshId;
-  std::optional<Scene::CameraID> m_selectedCameraId, m_nextCameraId;
-  bool m_keepOrphanedMeshes = false;
-  int m_removeOptions = 0;
 
   void drawImGui();
 
   void handleInput(const SDL_Event& event);
 
-  void handleScrollAndZoomState();
-
-  /**
-   * ImGui windows
-   */
   void mainDockSpace();
-
-  void sceneExplorer();
-
-  void sceneExplorerNode(Scene::NodeID idx, uint32_t level = 1);
-
-  void properties();
-
-  bool removeNodePopup(int& removeOptions);
 };
 
 }

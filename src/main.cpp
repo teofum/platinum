@@ -5,11 +5,15 @@
 #include <frontend/frontend.hpp>
 
 int main() {
+  NS::AutoreleasePool* autoreleasePool = NS::AutoreleasePool::alloc()->init();
+
   pt::Store store;
 
   pt::Scene& scene = store.scene();
   pt::frontend::Frontend fe(store);
-  fe.init();
+  
+  auto res = fe.init();
+  if (res != pt::frontend::Frontend::InitResult_Ok) return res;
 
   // Default cube
   auto cube = pt::primitives::cube(store.device(), 2.0f);
@@ -26,5 +30,6 @@ int main() {
 
   fe.start();
 
+  autoreleasePool->release();
   return 0;
 }

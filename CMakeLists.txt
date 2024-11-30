@@ -94,6 +94,20 @@ add_executable(platinum
         renderer_pt.metallib
         src/renderer_pt/renderer_pt.cpp
         src/renderer_pt/renderer_pt.hpp
+        src/frontend/window.cpp
+        src/frontend/window.hpp
+        src/frontend/state.cpp
+        src/frontend/state.hpp
+        src/frontend/windows/properties.cpp
+        src/frontend/windows/properties.hpp
+        src/frontend/widgets.cpp
+        src/frontend/widgets.hpp
+        src/frontend/windows/scene_explorer.cpp
+        src/frontend/windows/scene_explorer.hpp
+        src/frontend/windows/studio_viewport.cpp
+        src/frontend/windows/studio_viewport.hpp
+        src/frontend/windows/pt_viewport.cpp
+        src/frontend/windows/pt_viewport.hpp
 )
 
 target_include_directories(platinum PRIVATE src)
