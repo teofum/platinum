@@ -158,8 +158,8 @@ kernel void pathtracingKernel(
             
             float3 wsSurfaceNormal = normalize(transformVec(surfaceNormal, objectToWorld));
             
-            r = float2(halton(offset + constants.frameIdx, 2 + bounce * 2 + 0),
-                       halton(offset + constants.frameIdx, 2 + bounce * 2 + 1));
+            r = float2(halton(offset + constants.frameIdx, 2 + bounce * 3 + 0),
+                       halton(offset + constants.frameIdx, 2 + bounce * 3 + 1));
             
             float3 wsSampleDirection = sampleCosineHemisphere(r);
             
@@ -167,6 +167,12 @@ kernel void pathtracingKernel(
             ray.direction = alignHemisphereWithNormal(wsSampleDirection, wsSurfaceNormal);
             
             attenuation *= 0.8;
+            
+            if (bounce > 0) {
+                float q = max(0.0, 1.0 - max(attenuation.r, max(attenuation.g, attenuation.b)));
+                if (halton(offset + constants.frameIdx, 2 + bounce * 3 + 2) < q) break;
+                attenuation /= 1.0 - q;
+            }
         }
         
         /*
