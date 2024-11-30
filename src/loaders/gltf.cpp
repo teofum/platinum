@@ -199,7 +199,7 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
     const auto& idxAccesor = m_asset->accessors[prim.indicesAccessor.value()];
     primitiveIndices.reserve(idxAccesor.count);
     auto idxIt = fastgltf::iterateAccessor<uint32_t>(*m_asset, idxAccesor);
-    for (uint32_t idx: idxIt) primitiveIndices.push_back(idx + offset);
+    for (uint32_t idx: idxIt) primitiveIndices.push_back(idx + (uint32_t)offset);
 
     indices.insert(indices.end(), primitiveIndices.begin(), primitiveIndices.end());
   }

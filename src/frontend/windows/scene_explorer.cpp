@@ -20,18 +20,31 @@ void SceneExplorer::render() {
   }
   if (widgets::popup("AddObject_Popup")) {
     if (widgets::selectable("Cube", false, 0, {100, 0})) {
-      uint32_t parentIdx = m_state.selectedNode().value_or(0);
+      uint32_t parentId = m_state.selectedNode().value_or(0);
 
       auto cube = pt::primitives::cube(m_store.device(), 2.0f);
-      auto idx = m_store.scene().addMesh(std::move(cube));
-      m_store.scene().addNode(pt::Scene::Node("Cube", idx), parentIdx);
+      auto id = m_store.scene().addMesh(std::move(cube));
+      m_store.scene().addNode(pt::Scene::Node("Cube", id), parentId);
     }
     if (widgets::selectable("Sphere", false, 0, {100, 0})) {
-      uint32_t parentIdx = m_state.selectedNode().value_or(0);
+      uint32_t parentId = m_state.selectedNode().value_or(0);
 
       auto sphere = pt::primitives::sphere(m_store.device(), 1.0f, 24, 32);
-      auto idx = m_store.scene().addMesh(std::move(sphere));
-      m_store.scene().addNode(pt::Scene::Node("Sphere", idx), parentIdx);
+      auto id = m_store.scene().addMesh(std::move(sphere));
+      m_store.scene().addNode(pt::Scene::Node("Sphere", id), parentId);
+    }
+    
+    ImGui::Separator();
+    
+    if (widgets::selectable("Camera", false, 0, {100, 0})) {
+      uint32_t parentId = m_state.selectedNode().value_or(0);
+
+      auto id = m_store.scene().addCamera(Camera::withFocalLength(28.0f));
+      pt::Scene::Node node("Camera");
+      node.cameraId = id;
+      node.transform.translation = {-5, 5, 5};
+      node.transform.track = true;
+      m_store.scene().addNode(std::move(node), parentId);
     }
     ImGui::EndPopup();
   }

@@ -99,7 +99,7 @@ NS::SharedPtr<MTL::Function> getFunction(MTL::Library* lib, const char* name) {
   return NS::TransferPtr(lib->newFunction(nsName));
 }
 
-NS::SharedPtr<MTL::Function> metal_utils::getFunction(
+NS::SharedPtr<MTL::Function> getFunction(
   MTL::Library* lib,
   const char* name,
   const FunctionParams& params

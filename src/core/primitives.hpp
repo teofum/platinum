@@ -10,8 +10,8 @@ namespace pt::primitives {
 [[nodiscard]] Mesh sphere(
   MTL::Device* device,
   float radius,
-  size_t lat,
-  size_t lng
+  uint32_t lat,
+  uint32_t lng
 );
 
 }

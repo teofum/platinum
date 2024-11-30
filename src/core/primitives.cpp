@@ -26,12 +26,12 @@ Mesh cube(MTL::Device* device, float side) {
     float2{-1, 1},
   };
 
-  for (size_t i = 0; i < 6; i++) {
+  for (uint32_t i = 0; i < 6; i++) {
     const float3& fn = faceNormals[i];
     const float3 up = abs(fn.y) == 1.0f ? float3{1, 0, 0} : float3{0, 1, 0};
     const float3 right = cross(up, fn);
 
-    for (size_t j = 0; j < 4; j++) {
+    for (uint32_t j = 0; j < 4; j++) {
       const float2& fp = facePositions[j];
       vertices[4 * i + j] = (fn + up * fp.x + right * fp.y) * h;
       vData[4 * i + j] = {fn, make_float4(right, 1.0f), fp};
@@ -48,7 +48,7 @@ Mesh cube(MTL::Device* device, float side) {
   return {device, vertices, vData, indices};
 }
 
-Mesh sphere(MTL::Device* device, float radius, size_t lat, size_t lng) {
+Mesh sphere(MTL::Device* device, float radius, uint32_t lat, uint32_t lng) {
   std::vector<float3> vertices((lat + 1) * (lng + 1));
   std::vector<VertexData> vData((lat + 1) * (lng + 1));
   std::vector<uint32_t> indices(lat * lng * 6);
@@ -57,12 +57,12 @@ Mesh sphere(MTL::Device* device, float radius, size_t lat, size_t lng) {
   const float dLat = pi / static_cast<float>(lat);
   const float dLng = pi / static_cast<float>(lng) * 2.0f;
 
-  size_t t = 0;
-  for (size_t i = 0; i <= lat; i++) {
+  uint32_t t = 0;
+  for (uint32_t i = 0; i <= lat; i++) {
     const float phi = 0.5f * pi - static_cast<float>(i) * dLat;
     const float c = cos(phi);
 
-    for (size_t j = 0; j <= lng; j++) {
+    for (uint32_t j = 0; j <= lng; j++) {
       const float theta = static_cast<float>(j) * dLng;
 
       float3 pos{c * cos(theta), sin(phi), c * sin(theta)};
@@ -77,7 +77,7 @@ Mesh sphere(MTL::Device* device, float radius, size_t lat, size_t lng) {
       };
 
       if (i > 0 && j > 0) {
-        const size_t
+        const uint32_t
           v0 = (i - 1) * (lng + 1) + (j - 1),
           v1 = (i - 1) * (lng + 1) + (j),
           v2 = (i) * (lng + 1) + (j - 1),

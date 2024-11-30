@@ -63,7 +63,6 @@ struct RenderPipelineParams {
 
 /**
  * Utility function to make a render pipeline descriptor in a less verbose way.
- * @param params
  * @return NS::SharedPtr to a render pipeline descriptor.
  */
 NS::SharedPtr<MTL::RenderPipelineDescriptor> makeRenderPipelineDescriptor(const RenderPipelineParams& params);
@@ -75,7 +74,6 @@ struct ComputePipelineParams {
 
 /**
  * Utility function to make a compute pipeline descriptor in a less verbose way.
- * @param params
  * @return NS::SharedPtr to a compute pipeline descriptor.
  */
 NS::SharedPtr<MTL::ComputePipelineDescriptor> makeComputePipelineDescriptor(const ComputePipelineParams& params);
@@ -99,17 +97,12 @@ struct VertexParams {
 
 /**
  * Utility function to make a vertex descriptor in a less verbose way.
- * @param params
  * @return NS::SharedPtr to a vertex descriptor.
  */
 NS::SharedPtr<MTL::VertexDescriptor> makeVertexDescriptor(const VertexParams& params);
 
 /**
  * Utility function to enable alpha blending for a color attachment.
- * @param cad
- * @param operation
- * @param sourceFactor
- * @param destFactor
  */
 void enableBlending(
   MTL::RenderPipelineColorAttachmentDescriptor* cad,

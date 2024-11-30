@@ -97,7 +97,7 @@ void Properties::renderCameraProperties(Scene::CameraID id) {
 
   auto users = std::format(
     "{} users",
-    m_store.scene().meshUsers(id)
+    m_store.scene().cameraUsers(id)
   );
   auto availableWidth = ImGui::GetContentRegionAvail().x;
   ImGui::SameLine(availableWidth - ImGui::CalcTextSize(users.c_str()).x);
