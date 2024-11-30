@@ -135,7 +135,7 @@ void RenderViewport::render() {
   auto width = min(ImGui::GetContentRegionAvail().x, 300.0f);
   ImGui::ProgressBar(progress, {width, 0}, progressStr.c_str());
 
-  auto time = std::format("{:3}s", (float) m_renderer->renderTime() / 1000.0f);
+  auto time = std::format("{:.3f}s", (float) m_renderer->renderTime() / 1000.0f);
   auto textWidth = ImGui::CalcTextSize(time.c_str()).x;
   ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetStyle().ItemSpacing.x - textWidth);
   ImGui::Text("%s", time.c_str());

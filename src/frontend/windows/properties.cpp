@@ -34,7 +34,8 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
     float buttonWidth = 60.0f;
     ImGui::SameLine(ImGui::GetContentRegionAvail().x - buttonWidth + ImGui::GetStyle().ItemSpacing.x);
 
-    if (widgets::buttonDanger("Remove", {buttonWidth, 0})) {
+    if (widgets::buttonDanger("Remove", {buttonWidth, 0}) ||
+        (ImGui::IsKeyPressed(ImGuiKey_Backspace, false) && !ImGui::IsAnyItemActive())) {
       if (!node->children.empty()) ImGui::OpenPopup("Remove_Popup");
       else m_state.removeNode(id);
     }
