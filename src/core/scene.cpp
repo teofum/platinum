@@ -207,14 +207,12 @@ void Scene::traverseHierarchy(
   };
 
   while (!stack.empty()) {
-    const auto& node = stack.back();
+    const auto& [currentId, parentMatrix] = stack.back();
     stack.pop_back();
 
-    NodeID currentId = node.first;
     const auto& current = m_nodes.at(currentId);
     if (filter && !(current->flags & filter)) continue;
 
-    const float4x4& parentMatrix = node.second;
     const float4x4 transformMatrix = parentMatrix * current->transform.matrix();
     cb(currentId, current.get(), transformMatrix);
 

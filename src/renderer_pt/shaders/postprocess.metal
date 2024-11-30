@@ -3,6 +3,7 @@
 #include "../pt_shader_defs.hpp"
 
 using namespace metal;
+using namespace pt::shaders_pt;
 
 // Screen filling quad in normalized device coordinates
 constant float2 quadVertices[] = {

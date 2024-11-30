@@ -3,6 +3,7 @@
 #include "../shader_defs.hpp"
 
 using namespace metal;
+using namespace pt::shaders_studio;
 
 struct VertexOut {
     float4 position [[position]];

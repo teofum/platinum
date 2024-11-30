@@ -4,6 +4,7 @@
 #include <Metal/Metal.hpp>
 
 #include <core/store.hpp>
+#include "pt_shader_defs.hpp"
 
 namespace pt::renderer_pt {
 
@@ -46,6 +47,7 @@ private:
   // Render targets
   MTL::Texture* m_accumulator[2] = {nullptr, nullptr};
   MTL::Texture* m_renderTarget = nullptr;
+  MTL::Texture* m_randomSource = nullptr;
 
   // Acceleration structures
   NS::Array* m_meshAccelStructs = nullptr;
@@ -53,6 +55,7 @@ private:
   MTL::Buffer* m_instanceBuffer = nullptr;
 
   // Constants and resources
+  shaders_pt::Constants m_constants = {};
   MTL::Buffer* m_constantsBuffer = nullptr;
   size_t m_constantsSize = 0, m_constantsStride = 0, m_constantsOffset = 0;
 

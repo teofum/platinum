@@ -8,6 +8,10 @@
 
 using namespace simd;
 
+// Don't nest namespaces here, the MSL compiler complains it's a C++ 17 ext
+namespace pt { // NOLINT(*-concat-nested-namespaces)
+namespace shaders_studio {
+
 struct PostPassVertex {
   float2 position [[attribute(0)]];
 };
@@ -38,6 +42,9 @@ struct GridProperties {
   float3 zAxisColor = {0, 0, 0.4};
   uint32_t level = 0;
 };
+
+}
+}
 
 #endif //PLATINUM_SHADER_DEFS_HPP
 

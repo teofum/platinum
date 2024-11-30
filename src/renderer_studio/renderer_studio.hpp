@@ -77,7 +77,7 @@ private:
   // Grid pass pipeline state
   MTL::RenderPipelineState* m_gridPassPso = nullptr;
   MTL::DepthStencilState* m_gridPassDsso = nullptr;
-  static constexpr const GridProperties m_gridProperties = {
+  static constexpr const shaders_studio::GridProperties m_gridProperties = {
     .size = 10000.0f,
     .spacing = 0.1f,
     .lineWidth = 1.0f,

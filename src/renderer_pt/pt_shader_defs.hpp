@@ -8,6 +8,10 @@
 
 using namespace simd;
 
+// Don't nest namespaces here, the MSL compiler complains it's a C++ 17 ext
+namespace pt { // NOLINT(*-concat-nested-namespaces)
+namespace shaders_pt {
+
 struct PrimitiveData {
   uint32_t indices[3];
 };
@@ -20,9 +24,13 @@ struct CameraData {
 };
 
 struct Constants {
+  uint32_t frameIdx;
   uint2 size;
   CameraData camera;
 };
+
+}
+}
 
 #endif //PLATINUM_PT_SHADER_DEFS_HPP
 

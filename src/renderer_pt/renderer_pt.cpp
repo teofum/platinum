@@ -4,7 +4,6 @@
 #include <span>
 
 #include <utils/metal_utils.hpp>
-#include "pt_shader_defs.hpp"
 
 namespace pt::renderer_pt {
 using metal_utils::ns_shared;
@@ -35,6 +34,14 @@ void Renderer::render() {
   auto cmd = m_commandQueue->commandBuffer();
 
   /*
+   * Update frame index and write constants buffer
+   */
+  m_constants.frameIdx = m_accumulatedFrames;
+  m_constantsOffset = (m_frameIdx % m_maxFramesInFlight) * m_constantsStride;
+  void* bufferWrite = (char*) m_constantsBuffer->contents() + m_constantsOffset;
+  memcpy(bufferWrite, &m_constants, m_constantsSize);
+
+  /*
    * If rendering the scene, run the path tracing kernel to accumulate samples
    */
   if (m_accumulatedFrames < m_accumulationFrames) {
@@ -56,6 +63,7 @@ void Renderer::render() {
 
     computeEnc->setTexture(m_accumulator[0], 0);
     computeEnc->setTexture(m_accumulator[1], 1);
+    computeEnc->setTexture(m_randomSource, 2);
 
     for (uint32_t i = 0; i < m_meshAccelStructs->count(); i++) {
       computeEnc->useResource(
@@ -129,8 +137,8 @@ NS::SharedPtr<MTL::AccelerationStructureGeometryDescriptor> Renderer::makeGeomet
 
   // Also not documented, but it seems to hold per-primitive data for use in an intersector
   desc->setPrimitiveDataBuffer(mesh->indices());
-  desc->setPrimitiveDataStride(sizeof(PrimitiveData));
-  desc->setPrimitiveDataElementSize(sizeof(PrimitiveData));
+  desc->setPrimitiveDataStride(sizeof(shaders_pt::PrimitiveData));
+  desc->setPrimitiveDataElementSize(sizeof(shaders_pt::PrimitiveData));
 
   return desc;
 }
@@ -256,7 +264,7 @@ void Renderer::buildPipelines() {
 }
 
 void Renderer::buildConstantsBuffer() {
-  m_constantsSize = sizeof(Constants);
+  m_constantsSize = sizeof(shaders_pt::Constants);
   m_constantsStride = utils::align(m_constantsSize, 256);
   m_constantsOffset = 0;
 
@@ -340,7 +348,7 @@ void Renderer::rebuildAccelerationStructures() {
 
     for (int32_t j = 0; j < 4; j++) {
       for (int32_t i = 0; i < 3; i++) {
-        id.transformationMatrix[j][i] = instance.transform.columns[j][i];
+        id.transformationMatrix.columns[j][i] = instance.transform.columns[j][i];
       }
     }
   }
@@ -358,6 +366,8 @@ void Renderer::rebuildRenderTargets() {
   if (m_accumulator[0] != nullptr) m_accumulator[0]->release();
   if (m_accumulator[1] != nullptr) m_accumulator[1]->release();
 
+  if (m_randomSource != nullptr) m_randomSource->release();
+
   auto texd = MTL::TextureDescriptor::alloc()->init();
   texd->setTextureType(MTL::TextureType2D);
   texd->setWidth(static_cast<uint32_t>(m_viewportSize.x));
@@ -371,6 +381,21 @@ void Renderer::rebuildRenderTargets() {
 
   texd->setPixelFormat(MTL::PixelFormatRGBA16Float);
   m_renderTarget = m_device->newTexture(texd);
+
+  // Temporary crap way of getting randomness into the shader
+  // TODO: get a better source of scrambling (fast owen?)
+  texd->setPixelFormat(MTL::PixelFormatR32Uint);
+  m_randomSource = m_device->newTexture(texd);
+
+  auto k = (size_t) m_viewportSize.x * (size_t) m_viewportSize.y;
+  std::vector<uint32_t> random(k);
+  for (size_t i = 0; i < k; i++) random[i] = rand() % (1024 * 1024);
+  m_randomSource->replaceRegion(
+    MTL::Region::Make2D(0, 0, (size_t) m_viewportSize.x, (size_t) m_viewportSize.y),
+    0,
+    random.data(),
+    sizeof(uint32_t) * (size_t) m_viewportSize.x
+  );
 
   texd->release();
 }
@@ -404,7 +429,8 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId) {
   auto vu = u * vw;
   auto vv = -v * vh;
 
-  Constants constants = {
+  m_constants = {
+    .frameIdx = 0,
     .size = {(uint32_t) m_viewportSize.x, (uint32_t) m_viewportSize.y},
     .camera = {
       .position = pos,
@@ -413,10 +439,6 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId) {
       .pixelDeltaV = vv / m_viewportSize.y,
     }
   };
-
-  m_constantsOffset = (m_frameIdx % m_maxFramesInFlight) * m_constantsStride;
-  void* bufferWrite = (char*) m_constantsBuffer->contents() + m_constantsOffset;
-  memcpy(bufferWrite, &constants, m_constantsSize);
 }
 
 bool Renderer::isRendering() const {

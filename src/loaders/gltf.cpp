@@ -166,6 +166,7 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
 
     i = 0;
     if (tanAccessor.type == fastgltf::AccessorType::Vec4) {
+      std::println("[Info] gltf: Tangents are Vec4");
       auto tangentIt = fastgltf::iterateAccessor<float4>(*m_asset, tanAccessor);
       for (auto tangent: tangentIt) {
         primitiveVertexData[i++].tangent = tangent;
@@ -175,6 +176,7 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
         }
       }
     } else {
+      std::println("[Info] gltf: Tangents are Vec3");
       auto tangentIt = fastgltf::iterateAccessor<float3>(*m_asset, tanAccessor);
       for (auto tangent: tangentIt) {
         primitiveVertexData[i++].tangent = make_float4(tangent, 1.0f);
