@@ -63,6 +63,7 @@ private:
 
   MTL::Buffer* m_resourcesBuffer = nullptr;
   static constexpr const size_t m_resourcesStride = sizeof(uint64_t);
+  std::vector<const MTL::Buffer*> m_meshVertexDataBuffers;
 
   // Frame data
   static constexpr const size_t m_maxFramesInFlight = 3;

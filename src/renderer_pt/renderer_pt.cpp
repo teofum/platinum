@@ -71,6 +71,13 @@ void Renderer::render() {
         MTL::ResourceUsageRead
       );
     }
+    
+    for (auto meshVertexDataBuffer: m_meshVertexDataBuffers) {
+      computeEnc->useResource(
+        meshVertexDataBuffer,
+        MTL::ResourceUsageRead
+      );
+    }
 
     computeEnc->setComputePipelineState(m_pathtracingPipeline);
     computeEnc->dispatchThreadgroups(threadgroups, threadsPerThreadgroup);
@@ -285,6 +292,7 @@ void Renderer::buildConstantsBuffer() {
 void Renderer::rebuildResourcesBuffer() {
   // Clear old buffer if present
   if (m_resourcesBuffer != nullptr) m_resourcesBuffer->release();
+  m_meshVertexDataBuffers.clear();
 
   auto meshes = m_store.scene().getAllMeshes();
   m_resourcesBuffer = m_device->newBuffer(
@@ -293,9 +301,12 @@ void Renderer::rebuildResourcesBuffer() {
   );
 
   size_t idx = 0;
+  m_meshVertexDataBuffers.reserve(meshes.size());
   for (const auto& md: meshes) {
     auto resourceHandle = (uint64_t*) m_resourcesBuffer->contents() + idx++;
     *resourceHandle = md.mesh->vertexData()->gpuAddress();
+    
+    m_meshVertexDataBuffers.push_back(md.mesh->vertexData());
   }
 }
 
