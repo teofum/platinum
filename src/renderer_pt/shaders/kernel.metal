@@ -89,7 +89,7 @@ kernel void pathtracingKernel(
 ) {
     if (tid.x < constants.size.x && tid.y < constants.size.y) {
         constant CameraData& camera = constants.camera;
-        float2 pixel(tid.x, constants.size.y - tid.y - 1);
+        float2 pixel(tid.x, tid.y);
         uint32_t offset = randomTex.read(tid).x;
         
         float2 r(halton(offset + constants.frameIdx, 0),
