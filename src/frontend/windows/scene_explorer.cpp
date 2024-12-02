@@ -68,14 +68,18 @@ void SceneExplorer::render() {
 
       auto cube = pt::primitives::cube(m_store.device(), 2.0f);
       auto id = m_store.scene().addMesh(std::move(cube));
-      m_store.scene().addNode(pt::Scene::Node("Cube", id), parentId);
+      pt::Scene::Node node("Cube", id);
+      node.materials.push_back(0);
+      m_store.scene().addNode(std::move(node), parentId);
     }
     if (widgets::selectable("Sphere", false, 0, {100, 0})) {
       uint32_t parentId = m_state.selectedNode().value_or(0);
 
       auto sphere = pt::primitives::sphere(m_store.device(), 1.0f, 24, 32);
       auto id = m_store.scene().addMesh(std::move(sphere));
-      m_store.scene().addNode(pt::Scene::Node("Sphere", id), parentId);
+      pt::Scene::Node node("Sphere", id);
+      node.materials.push_back(0);
+      m_store.scene().addNode(std::move(node), parentId);
     }
     
     ImGui::Separator();

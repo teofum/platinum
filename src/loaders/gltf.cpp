@@ -218,7 +218,7 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
     /*
      * Set material ID for slot
      */
-    materialSlots.push_back(m_materialIds[prim.materialIndex.value_or(0)]);
+    materialSlots.push_back(prim.materialIndex ? m_materialIds[prim.materialIndex.value()] : 0);
   }
 
   /*

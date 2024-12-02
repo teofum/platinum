@@ -15,11 +15,19 @@ int main() {
   if (res != pt::frontend::Frontend::InitResult_Ok) return res;
 
   pt::Scene& scene = store.scene();
+  
+  // Default material
+  pt::Material material{
+    .baseColor = {0.8, 0.8, 0.8},
+  };
+  auto materialId = scene.addMaterial("Default material", material);
 
   // Default cube
   auto cube = pt::primitives::cube(store.device(), 2.0f);
   auto meshId = scene.addMesh(std::move(cube));
-  scene.addNode(pt::Scene::Node("Cube", meshId));
+  pt::Scene::Node defaultCube("Cube", meshId);
+  defaultCube.materials.push_back(materialId);
+  scene.addNode(std::move(defaultCube));
 
   // Default camera
   auto cameraId = scene.addCamera(pt::Camera::withFocalLength(28.0f));
