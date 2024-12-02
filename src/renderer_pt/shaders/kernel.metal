@@ -15,7 +15,7 @@ using namespace pt::shaders_pt;
 
 constant uint32_t resourcesStride [[function_constant(0)]];
 
-constant float3 backgroundColor(1.0, 1.0, 1.0);
+constant float3 backgroundColor(0.0, 0.0, 0.0);
 
 struct VertexResource {
   device pt::VertexData* data;
@@ -152,6 +152,11 @@ kernel void pathtracingKernel(
       
       auto materialSlot = *primitiveResource.materialSlot;
       auto material = instanceResource.materials[materialSlot];
+      
+      if (material.flags & pt::Material::Material_Emissive) {
+        L = attenuation * material.emission;
+        break;
+      }
       
       float3 vertexNormals[3];
       for (int i = 0; i < 3; i++) {
