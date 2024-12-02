@@ -193,7 +193,7 @@ std::vector<Scene::InstanceData> Scene::getAllInstances(int filter) const {
     [&](NodeID id, const Node* node, const float4x4& transform) {
       if (node->meshId) {
         const auto& mesh = m_meshes.at(*node->meshId);
-        meshes.emplace_back(mesh.get(), id, node->meshId.value(), transform);
+        meshes.emplace_back(mesh.get(), id, node->meshId.value(), node->materials, transform);
       }
     },
     filter

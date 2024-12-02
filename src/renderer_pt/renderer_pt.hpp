@@ -61,9 +61,16 @@ private:
   MTL::Buffer* m_constantsBuffer = nullptr;
   size_t m_constantsSize = 0, m_constantsStride = 0, m_constantsOffset = 0;
 
-  MTL::Buffer* m_resourcesBuffer = nullptr;
   static constexpr const size_t m_resourcesStride = sizeof(uint64_t);
+  
+  MTL::Buffer* m_vertexResourcesBuffer = nullptr;
   std::vector<const MTL::Buffer*> m_meshVertexDataBuffers;
+  
+  MTL::Buffer* m_primitiveResourcesBuffer = nullptr;
+  std::vector<const MTL::Buffer*> m_meshMaterialIndexBuffers;
+  
+  MTL::Buffer* m_instanceResourcesBuffer = nullptr;
+  std::vector<MTL::Buffer*> m_instanceMaterialBuffers;
 
   // Frame data
   static constexpr const size_t m_maxFramesInFlight = 3;
@@ -79,7 +86,7 @@ private:
 
   void buildConstantsBuffer();
 
-  void rebuildResourcesBuffer();
+  void rebuildResourcesBuffers();
 
   void rebuildAccelerationStructures();
 

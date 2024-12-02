@@ -59,6 +59,7 @@ public:
     const Mesh* mesh = nullptr;
     NodeID nodeId = 0;
     MeshID meshId = 0;
+    const std::vector<MaterialID>& materials;
     float4x4 transform;
   };
 

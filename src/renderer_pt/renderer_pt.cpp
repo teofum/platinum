@@ -56,10 +56,12 @@ void Renderer::render() {
     auto computeEnc = cmd->computeCommandEncoder();
 
     computeEnc->setBuffer(m_constantsBuffer, m_constantsOffset, 0);
-    computeEnc->setBuffer(m_resourcesBuffer, 0, 1);
-    computeEnc->setBuffer(m_instanceBuffer, 0, 2);
+    computeEnc->setBuffer(m_vertexResourcesBuffer, 0, 1);
+    computeEnc->setBuffer(m_primitiveResourcesBuffer, 0, 2);
+    computeEnc->setBuffer(m_instanceResourcesBuffer, 0, 3);
+    computeEnc->setBuffer(m_instanceBuffer, 0, 4);
 
-    computeEnc->setAccelerationStructure(m_instanceAccelStruct, 3);
+    computeEnc->setAccelerationStructure(m_instanceAccelStruct, 5);
 
     computeEnc->setTexture(m_accumulator[0], 0);
     computeEnc->setTexture(m_accumulator[1], 1);
@@ -73,10 +75,15 @@ void Renderer::render() {
     }
     
     for (auto meshVertexDataBuffer: m_meshVertexDataBuffers) {
-      computeEnc->useResource(
-        meshVertexDataBuffer,
-        MTL::ResourceUsageRead
-      );
+      computeEnc->useResource(meshVertexDataBuffer, MTL::ResourceUsageRead);
+    }
+    
+    for (auto meshMaterialIdxBuffer: m_meshMaterialIndexBuffers) {
+      computeEnc->useResource(meshMaterialIdxBuffer, MTL::ResourceUsageRead);
+    }
+    
+    for (auto instanceMaterialBuffer: m_instanceMaterialBuffers) {
+      computeEnc->useResource(instanceMaterialBuffer, MTL::ResourceUsageRead);
     }
 
     computeEnc->setComputePipelineState(m_pathtracingPipeline);
@@ -121,7 +128,7 @@ void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint
   }
 
   updateConstants(cameraNodeId);
-  rebuildResourcesBuffer();
+  rebuildResourcesBuffers();
   rebuildAccelerationStructures();
 
   m_accumulatedFrames = 0;
@@ -289,13 +296,29 @@ void Renderer::buildConstantsBuffer() {
   );
 }
 
-void Renderer::rebuildResourcesBuffer() {
-  // Clear old buffer if present
-  if (m_resourcesBuffer != nullptr) m_resourcesBuffer->release();
+void Renderer::rebuildResourcesBuffers() {
+  // Clear old buffers if present
+  if (m_vertexResourcesBuffer != nullptr) m_vertexResourcesBuffer->release();
   m_meshVertexDataBuffers.clear();
+  
+  if (m_primitiveResourcesBuffer != nullptr) m_primitiveResourcesBuffer->release();
+  m_meshMaterialIndexBuffers.clear();
+  
+  if (m_instanceResourcesBuffer != nullptr) m_instanceResourcesBuffer->release();
+  for (MTL::Buffer* buffer: m_instanceMaterialBuffers) buffer->release();
+  m_instanceMaterialBuffers.clear();
 
+  /*
+   * Create vertex resources buffer, pointing to each mesh's vertex data buffer
+   *    and primitive resources buffer, pointing to each mesh's material slot index buffer
+   */
   auto meshes = m_store.scene().getAllMeshes();
-  m_resourcesBuffer = m_device->newBuffer(
+  
+  m_vertexResourcesBuffer = m_device->newBuffer(
+    m_resourcesStride * meshes.size(),
+    MTL::ResourceStorageModeShared
+  );
+  m_primitiveResourcesBuffer = m_device->newBuffer(
     m_resourcesStride * meshes.size(),
     MTL::ResourceStorageModeShared
   );
@@ -303,10 +326,50 @@ void Renderer::rebuildResourcesBuffer() {
   size_t idx = 0;
   m_meshVertexDataBuffers.reserve(meshes.size());
   for (const auto& md: meshes) {
-    auto resourceHandle = (uint64_t*) m_resourcesBuffer->contents() + idx++;
-    *resourceHandle = md.mesh->vertexData()->gpuAddress();
+    auto vertexResourceHandle = (uint64_t*) m_vertexResourcesBuffer->contents() + idx;
+    *vertexResourceHandle = md.mesh->vertexData()->gpuAddress();
+    
+    auto primResourceHandle = (uint64_t*) m_primitiveResourcesBuffer->contents() + idx;
+    *primResourceHandle = md.mesh->materialIndices()->gpuAddress();
     
     m_meshVertexDataBuffers.push_back(md.mesh->vertexData());
+    m_meshMaterialIndexBuffers.push_back(md.mesh->materialIndices());
+    
+    idx++;
+  }
+  
+  /*
+   * Create instance resources buffer, pointing to each *instance's* materials buffer
+   * Also create the materials buffers
+   * This duplicates materials across instances, but it's a very small struct, this is ok
+   */
+  auto instances = m_store.scene().getAllInstances();
+  
+  m_instanceResourcesBuffer = m_device->newBuffer(
+    m_resourcesStride * instances.size(),
+    MTL::ResourceStorageModeShared
+  );
+  
+  idx = 0;
+  m_instanceMaterialBuffers.reserve(instances.size());
+  for (const auto& instance: instances) {
+    // Create and fill the materials buffer
+    auto materialsBuffer = m_device->newBuffer(
+		  instance.materials.size() * sizeof(Material),
+		  MTL::ResourceStorageModeShared
+		)->retain();
+    
+    size_t materialIdx = 0;
+    for (auto mid: instance.materials) {
+      auto materialHandle = (Material*) materialsBuffer->contents() + materialIdx++;
+      *materialHandle = *m_store.scene().material(mid);
+    }
+    
+    // Add the material buffer addresses to the instance resources buffer
+    auto instanceResourceHandle = (uint64_t*) m_instanceResourcesBuffer->contents() + idx++;
+    *instanceResourceHandle = materialsBuffer->gpuAddress();
+    
+    m_instanceMaterialBuffers.push_back(materialsBuffer);
   }
 }
 

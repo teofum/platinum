@@ -4,6 +4,7 @@
 #define METAL_SHADER
 
 #include "../../core/mesh.hpp"
+#include "../../core/material.hpp"
 #include "../pt_shader_defs.hpp"
 
 #define MAX_BOUNCES 15
@@ -14,10 +15,18 @@ using namespace pt::shaders_pt;
 
 constant uint32_t resourcesStride [[function_constant(0)]];
 
-constant float3 backgroundColor(0.65, 0.8, 0.9);
+constant float3 backgroundColor(1.0, 1.0, 1.0);
 
 struct VertexResource {
   device pt::VertexData* data;
+};
+
+struct PrimitiveResource {
+  device uint32_t* materialSlot;
+};
+
+struct InstanceResource {
+  device pt::Material* materials;
 };
 
 constant unsigned int primes[] = {
@@ -78,14 +87,16 @@ float3 transformVec(float3 p, float4x4 transform) {
 }
 
 kernel void pathtracingKernel(
-  uint2                                                 tid         [[thread_position_in_grid]],
-  constant Constants&                                   constants   [[buffer(0)]],
-  device void*                                          resources   [[buffer(1)]],
-  constant MTLAccelerationStructureInstanceDescriptor*  instances   [[buffer(2)]],
-  instance_acceleration_structure                       accelStruct [[buffer(3)]],
-  texture2d<float>                                      src         [[texture(0)]],
-  texture2d<float, access::write>                       dst         [[texture(1)]],
-  texture2d<uint32_t>                                   randomTex   [[texture(2)]]
+  uint2                                                 tid         				[[thread_position_in_grid]],
+  constant Constants&                                   constants   				[[buffer(0)]],
+  device void*                                          vertexResources     [[buffer(1)]],
+  device void*                                          primitiveResources 	[[buffer(2)]],
+  device void*                                          instanceResources 	[[buffer(3)]],
+  constant MTLAccelerationStructureInstanceDescriptor*  instances   				[[buffer(4)]],
+  instance_acceleration_structure                       accelStruct 				[[buffer(5)]],
+  texture2d<float>                                      src         				[[texture(0)]],
+  texture2d<float, access::write>                       dst         				[[texture(1)]],
+  texture2d<uint32_t>                                   randomTex   				[[texture(2)]]
 ) {
   if (tid.x < constants.size.x && tid.y < constants.size.y) {
     constant CameraData& camera = constants.camera;
@@ -134,9 +145,13 @@ kernel void pathtracingKernel(
       auto instanceIdx = intersection.instance_id;
       auto geometryIdx = instances[instanceIdx].accelerationStructureIndex;
       
-      device auto& vertexResource =
-      *(device VertexResource*)((device uint64_t*)resources + geometryIdx);
+      device auto& vertexResource = *(device VertexResource*)((device uint64_t*)vertexResources + geometryIdx);
+      device auto& primitiveResource = *(device PrimitiveResource*)((device uint64_t*)primitiveResources + geometryIdx);
+      device auto& instanceResource = *(device InstanceResource*)((device uint64_t*)instanceResources + instanceIdx);
       device auto& data = *(device PrimitiveData*) intersection.primitive_data;
+      
+      auto materialSlot = *primitiveResource.materialSlot;
+      auto material = instanceResource.materials[materialSlot];
       
       float3 vertexNormals[3];
       for (int i = 0; i < 3; i++) {
@@ -162,7 +177,7 @@ kernel void pathtracingKernel(
       ray.origin = wsHitPoint + wsSurfaceNormal * 1e-3f;
       ray.direction = alignHemisphereWithNormal(wsSampleDirection, wsSurfaceNormal);
       
-      attenuation *= 0.8;
+      attenuation *= material.baseColor.rgb;
       
       /*
        * Russian roulette

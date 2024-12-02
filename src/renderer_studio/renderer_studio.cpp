@@ -176,7 +176,7 @@ void Renderer::render(Scene::NodeID selectedNodeId) {
     0.0, 1.0
   };
 
-  /**
+  /*
    * Main pass
    */
   auto rpd = ns_shared<MTL::RenderPassDescriptor>();
