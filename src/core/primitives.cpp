@@ -9,6 +9,7 @@ Mesh cube(MTL::Device* device, float side) {
   std::vector<float3> vertices(24);
   std::vector<VertexData> vData(24);
   std::vector<uint32_t> indices(36);
+  std::vector<uint32_t> matIndices(12);
 
   std::array<float3, 6> faceNormals{
     float3{0, 0, 1},
@@ -43,15 +44,19 @@ Mesh cube(MTL::Device* device, float side) {
     indices[6 * i + 3] = 4 * i + 1;
     indices[6 * i + 4] = 4 * i + 2;
     indices[6 * i + 5] = 4 * i + 3;
+    
+    matIndices[2 * i + 0] = 0;
+    matIndices[2 * i + 1] = 0;
   }
 
-  return {device, vertices, vData, indices};
+  return {device, vertices, vData, indices, matIndices};
 }
 
 Mesh sphere(MTL::Device* device, float radius, uint32_t lat, uint32_t lng) {
   std::vector<float3> vertices((lat + 1) * (lng + 1));
   std::vector<VertexData> vData((lat + 1) * (lng + 1));
   std::vector<uint32_t> indices(lat * lng * 6);
+  std::vector<uint32_t> matIndices(lat * lng * 2);
 
   const float pi = std::numbers::pi_v<float>;
   const float dLat = pi / static_cast<float>(lat);
@@ -89,12 +94,15 @@ Mesh sphere(MTL::Device* device, float radius, uint32_t lat, uint32_t lng) {
         indices[6 * t + 3] = v1;
         indices[6 * t + 4] = v3;
         indices[6 * t + 5] = v2;
+        
+        matIndices[2 * t + 0] = 0;
+        matIndices[2 * t + 1] = 0;
         t++;
       }
     }
   }
 
-  return {device, vertices, vData, indices};
+  return {device, vertices, vData, indices, matIndices};
 }
 
 }

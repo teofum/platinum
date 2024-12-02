@@ -6,8 +6,9 @@
 #include <optional>
 #include <unordered_dense.h>
 
-#include "mesh.hpp"
 #include "camera.hpp"
+#include "material.hpp"
+#include "mesh.hpp"
 #include "transform.hpp"
 
 namespace pt {
@@ -17,6 +18,7 @@ public:
   using NodeID = uint16_t;
   using MeshID = uint16_t;
   using CameraID = uint16_t;
+  using MaterialID = uint16_t;
 
   enum NodeFlags {
     NodeFlags_None = 0,
@@ -28,6 +30,10 @@ public:
     std::string name;
     std::optional<MeshID> meshId;
     std::optional<CameraID> cameraId;
+    
+    // Each node has a number of material "slots" referenced by primitives. This lets us share a mesh
+    // between multiple instances and use different materials for each one.
+    std::vector<MaterialID> materials;
     std::vector<NodeID> children;
     NodeID parent = 0;
     int flags = NodeFlags_Default;
@@ -41,6 +47,12 @@ public:
   struct MeshData {
     const Mesh* mesh = nullptr;
     MeshID meshId = 0;
+  };
+  
+  struct MaterialData {
+    const Material* material = nullptr;
+    MaterialID materialId = 0;
+    std::string_view name;
   };
 
   struct InstanceData {
@@ -71,6 +83,8 @@ public:
   CameraID addCamera(Camera camera);
 
   NodeID addNode(Node&& node, NodeID parent = 0);
+  
+  MaterialID addMaterial(const std::string_view& name, Material material);
 
   void removeNode(NodeID id, int flags = 0);
 
@@ -117,6 +131,18 @@ public:
   [[nodiscard]] constexpr uint16_t cameraUsers(CameraID id) {
     return m_cameraRc.at(id);
   }
+  
+  [[nodiscard]] constexpr const Material* material(MaterialID id) const {
+    return &m_materials.at(id);
+  }
+
+  [[nodiscard]] constexpr Material* material(MaterialID id) {
+    return &m_materials.at(id);
+  }
+  
+  [[nodiscard]] constexpr std::string& materialName(MaterialID id) {
+    return m_materialNames.at(id);
+  }
 
   [[nodiscard]] float4x4 worldTransform(NodeID id) const;
 
@@ -125,15 +151,22 @@ public:
   [[nodiscard]] std::vector<InstanceData> getAllInstances(int filter = 0) const;
 
   [[nodiscard]] std::vector<CameraData> getAllCameras(int filter = 0) const;
+  
+  [[nodiscard]] std::vector<MaterialData> getAllMaterials() const;
 
 private:
   NodeID m_nextNodeId;
   MeshID m_nextMeshId;
   CameraID m_nextCameraId;
+  MaterialID m_nextMaterialId;
 
   ankerl::unordered_dense::map<NodeID, std::unique_ptr<Node>> m_nodes;
+  ankerl::unordered_dense::map<MaterialID, Material> m_materials;
+  ankerl::unordered_dense::map<MaterialID, std::string> m_materialNames;
+  
   ankerl::unordered_dense::map<MeshID, std::unique_ptr<Mesh>> m_meshes;
   ankerl::unordered_dense::map<MeshID, uint16_t> m_meshRc; // Refcount
+  
   ankerl::unordered_dense::map<CameraID, Camera> m_cameras;
   ankerl::unordered_dense::map<CameraID, uint16_t> m_cameraRc; // Refcount
 

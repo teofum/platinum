@@ -22,10 +22,10 @@ void StudioViewport::render() {
   }
 
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 1.0f));
-  ImGui::Begin("Viewport");
+  auto open = ImGui::Begin("Viewport");
   ImGui::PopStyleVar();
 
-  if (ImGui::IsItemVisible()) {
+  if (open && ImGui::IsItemVisible()) {
     auto pos = ImGui::GetCursorScreenPos();
     m_viewportTopLeft = {pos.x, pos.y};
 

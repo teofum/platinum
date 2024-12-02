@@ -12,6 +12,8 @@ void Properties::render() {
     renderMeshProperties(m_state.selectedMesh().value());
   } else if (m_state.selectedCamera()) {
     renderCameraProperties(m_state.selectedCamera().value());
+  } else if (m_state.selectedMaterial()) {
+    renderMaterialProperties(m_state.selectedMaterial().value());
   } else {
     ImGui::Text("[ Nothing selected ]");
   }
@@ -23,9 +25,9 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
   Scene::Node* node = m_store.scene().node(id);
 
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-  if (id == 0) ImGui::BeginDisabled();
+  ImGui::BeginDisabled(id == 0);
   ImGui::InputText("##NameInput", &node->name);
-  if (id == 0) ImGui::EndDisabled();
+  ImGui::EndDisabled();
 
   ImGui::AlignTextToFramePadding();
   ImGui::Text("Node [id: %u]", id);
@@ -66,6 +68,29 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
   if (node->cameraId) {
     if (ImGui::CollapsingHeader("Camera")) {
       renderCameraProperties(node->cameraId.value());
+      ImGui::Spacing();
+    }
+  }
+  
+  if (!node->materials.empty()) {
+    if (ImGui::CollapsingHeader("Materials")) {
+      auto selectedId = node->materials[m_selectedMaterialIdx];
+      auto& selectedName = m_store.scene().materialName(selectedId);
+      auto selectedLabel = std::format("[{}] {}", m_selectedMaterialIdx, selectedName);
+      
+      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+      if (ImGui::BeginCombo("##MaterialSelect", selectedLabel.c_str())) {
+        for (uint32_t i = 0; i < node->materials.size(); i++) {
+          auto isSelected = i == m_selectedMaterialIdx;
+          auto& name = m_store.scene().materialName(node->materials[i]);
+          auto label = std::format("[{}] {}", i, name);
+          
+          if (ImGui::Selectable(label.c_str(), &isSelected)) m_selectedMaterialIdx = i;
+        }
+        ImGui::EndCombo();
+      }
+      
+      renderMaterialProperties(selectedId);
       ImGui::Spacing();
     }
   }
@@ -119,6 +144,30 @@ void Properties::renderCameraProperties(Scene::CameraID id) {
   ImGui::SameLine();
   if (ImGui::Button("35mm FF", {buttonWidth, 0})) camera->sensorSize = float2{36.0f, 24.0f};
   ImGui::SameLine();
+}
+
+void Properties::renderMaterialProperties(Scene::MaterialID id) {
+  auto material = m_store.scene().material(id);
+  auto& name = m_store.scene().materialName(id);
+  
+  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+  ImGui::InputText("##MaterialNameInput", &name);
+  
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("Material [id: %u]", id);
+  
+  ImGui::SeparatorText("Basic properties");
+  
+  auto buttonWidth = ImGui::CalcItemWidth();
+  ImGui::ColorEdit3("Base color", (float*) &material->baseColor, m_colorFlags, {buttonWidth, 0});
+  
+  ImGui::SliderFloat("Roughness", &material->roughness, 0.0f, 1.0f);
+  ImGui::SliderFloat("Metallic", &material->metallic, 0.0f, 1.0f);
+  ImGui::SliderFloat("Transmission", &material->transmission, 0.0f, 1.0f);
+  ImGui::SliderFloat("IOR", &material->ior, 0.1f, 5.0f);
+  
+  float alpha = material->baseColor[3];
+  if (ImGui::SliderFloat("Alpha", &alpha, 0.0f, 1.0f)) material->baseColor[3] = alpha;
 }
 
 }

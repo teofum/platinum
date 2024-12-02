@@ -82,6 +82,7 @@
 		AB5133DB2CFB71A4005738C1 /* Exceptions for "src" folder in "platinum" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				core/material.cpp,
 				core/mesh.cpp,
 				core/primitives.cpp,
 				core/scene.cpp,
@@ -405,8 +406,8 @@
 			buildPhases = (
 				AB5133BC2CFB7108005738C1 /* Sources */,
 				AB5133BD2CFB7108005738C1 /* Frameworks */,
-				AB5133BE2CFB7108005738C1 /* CopyFiles */,
 				AB86A7592CFBAE1C00CC5BA3 /* Embed Frameworks */,
+				AB5133BE2CFB7108005738C1 /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -652,6 +653,7 @@
 					"$(PROJECT_DIR)/tracy",
 					"$(PROJECT_DIR)/sdl2/include",
 				);
+				INSTALL_ROOT = /;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/fastgltf/lib",
@@ -733,6 +735,7 @@
 					"$(PROJECT_DIR)/tracy",
 					"$(PROJECT_DIR)/sdl2/include",
 				);
+				INSTALL_ROOT = /;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/fastgltf/lib",

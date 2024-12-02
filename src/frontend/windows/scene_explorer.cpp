@@ -14,6 +14,50 @@ namespace pt::frontend::windows {
 void SceneExplorer::render() {
   ImGui::Begin("Scene Explorer");
 
+  /*
+   * Mode selection
+   */
+  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+  if (ImGui::BeginCombo("##ModeSelect", m_modeNames[m_mode])) {
+    for (uint32_t mode = 0; mode < m_modeCount; mode++) {
+      auto isSelected = mode == m_mode;
+      if (ImGui::Selectable(m_modeNames[mode], &isSelected)) m_mode = mode;
+    }
+    ImGui::EndCombo();
+  }
+  
+  ImGui::Spacing();
+
+  /*
+   * Main panel
+   */
+  ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {8, 4});
+  auto childSize = ImGui::GetContentRegionAvail();
+  childSize.y -= ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.y + 4.0f;
+  childSize.y = max(childSize.y, 300.0f);
+  bool visible = ImGui::BeginChild("##SETree", childSize, ImGuiChildFlags_FrameStyle);
+  ImGui::PopStyleVar(2);
+  if (visible) {
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
+    switch (m_mode) {
+      case Mode_Hierarchy:
+        renderNode(0);
+        break;
+        
+      case Mode_Materials:
+        renderMaterialsList();
+        break;
+    }
+    ImGui::PopStyleVar();
+  }
+  ImGui::EndChild();
+  
+  ImGui::Spacing();
+  
+  /*
+   * Create/import options
+   */
   auto buttonWidth = widgets::getWidthForItems(2);
   if (ImGui::Button("Add Objects...", {buttonWidth, 0})) {
     ImGui::OpenPopup("AddObject_Popup");
@@ -71,31 +115,13 @@ void SceneExplorer::render() {
     ImGui::EndPopup();
   }
 
-
-  ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {8, 4});
-  if (ImGui::BeginChild("##SETree", {0, 0}, ImGuiChildFlags_FrameStyle)) {
-    ImGui::PopStyleVar();
-    ImGui::PopStyleVar();
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
-    renderNode(0);
-    ImGui::PopStyleVar();
-  } else {
-    ImGui::PopStyleVar();
-    ImGui::PopStyleVar();
-  }
-  ImGui::EndChild();
-
   ImGui::End();
 }
 
 void SceneExplorer::renderNode(Scene::NodeID id, uint32_t level) {
   Scene::Node* node = m_store.scene().node(id);
-  static constexpr const ImGuiTreeNodeFlags baseFlags =
-    ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
-    ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_AllowItemOverlap;
 
-  auto nodeFlags = baseFlags;
+  auto nodeFlags = m_baseFlags;
   bool isSelected = m_state.selectedNode() == id;
   if (isSelected) {
     nodeFlags |= ImGuiTreeNodeFlags_Selected;
@@ -194,9 +220,8 @@ void SceneExplorer::renderNode(Scene::NodeID id, uint32_t level) {
    */
   if (isOpen) {
     if (node->meshId) {
-      auto meshFlags = baseFlags;
-      meshFlags |=
-        ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+      auto meshFlags = m_baseFlags;
+      meshFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
       bool meshSelected = m_state.selectedMesh() == node->meshId;
       if (meshSelected) {
@@ -217,9 +242,8 @@ void SceneExplorer::renderNode(Scene::NodeID id, uint32_t level) {
       if (!meshSelected) ImGui::PopStyleColor();
     }
     if (node->cameraId) {
-      auto cameraFlags = baseFlags;
-      cameraFlags |=
-        ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+      auto cameraFlags = m_baseFlags;
+      cameraFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
       bool cameraSelected = m_state.selectedCamera() == node->cameraId;
       if (cameraSelected) {
@@ -246,6 +270,30 @@ void SceneExplorer::renderNode(Scene::NodeID id, uint32_t level) {
   }
 
   ImGui::PopID();
+}
+
+void SceneExplorer::renderMaterialsList() {
+  for (const auto& md: m_store.scene().getAllMaterials()) {
+    auto flags = m_baseFlags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+    
+    bool selected = m_state.selectedMaterial() == md.materialId;
+    if (selected) {
+      flags |= ImGuiTreeNodeFlags_Selected;
+    } else {
+      ImGui::PushStyleColor(
+        ImGuiCol_Header,
+        ImGui::GetStyleColorVec4(ImGuiCol_FrameBg)
+      );
+    }
+    
+    auto label = std::format("{}", md.name);
+    ImGui::TreeNodeEx(label.c_str(), flags);
+    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+      m_state.selectMaterial(md.materialId);
+    }
+
+    if (!selected) ImGui::PopStyleColor();
+  }
 }
 
 }

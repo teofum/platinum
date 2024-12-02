@@ -16,9 +16,7 @@ void RenderViewport::init(MTL::Device* device, MTL::CommandQueue* commandQueue) 
 
 void RenderViewport::render() {
   updateScrollAndZoomState();
-
-  ImGui::Begin("Render");
-
+  
   /*
    * Auto select camera if necessary
    */
@@ -30,113 +28,115 @@ void RenderViewport::render() {
   if (!m_cameraNodeId && !cameras.empty()) {
     m_cameraNodeId = cameras[0].nodeId;
   }
+  
+ const auto& label = m_cameraNodeId
+                     ? m_store.scene().node(m_cameraNodeId.value())->name
+                     : "[No camera selected]";
 
-  /*
-   * Basic render controls
-   */
-  const auto& label = m_cameraNodeId
-                      ? m_store.scene().node(m_cameraNodeId.value())->name
-                      : "[No camera selected]";
-
-  ImGui::SetNextItemWidth(160);
-  ImGui::BeginDisabled(cameras.empty());
-  if (ImGui::BeginCombo("##CameraSelect", label.c_str())) {
-    for (const auto& cd: cameras) {
-      auto name = std::format("{}##Camera_{}", m_store.scene().node(cd.nodeId)->name, cd.nodeId);
-      const bool isSelected = cd.nodeId == m_cameraNodeId;
-
-      if (widgets::selectable(name.c_str(), isSelected)) {
-        m_cameraNodeId = cd.nodeId;
+  auto open = ImGui::Begin("Render");
+  if (open && ImGui::IsItemVisible()) {
+    /*
+     * Basic render controls
+     */
+    ImGui::SetNextItemWidth(160);
+    ImGui::BeginDisabled(cameras.empty());
+    if (ImGui::BeginCombo("##CameraSelect", label.c_str())) {
+      for (const auto& cd: cameras) {
+        auto name = std::format("{}##Camera_{}", m_store.scene().node(cd.nodeId)->name, cd.nodeId);
+        const bool isSelected = cd.nodeId == m_cameraNodeId;
+        
+        if (widgets::selectable(name.c_str(), isSelected)) {
+          m_cameraNodeId = cd.nodeId;
+        }
+        
+        if (isSelected) ImGui::SetItemDefaultFocus();
       }
-
-      if (isSelected) ImGui::SetItemDefaultFocus();
+      ImGui::EndCombo();
     }
-    ImGui::EndCombo();
-  }
-  ImGui::EndDisabled();
-
-  ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetStyle().ItemSpacing.x - 80);
-  ImGui::BeginDisabled(!m_cameraNodeId || m_renderer->isRendering());
-  bool render = ImGui::Button("Render", {80, 0})
-                || (ImGui::IsKeyPressed(ImGuiKey_Space, false) && !ImGui::IsAnyItemActive());
-  ImGui::EndDisabled();
-
-  ImGui::Spacing();
-
-  /*
-   * Start or continue render
-   */
-  auto pos = ImGui::GetCursorScreenPos();
-  m_viewportTopLeft = {pos.x, pos.y};
-
-  auto size = ImGui::GetContentRegionAvail();
-  size.y -= ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.y;
-  m_viewportSize = {size.x, size.y};
-
-  if (render && m_cameraNodeId && !m_renderer->isRendering()) {
-    m_renderSize = m_useViewportSizeForRender
-                   ? float2{size.x * m_dpiScaling, size.y * m_dpiScaling}
-                   : m_nextRenderSize;
-    m_renderer->startRender(m_cameraNodeId.value(), m_renderSize, (uint32_t) m_nextRenderSampleCount);
-    m_state.setRendering(true);
-  }
-  m_renderer->render();
-
-  /*
-   * Render viewport
-   */
-  ImGui::PushStyleColor(ImGuiCol_ChildBg, (ImVec4) ImColor::HSV(0.0f, 0.0f, 0.8f));
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
-  ImGui::BeginChild(
-    "RenderView",
-    size,
-    ImGuiChildFlags_Borders,
-    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
-  );
-  m_mouseInViewport = ImGui::IsWindowHovered();
-  ImGui::PopStyleVar();
-  ImGui::PopStyleColor();
-
-  auto renderTarget = m_renderer->presentRenderTarget();
-  if (renderTarget != nullptr) {
-    ImGui::SetCursorPos({m_offset.x, m_offset.y});
-    ImGui::Image(
-      (ImTextureID) renderTarget,
-      {
-        m_renderSize.x * m_zoomFactor / m_dpiScaling,
-        m_renderSize.y * m_zoomFactor / m_dpiScaling
-      }
+    ImGui::EndDisabled();
+    
+    ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetStyle().ItemSpacing.x - 80);
+    ImGui::BeginDisabled(!m_cameraNodeId || m_renderer->isRendering());
+    bool render = ImGui::Button("Render", {80, 0})
+    || (ImGui::IsKeyPressed(ImGuiKey_Space, false) && !ImGui::IsAnyItemActive());
+    ImGui::EndDisabled();
+    
+    ImGui::Spacing();
+    
+    /*
+     * Start or continue render
+     */
+    auto pos = ImGui::GetCursorScreenPos();
+    m_viewportTopLeft = {pos.x, pos.y};
+    
+    auto size = ImGui::GetContentRegionAvail();
+    size.y -= ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.y;
+    m_viewportSize = {size.x, size.y};
+    
+    if (render && m_cameraNodeId && !m_renderer->isRendering()) {
+      m_renderSize = m_useViewportSizeForRender
+                     ? float2{size.x * m_dpiScaling, size.y * m_dpiScaling}
+                     : m_nextRenderSize;
+      m_renderer->startRender(m_cameraNodeId.value(), m_renderSize, (uint32_t) m_nextRenderSampleCount);
+      m_state.setRendering(true);
+    }
+    m_renderer->render();
+    
+    /*
+     * Render viewport
+     */
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, (ImVec4) ImColor::HSV(0.0f, 0.0f, 0.8f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+    ImGui::BeginChild(
+      "RenderView",
+      size,
+      ImGuiChildFlags_Borders,
+      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
     );
+    m_mouseInViewport = ImGui::IsWindowHovered();
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
+    
+    auto renderTarget = m_renderer->presentRenderTarget();
+    if (renderTarget != nullptr) {
+      ImGui::SetCursorPos({m_offset.x, m_offset.y});
+      ImGui::Image(
+       (ImTextureID) renderTarget,
+       {
+         m_renderSize.x * m_zoomFactor / m_dpiScaling,
+         m_renderSize.y * m_zoomFactor / m_dpiScaling
+       }
+     );
+    }
+    
+    ImGui::EndChild();
+    
+    /*
+     * Progress info
+     */
+    auto [accumulated, total] = m_renderer->renderProgress();
+    auto progress = (float) accumulated / (float) total;
+    auto progressStr = accumulated == total
+    									 ? "Done!"
+    									 : accumulated == 0
+    										 ? "Ready"
+    										 : std::format("{} / {}", accumulated, total);
+    auto width = min(ImGui::GetContentRegionAvail().x - 80.0f, 300.0f);
+    ImGui::ProgressBar(progress, {width, 0}, progressStr.c_str());
+    
+    if (accumulated == total) m_state.setRendering(false);
+    
+    auto time = std::format("{:.3f}s", (float) m_renderer->renderTime() / 1000.0f);
+    auto textWidth = ImGui::CalcTextSize(time.c_str()).x;
+    ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetStyle().ItemSpacing.x - textWidth);
+    ImGui::Text("%s", time.c_str());
   }
-
-  ImGui::EndChild();
-
-  /*
-   * Progress info
-   */
-  auto [accumulated, total] = m_renderer->renderProgress();
-  auto progress = (float) accumulated / (float) total;
-  auto progressStr = accumulated == total
-                     ? "Done!"
-                     : accumulated == 0
-                       ? "Ready"
-                       : std::format("{} / {}", accumulated, total);
-  auto width = min(ImGui::GetContentRegionAvail().x - 80.0f, 300.0f);
-  ImGui::ProgressBar(progress, {width, 0}, progressStr.c_str());
-
-  if (accumulated == total) m_state.setRendering(false);
-
-  auto time = std::format("{:.3f}s", (float) m_renderer->renderTime() / 1000.0f);
-  auto textWidth = ImGui::CalcTextSize(time.c_str()).x;
-  ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetStyle().ItemSpacing.x - textWidth);
-  ImGui::Text("%s", time.c_str());
 
   ImGui::End();
   
   /*
    * Render settings window
    */
-  
   ImGui::Begin("Render Settings");
   
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);

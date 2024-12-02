@@ -40,6 +40,15 @@ Scene::NodeID Scene::addNode(Node&& node, Scene::NodeID parent) {
   return id;
 }
 
+Scene::MaterialID Scene::addMaterial(const std::string_view& name, Material material) {
+  MaterialID id = m_nextMaterialId++;
+  m_materials[id] = material;
+  m_materialNames[id] = std::string(name);
+  while (m_materials.contains(m_nextMaterialId)) m_nextMaterialId++; // Find next unused ID
+
+  return id;
+}
+
 void Scene::removeNode(Scene::NodeID id, int flags) {
   if (id == 0) return; // Can't remove the root node
 
@@ -162,6 +171,18 @@ std::vector<Scene::MeshData> Scene::getAllMeshes() const {
   }
 
   return meshes;
+}
+
+std::vector<Scene::MaterialData> Scene::getAllMaterials() const {
+  std::vector<MaterialData> materials;
+  materials.reserve(m_materials.size());
+
+  for (const auto& material: m_materials) {
+    auto id = material.first;
+    materials.emplace_back(&material.second, id, m_materialNames.at(id));
+  }
+
+  return materials;
 }
 
 std::vector<Scene::InstanceData> Scene::getAllInstances(int filter) const {

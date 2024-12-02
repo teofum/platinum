@@ -29,6 +29,10 @@ public:
   [[nodiscard]] constexpr std::optional<Scene::CameraID> selectedCamera() const {
     return m_selectedCameraId;
   }
+  
+  [[nodiscard]] constexpr std::optional<Scene::MaterialID> selectedMaterial() const {
+    return m_selectedMaterialId;
+  }
 
   [[nodiscard]] constexpr int* removeOptions() {
     return &m_removeOptions;
@@ -38,18 +42,28 @@ public:
     m_nextNodeId = id;
     m_nextMeshId = std::nullopt;
     m_nextCameraId = std::nullopt;
+    m_nextMaterialId = std::nullopt;
   }
 
   constexpr void selectMesh(std::optional<Scene::MeshID> id) {
     m_nextNodeId = std::nullopt;
     m_nextMeshId = id;
     m_nextCameraId = std::nullopt;
+    m_nextMaterialId = std::nullopt;
   }
 
   constexpr void selectCamera(std::optional<Scene::CameraID> id) {
     m_nextNodeId = std::nullopt;
     m_nextMeshId = std::nullopt;
     m_nextCameraId = id;
+    m_nextMaterialId = std::nullopt;
+  }
+  
+  constexpr void selectMaterial(std::optional<Scene::MaterialID> id) {
+    m_nextNodeId = std::nullopt;
+    m_nextMeshId = std::nullopt;
+    m_nextCameraId = std::nullopt;
+    m_nextMaterialId = id;
   }
 
   constexpr void setNodeAction(NodeAction action, Scene::NodeID id) {
@@ -88,6 +102,7 @@ private:
   std::optional<Scene::NodeID> m_selectedNodeId, m_nextNodeId, m_actionNodeId;
   std::optional<Scene::MeshID> m_selectedMeshId, m_nextMeshId;
   std::optional<Scene::CameraID> m_selectedCameraId, m_nextCameraId;
+  std::optional<Scene::MaterialID> m_selectedMaterialId, m_nextMaterialId;
 
   int m_nodeAction = NodeAction_None;
   int m_removeOptions = 0;

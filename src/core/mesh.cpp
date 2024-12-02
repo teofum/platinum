@@ -6,9 +6,11 @@ Mesh::Mesh(
   MTL::Device* device,
   const std::vector<float3>& vertexPositions,
   const std::vector<VertexData>& vertexData,
-  const std::vector<uint32_t>& indices
+  const std::vector<uint32_t>& indices,
+  const std::vector<uint32_t>& materialIndices
 ) noexcept: m_indexCount(indices.size()),
-            m_vertexCount(vertexPositions.size()) {
+            m_vertexCount(vertexPositions.size()
+) {
   size_t vpSize = vertexPositions.size() * sizeof(float3);
   m_vertexPositions = device->newBuffer(vpSize, MTL::ResourceStorageModeShared);
   memcpy(m_vertexPositions->contents(), vertexPositions.data(), vpSize);
@@ -20,6 +22,10 @@ Mesh::Mesh(
   size_t iSize = indices.size() * sizeof(uint32_t);
   m_indices = device->newBuffer(iSize, MTL::ResourceStorageModeShared);
   memcpy(m_indices->contents(), indices.data(), iSize);
+              
+  size_t miSize = materialIndices.size() * sizeof(uint32_t);
+  m_materialIndices = device->newBuffer(miSize, MTL::ResourceStorageModeShared);
+  memcpy(m_materialIndices->contents(), materialIndices.data(), miSize);
 }
 
 Mesh::~Mesh() {

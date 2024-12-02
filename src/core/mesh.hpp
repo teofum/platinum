@@ -28,7 +28,8 @@ public:
     MTL::Device* device,
     const std::vector<float3>& vertexPositions,
     const std::vector<VertexData>& vertexData,
-    const std::vector<uint32_t>& indices
+    const std::vector<uint32_t>& indices,
+    const std::vector<uint32_t>& materialIndices
   ) noexcept;
 
   Mesh(const Mesh& m) noexcept = delete;
@@ -52,6 +53,10 @@ public:
   [[nodiscard]] constexpr const MTL::Buffer* indices() const {
     return m_indices;
   }
+  
+  [[nodiscard]] constexpr const MTL::Buffer* materialIndices() const {
+    return m_materialIndices;
+  }
 
   [[nodiscard]] constexpr size_t indexCount() const {
     return m_indexCount;
@@ -67,6 +72,7 @@ private:
   MTL::Buffer* m_vertexPositions;
   MTL::Buffer* m_vertexData;
   MTL::Buffer* m_indices;
+  MTL::Buffer* m_materialIndices;
 };
 
 #endif

@@ -51,6 +51,8 @@ Frontend::InitResult Frontend::init() {
   style.ChildBorderSize = 1.0f;
   style.TabBarOverlineSize = 0.0f;
   style.SeparatorTextBorderSize = 1.0f;
+  style.GrabRounding = 4.0f;
+  style.GrabMinSize = 0.0f;
 
   SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
   SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");

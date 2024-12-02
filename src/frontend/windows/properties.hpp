@@ -17,11 +17,19 @@ public:
   void render() final;
 
 private:
+  uint32_t m_selectedMaterialIdx = 0;
+  static constexpr const ImGuiColorEditFlags m_colorFlags =
+  	ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoOptions | ImGuiColorEditFlags_NoSidePreview
+  | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_DisplayRGB
+  | ImGuiColorEditFlags_DisplayHSV;
+  
   void renderNodeProperties(Scene::NodeID id);
 
   void renderMeshProperties(Scene::MeshID id);
 
   void renderCameraProperties(Scene::CameraID id);
+  
+  void renderMaterialProperties(Scene::MaterialID id);
 };
 
 }

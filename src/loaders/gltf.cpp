@@ -58,6 +58,10 @@ void GltfLoader::load(const fs::path& path, int options) {
   }
   m_asset = std::make_unique<fastgltf::Asset>(std::move(asset.get()));
   m_options = options;
+  
+  m_materialIds.reserve(m_asset->materials.size());
+  for (const auto& material: m_asset->materials)
+    loadMaterial(material);
 
   m_meshIds.reserve(m_asset->meshes.size());
   for (const auto& mesh: m_asset->meshes)
@@ -94,14 +98,18 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
   std::vector<float3> vertexPositions;
   std::vector<VertexData> vertexData;
   std::vector<uint32_t> indices;
+  std::vector<uint32_t> materialSlotIndices;
+  std::vector<Scene::MaterialID> materialSlots;
 
   std::vector<float3> primitiveVertexPositions;
   std::vector<VertexData> primitiveVertexData;
   std::vector<uint32_t> primitiveIndices;
+  std::vector<uint32_t> primitiveMaterialSlotIndices;
 
+  uint32_t materialSlotIdx = 0;
   for (const auto& prim: gltfMesh.primitives) {
     // We don't support primitive types other than triangles for the time being
-    // TODO should we add support for other primitive types?
+    // TODO: should we add support for other primitive types?
     if (prim.type != fastgltf::PrimitiveType::Triangles) {
       std::println(stderr, "[Warn] gltf: Unsupported primitive type");
       continue;
@@ -111,6 +119,7 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
     primitiveVertexPositions.clear();
     primitiveVertexData.clear();
     primitiveIndices.clear();
+    primitiveMaterialSlotIndices.clear();
 
     /*
      * Copy primitive vertex positions
@@ -194,21 +203,30 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
     vertexData.insert(vertexData.end(), primitiveVertexData.begin(), primitiveVertexData.end());
 
     /*
-     * Copy primitive indices
+     * Copy primitive indices and material slot indices
      */
     const auto& idxAccesor = m_asset->accessors[prim.indicesAccessor.value()];
     primitiveIndices.reserve(idxAccesor.count);
     auto idxIt = fastgltf::iterateAccessor<uint32_t>(*m_asset, idxAccesor);
     for (uint32_t idx: idxIt) primitiveIndices.push_back(idx + (uint32_t)offset);
+    
+    primitiveMaterialSlotIndices.resize(idxAccesor.count / 3, materialSlotIdx++);
 
     indices.insert(indices.end(), primitiveIndices.begin(), primitiveIndices.end());
+    materialSlotIndices.insert(materialSlotIndices.end(), primitiveMaterialSlotIndices.begin(), primitiveMaterialSlotIndices.end());
+    
+    /*
+     * Set material ID for slot
+     */
+    materialSlots.push_back(m_materialIds[prim.materialIndex.value_or(0)]);
   }
 
   /*
-   * Create the mesh and store its ID
+   * Create the mesh and store its ID and materials
    */
-  auto id = m_scene.addMesh({m_device, vertexPositions, vertexData, indices});
+  auto id = m_scene.addMesh({m_device, vertexPositions, vertexData, indices, materialSlotIndices});
   m_meshIds.push_back(id);
+  m_meshMaterials[id] = materialSlots;
 }
 
 void GltfLoader::loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent) {
@@ -223,10 +241,12 @@ void GltfLoader::loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent) 
     return;
   }
 
+  // Create node
   std::string_view name(gltfNode.name);
   Scene::Node node(name, meshId);
   node.cameraId = cameraId;
 
+  // Node transform
   auto trs = std::get_if<fastgltf::TRS>(&gltfNode.transform);
   if (trs) {
     auto& t = trs->translation;
@@ -235,11 +255,63 @@ void GltfLoader::loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent) 
     node.transform.scale = float3{s.x(), s.y(), s.z()};
     node.transform.rotation = eulerFromQuat(trs->rotation);
   }
+  
+  // Node material slots
+  if (meshId) node.materials = m_meshMaterials[meshId.value()];
 
+  // Add node and load children
   auto id = m_scene.addNode(std::move(node), parent);
   for (auto childIdx: gltfNode.children) {
     loadNode(m_asset->nodes[childIdx], id);
   }
+}
+
+void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
+  Material material;
+  
+  // Assign base color
+  for (uint32_t i = 0; i < 4; i++)
+    material.baseColor[i] = gltfMat.pbrData.baseColorFactor[i];
+  
+  // Set alpha flag if the material has an alpha component
+  if (material.baseColor[3] < 1.0f) material.flags |= Material::Material_UseAlpha;
+  
+  // Assign PBR parameters
+  material.roughness = gltfMat.pbrData.roughnessFactor;
+  material.metallic = gltfMat.pbrData.metallicFactor;
+  if (gltfMat.transmission != nullptr) {
+    material.transmission = gltfMat.transmission->transmissionFactor;
+  }
+  
+  // Assign emission
+  for (uint32_t i = 0; i < 3; i++) {
+    auto em = gltfMat.emissiveFactor[i] * gltfMat.emissiveStrength;
+    material.emission[i] = em;
+    
+    // Set emissive flag if emission is greater than zero
+    if (em > 0.0f) material.flags |= Material::Material_Emissive;
+  }
+  
+  // Assign additional parameters
+  material.ior = gltfMat.ior;
+  
+  if (gltfMat.anisotropy != nullptr) {
+    material.anisotropy = gltfMat.anisotropy->anisotropyStrength;
+    material.anisotropyRotation = gltfMat.anisotropy->anisotropyRotation;
+    
+    // Set anisotropic flag if the material has anisotropy
+    if (material.anisotropy != 0.0f) material.flags |= Material::Material_Anisotropic;
+  }
+  
+  if (gltfMat.clearcoat != nullptr) {
+    material.clearcoat = gltfMat.clearcoat->clearcoatFactor;
+    material.clearcoatRoughness = gltfMat.clearcoat->clearcoatRoughnessFactor;
+  }
+  
+  // TODO: load textures
+  
+  auto id = m_scene.addMaterial(gltfMat.name, material);
+  m_materialIds.push_back(id);
 }
 
 }

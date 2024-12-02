@@ -1,6 +1,7 @@
 #ifndef PLATINUM_GLTF_HPP
 #define PLATINUM_GLTF_HPP
 
+#include <unordered_dense.h>
 #include <filesystem>
 #include <simd/simd.h>
 #include <fastgltf/core.hpp>
@@ -49,12 +50,17 @@ private:
   Scene& m_scene;
   std::unique_ptr<fastgltf::Asset> m_asset;
   std::vector<Scene::MeshID> m_meshIds;
-  std::vector<Scene::MeshID> m_cameraIds;
+  ankerl::unordered_dense::map<Scene::MeshID, std::vector<Scene::MaterialID>> m_meshMaterials;
+  
+  std::vector<Scene::CameraID> m_cameraIds;
+  std::vector<Scene::MaterialID> m_materialIds;
   int m_options;
 
   void loadMesh(const fastgltf::Mesh& gltfMesh);
 
   void loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent = 0);
+  
+  void loadMaterial(const fastgltf::Material& gltfMat);
 };
 
 
