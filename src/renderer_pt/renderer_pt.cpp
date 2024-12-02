@@ -90,13 +90,16 @@ void Renderer::render() {
     computeEnc->dispatchThreadgroups(threadgroups, threadsPerThreadgroup);
     computeEnc->endEncoding();
 
-    std::swap(m_accumulator[0], m_accumulator[1]);
     m_accumulatedFrames++;
-
+    
     auto now = std::chrono::high_resolution_clock::now();
     auto time = now - m_renderStart;
     auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(time);
     m_timer = millis.count();
+  }
+  
+  if (m_accumulatedFrames <= m_accumulationFrames) {
+    std::swap(m_accumulator[0], m_accumulator[1]);
   }
 
   /*

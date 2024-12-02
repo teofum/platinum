@@ -219,7 +219,7 @@ void Properties::renderMaterialProperties(Scene::MaterialID id) {
   
   auto emissionChanged = false;
   emissionChanged |= ImGui::ColorEdit3("Color", (float*) &material->emission, m_colorFlags, {buttonWidth, 0});
-  emissionChanged |= ImGui::SliderFloat("Strength", &material->emissionStrength, 0.0f, 1.0f);
+  emissionChanged |= ImGui::DragFloat("Strength", &material->emissionStrength);
   if (emissionChanged) {
     if (length_squared(material->emission) > 0.0f && material->emissionStrength > 0.0f) {
       material->flags |= Material::Material_Emissive;
