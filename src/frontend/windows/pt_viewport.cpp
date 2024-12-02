@@ -41,11 +41,13 @@ void RenderViewport::render() {
     ImGui::SetNextItemWidth(160);
     ImGui::BeginDisabled(cameras.empty());
     if (ImGui::BeginCombo("##CameraSelect", label.c_str())) {
+      float width = ImGui::GetContentRegionAvail().x - 12.0f;
       for (const auto& cd: cameras) {
         auto name = std::format("{}##Camera_{}", m_store.scene().node(cd.nodeId)->name, cd.nodeId);
         const bool isSelected = cd.nodeId == m_cameraNodeId;
         
-        if (widgets::selectable(name.c_str(), isSelected)) {
+        ImGui::SetCursorPosX(10.0f);
+        if (widgets::selectable(name.c_str(), isSelected, 0, {width, 0})) {
           m_cameraNodeId = cd.nodeId;
         }
         
@@ -142,11 +144,13 @@ void RenderViewport::render() {
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
   ImGui::BeginDisabled(cameras.empty());
   if (ImGui::BeginCombo("##CameraSelect", label.c_str())) {
+    float width = ImGui::GetContentRegionAvail().x - 12.0f;
     for (const auto& cd: cameras) {
       auto name = std::format("{}##Camera_{}", m_store.scene().node(cd.nodeId)->name, cd.nodeId);
       const bool isSelected = cd.nodeId == m_cameraNodeId;
-
-      if (widgets::selectable(name.c_str(), isSelected)) {
+      
+      ImGui::SetCursorPosX(10.0f);
+      if (widgets::selectable(name.c_str(), isSelected, 0, {width, 0})) {
         m_cameraNodeId = cd.nodeId;
       }
 

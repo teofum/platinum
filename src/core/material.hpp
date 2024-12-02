@@ -17,6 +17,7 @@ struct Material {
   
   float4 baseColor;
   float3 emission;
+  float emissionStrength = 0.0f;
   float roughness = 1.0f, metallic = 0.0f, transmission = 0.0f;
   float ior = 1.5f;
   float anisotropy = 0.0f, anisotropyRotation = 0.0f;

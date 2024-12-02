@@ -284,12 +284,13 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   }
   
   // Assign emission
+  material.emissionStrength = gltfMat.emissiveStrength;
   for (uint32_t i = 0; i < 3; i++) {
-    auto em = gltfMat.emissiveFactor[i] * gltfMat.emissiveStrength;
-    material.emission[i] = em;
+    material.emission[i] = gltfMat.emissiveFactor[i];
     
     // Set emissive flag if emission is greater than zero
-    if (em > 0.0f) material.flags |= Material::Material_Emissive;
+    if (material.emission[i] * material.emissionStrength > 0.0f)
+      material.flags |= Material::Material_Emissive;
   }
   
   // Assign additional parameters

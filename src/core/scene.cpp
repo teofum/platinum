@@ -139,6 +139,9 @@ bool Scene::cloneNode(Scene::NodeID id, Scene::NodeID targetId) {
 
   Node clone(node->name, node->meshId);
   clone.transform = node->transform;
+  clone.cameraId = node->cameraId;
+  clone.materials = node->materials;
+  clone.flags = node->flags;
   const auto cloneId = addNode(std::move(clone), targetId);
 
   // Recursively clone children

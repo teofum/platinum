@@ -154,7 +154,7 @@ kernel void pathtracingKernel(
       auto material = instanceResource.materials[materialSlot];
       
       if (material.flags & pt::Material::Material_Emissive) {
-        L = attenuation * material.emission;
+        L = attenuation * material.emission * material.emissionStrength;
         break;
       }
       

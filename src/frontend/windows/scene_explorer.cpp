@@ -19,9 +19,14 @@ void SceneExplorer::render() {
    */
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
   if (ImGui::BeginCombo("##ModeSelect", m_modeNames[m_mode])) {
+    float width = ImGui::GetContentRegionAvail().x - 12.0f;
     for (uint32_t mode = 0; mode < m_modeCount; mode++) {
       auto isSelected = mode == m_mode;
-      if (ImGui::Selectable(m_modeNames[mode], &isSelected)) m_mode = mode;
+      
+      ImGui::SetCursorPosX(10.0f);
+      if (widgets::selectable(m_modeNames[mode], isSelected, 0, {width, 0})) {
+        m_mode = mode;
+      }
     }
     ImGui::EndCombo();
   }

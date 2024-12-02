@@ -52,7 +52,7 @@ public:
   struct MaterialData {
     const Material* material = nullptr;
     MaterialID materialId = 0;
-    std::string_view name;
+    const std::string& name;
   };
 
   struct InstanceData {
