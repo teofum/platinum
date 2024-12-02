@@ -112,6 +112,17 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
             nextMaterialId = md.materialId;
           }
         }
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        ImGui::SetCursorPosX(10.0f);
+        if (widgets::selectable("New material", false, 0, {width, 0})) {
+          auto name = std::format("Material {}", m_store.scene().getAllMaterials().size() + 1);
+          nextMaterialId = m_store.scene().addMaterial(name, Material{ .baseColor = {0.8, 0.8, 0.8} });
+        }
+        
         ImGui::EndCombo();
       }
       
@@ -195,7 +206,56 @@ void Properties::renderMaterialProperties(Scene::MaterialID id) {
   ImGui::SliderFloat("IOR", &material->ior, 0.1f, 5.0f);
   
   float alpha = material->baseColor[3];
-  if (ImGui::SliderFloat("Alpha", &alpha, 0.0f, 1.0f)) material->baseColor[3] = alpha;
+  if (ImGui::SliderFloat("Alpha", &alpha, 0.0f, 1.0f)) {
+    material->baseColor[3] = alpha;
+    if (alpha > 0.0) {
+      material->flags |= Material::Material_UseAlpha;
+    } else {
+      material->flags &= ~Material::Material_UseAlpha;
+    }
+  }
+  
+  ImGui::SeparatorText("Emission");
+  
+  auto emissionChanged = false;
+  emissionChanged |= ImGui::ColorEdit3("Color", (float*) &material->emission, m_colorFlags, {buttonWidth, 0});
+  emissionChanged |= ImGui::SliderFloat("Strength", &material->emissionStrength, 0.0f, 1.0f);
+  if (emissionChanged) {
+    if (length_squared(material->emission) > 0.0f && material->emissionStrength > 0.0f) {
+      material->flags |= Material::Material_Emissive;
+    } else {
+      material->flags &= ~Material::Material_Emissive;
+    }
+  }
+  
+  ImGui::SeparatorText("Clearcoat");
+  
+  ImGui::SliderFloat("Value", &material->clearcoat, 0.0f, 1.0f);
+  ImGui::SliderFloat("Roughness##CoatRoughness", &material->clearcoatRoughness, 0.0f, 1.0f);
+  
+  ImGui::SeparatorText("Anisotropy");
+  
+  if (ImGui::SliderFloat("Anisotropy", &material->anisotropy, 0.0f, 1.0f)) {
+    if (material->anisotropy > 0.0f) {
+      material->flags |= Material::Material_Anisotropic;
+    } else {
+      material->flags &= ~Material::Material_Anisotropic;
+    }
+  }
+  ImGui::SliderFloat("Rotation", &material->anisotropyRotation, 0.0f, 1.0f);
+  
+  ImGui::SeparatorText("Additional properties");
+  
+  ImGui::CheckboxFlags("Thin transmission", &material->flags, Material::Material_ThinDielectric);
+  ImGui::SameLine();
+  ImGui::TextDisabled("[?]");
+  if (ImGui::BeginItemTooltip()) {
+      ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+      ImGui::TextUnformatted("Render the surface as a thin sheet, rather than the boundary "
+                             "of a solid object. Disables refraction for a transmissive material.");
+      ImGui::PopTextWrapPos();
+      ImGui::EndTooltip();
+  }
 }
 
 }

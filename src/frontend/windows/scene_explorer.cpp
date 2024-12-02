@@ -64,10 +64,10 @@ void SceneExplorer::render() {
    * Create/import options
    */
   auto buttonWidth = widgets::getWidthForItems(2);
-  if (ImGui::Button("Add Objects...", {buttonWidth, 0})) {
-    ImGui::OpenPopup("AddObject_Popup");
+  if (ImGui::Button("Add...", {buttonWidth, 0})) {
+    ImGui::OpenPopup("Add_Popup");
   }
-  if (widgets::popup("AddObject_Popup")) {
+  if (widgets::popup("Add_Popup")) {
     if (widgets::selectable("Cube", false, 0, {100, 0})) {
       uint32_t parentId = m_state.selectedNode().value_or(0);
 
@@ -85,6 +85,13 @@ void SceneExplorer::render() {
       pt::Scene::Node node("Sphere", id);
       node.materials.push_back(0);
       m_store.scene().addNode(std::move(node), parentId);
+    }
+    
+    ImGui::Separator();
+    
+    if (widgets::selectable("Material", false, 0, {100, 0})) {
+      auto name = std::format("Material {}", m_store.scene().getAllMaterials().size() + 1);
+      m_store.scene().addMaterial(name, Material{ .baseColor = {0.8, 0.8, 0.8} });
     }
     
     ImGui::Separator();

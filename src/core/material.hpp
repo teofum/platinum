@@ -9,7 +9,7 @@ namespace pt {
 
 struct Material {
   enum MaterialFlags {
-    Material_ThinDelectric = 1 << 0,
+    Material_ThinDielectric = 1 << 0,
     Material_UseAlpha = 1 << 1,
     Material_Emissive = 1 << 2,
     Material_Anisotropic = 1 << 3,
