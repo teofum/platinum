@@ -657,7 +657,7 @@ void Renderer::rebuildRenderTargets() {
   texd->setStorageMode(MTL::StorageModeShared);
 
   texd->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
-  m_auxRenderTarget = m_device->newTexture(texd); 
+  m_auxRenderTarget = m_device->newTexture(texd);
   //  texd->setPixelFormat(MTL::PixelFormatRGBA8Unorm_sRGB);
   m_primaryRenderTarget = m_device->newTexture(texd);
 

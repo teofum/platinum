@@ -378,7 +378,11 @@ void Renderer::rebuildResourcesBuffers() {
 
 void Renderer::rebuildAccelerationStructures() {
   // Clear old acceleration structures, if any
-//  if (m_meshAccelStructs != nullptr) m_meshAccelStructs->release();
+  if (m_meshAccelStructs != nullptr) {
+    for (uint32_t i = 0; i < m_meshAccelStructs->count(); i++)
+      m_meshAccelStructs->object(i)->release();
+    m_meshAccelStructs->release();
+  }
   if (m_instanceAccelStruct != nullptr) m_instanceAccelStruct->release();
   if (m_instanceBuffer != nullptr) m_instanceBuffer->release();
 
