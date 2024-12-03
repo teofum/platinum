@@ -76,6 +76,7 @@
 		AB86A6F42CFBA80F00CC5BA3 /* SDL2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2.framework; path = ../../../../Library/Frameworks/SDL2.framework; sourceTree = "<group>"; };
 		ABD2D3272CFB9B1900AE082A /* SDL2 */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = SDL2; path = sdl2/SDL2.framework/Versions/A/SDL2; sourceTree = "<group>"; };
 		ABE00B692CFB891B00DA8AED /* libmetal-cpp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libmetal-cpp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		ABECF9092CFEA9B400918BB5 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -356,6 +357,7 @@
 				AB5133B52CFB7091005738C1 /* metal-cmake */,
 				AB5133B82CFB7091005738C1 /* nfd */,
 				AB5133BB2CFB7091005738C1 /* sdl2 */,
+				ABECF9092CFEA9B400918BB5 /* .gitignore */,
 				AB5133DC2CFB7253005738C1 /* Frameworks */,
 				AB5133C12CFB7108005738C1 /* Products */,
 			);
