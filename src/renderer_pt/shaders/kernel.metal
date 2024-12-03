@@ -7,7 +7,7 @@
 #include "../../core/material.hpp"
 #include "../pt_shader_defs.hpp"
 
-#define MAX_BOUNCES 15
+#define MAX_BOUNCES 20
 #define DIMS_PER_BOUNCE 5
 
 using namespace metal;
@@ -92,6 +92,18 @@ namespace bsdf {
     const auto k = 1.0f - cosTheta;
     const auto k2 = k * k;
     return f0 + (float3(1.0) - f0) * (k2 * k2 * k);
+  }
+  
+  inline float fresnel(float cosTheta, float ior) {
+    cosTheta = clamp(cosTheta, 0.0f, 1.0f);
+    
+    const auto sin2Theta_t = (1.0f - cosTheta * cosTheta) / (ior * ior);
+    if (sin2Theta_t >= 1.0f) return 1.0f;
+    
+    const auto cosTheta_t = sqrt(1.0f - sin2Theta_t);
+    const auto parallel = (ior * cosTheta - cosTheta_t) / (ior * cosTheta + cosTheta_t);
+    const auto perpendicular = (cosTheta - ior * cosTheta_t) / (cosTheta + ior * cosTheta_t);
+    return (parallel * parallel + perpendicular * perpendicular) * 0.5f;
   }
   
   class GGX {
@@ -197,11 +209,11 @@ namespace bsdf {
   
   Sample sampleMetallic(thread const pt::Material& mat, float3 wo, thread const GGX& ggx, float3 r) {
     if (ggx.isSmooth()) {
-      const auto f_ss = schlick(mat.baseColor.xyz, wo.z);
+      const auto fresnel_ss = schlick(mat.baseColor.rgb, wo.z);
       
       return {
         .flags  = Sample::Reflected | Sample::Specular,
-        .f      = f_ss / abs(wo.z),
+        .f      = fresnel_ss / abs(wo.z),
         .Le     = float3(0.0),
         .wi     = float3(-wo.xy, wo.z),
         .pdf    = 1.0f,
@@ -209,19 +221,21 @@ namespace bsdf {
     }
     
     auto wm = ggx.sampleVmdf(wo, r.xy);
-    auto wi = -reflect(wo, wm);
+    const auto woDotWm = abs(dot(wo, wm));
+    
+    auto wi = reflect(-wo, wm);
     if (wo.z * wi.z < 0.0f) return {};
     
-    const auto woDotWm = abs(dot(wo, wm));
-    const auto pdf = ggx.vmdf(wo, wm) / (4.0f * woDotWm);
+    const auto fresnel_ss = schlick(mat.baseColor.rgb, woDotWm);
     
     const auto cosTheta_o = abs(wo.z), cosTheta_i = abs(wi.z);
-    const auto f_ss = schlick(mat.baseColor.xyz, woDotWm);
-    const auto m_ss = ggx.mdf(wm) * ggx.g(wo, wi) / (4 * cosTheta_o * cosTheta_i);
+    const auto brdf_ss = ggx.mdf(wm) * ggx.g(wo, wi) / (4 * cosTheta_o * cosTheta_i);
+    
+    const auto pdf = ggx.vmdf(wo, wm) / (4.0f * woDotWm);
     
     return {
       .flags	= Sample::Reflected | Sample::Glossy,
-      .f 			= f_ss * m_ss,
+      .f 			= fresnel_ss * brdf_ss,
       .Le 		= float3(0.0),
       .wi			= wi,
       .pdf		= pdf,
@@ -229,8 +243,93 @@ namespace bsdf {
   }
   
   Sample sampleDielectric(thread const pt::Material& mat, float3 wo, thread const GGX& ggx, float3 r) {
-    // TODO: dielectric
-    return {};
+    auto thin = mat.flags & pt::Material::Material_ThinDielectric;
+    
+    auto ior = mat.ior;
+    if (wo.z < 0.0f && !(thin)) ior = 1.0f / ior;
+    
+    if (ggx.isSmooth()) {
+      const auto fresnel_ss = fresnel(wo.z, ior);
+      
+      if (r.z < fresnel_ss) {
+        float3 wi(-wo.xy, wo.z);
+        return {
+          .flags  = Sample::Reflected | Sample::Specular,
+          .f      = float3(fresnel_ss / abs(wi.z)),
+          .Le     = float3(0.0),
+          .wi     = wi,
+          .pdf    = fresnel_ss,
+        };
+      } else {
+        float3 wi = thin ? -wo : refract(wo, float3(0.0, 0.0, 1.0), -1.0f / ior);
+        if (wi.z == 0.0f) return {};
+        return {
+          .flags  = Sample::Transmitted | Sample::Specular,
+          .f      = (1.0f - fresnel_ss) / abs(wi.z) * mat.baseColor.rgb,
+          .Le     = float3(0.0),
+          .wi     = wi,
+          .pdf    = (1.0f - fresnel_ss),
+        };
+      }
+    }
+    
+    const auto wm = ggx.sampleVmdf(wo, r.xy);
+    const auto woDotWm = abs(dot(wo, wm));
+    
+    const auto fresnel_ss = fresnel(dot(wo, wm), ior);
+    const float cosTheta_o = abs(wo.z);
+    
+    // TODO: multiple scattering
+    
+    if (r.z < fresnel_ss) {
+      const auto wi = reflect(-wo, wm);
+      if (wo.z * wi.z < 0.0f) return {};
+      
+      const float cosTheta_i = abs(wi.z);
+      const float brdf_ss = ggx.mdf(wm) * ggx.g(wo, wi) / (4 * cosTheta_o * cosTheta_i);
+      
+      const auto pdf = ggx.vmdf(wo, wm) / (4.0f * woDotWm) * fresnel_ss;
+      
+      return {
+        .flags  = Sample::Reflected | Sample::Glossy,
+        .f      = float3(fresnel_ss * brdf_ss),
+        .Le     = float3(0.0),
+        .wi     = wi,
+        .pdf    = pdf,
+      };
+    } else {
+      float3 wi;
+      float btdf_ss, pdf;
+      
+      if (thin) {
+        wi = reflect(-wo, wm) * float3(1.0, 1.0, -1.0);
+        
+        const auto cosTheta_i = abs(wi.z);
+        btdf_ss = ggx.mdf(wm) * ggx.g(wo, wi) / (4 * cosTheta_o * cosTheta_i);
+        
+        pdf = ggx.vmdf(wo, wm) / (4.0f * woDotWm) * (1.0f - fresnel_ss);
+      } else {
+        wi = refract(wo, wm, -1.0f / ior);
+        if (wo.z * wi.z >= 0.0f) return {};
+        
+        auto denom = dot(wi, wm) * ior + dot(wo, wm);
+        denom *= denom;
+        
+        const auto wiDotWm = abs(dot(wi, wm));
+        const auto dwm_dwi = wiDotWm / denom;
+        pdf = ggx.vmdf(wo, wm) * dwm_dwi * (1.0f - fresnel_ss);
+        
+        btdf_ss = ggx.mdf(wm) * ggx.g(wo, wi) * abs(wiDotWm * woDotWm / (wi.z * wo.z * denom));
+      }
+      
+      return {
+        .flags  = Sample::Transmitted | Sample::Glossy,
+        .f      = (1.0 - fresnel_ss) * btdf_ss * mat.baseColor.rgb,
+        .Le     = float3(0.0),
+        .wi     = wi,
+        .pdf    = pdf,
+      };
+    }
   }
   
   Sample sampleGlossy(thread const pt::Material& mat, float3 wo, thread const GGX& ggx, float3 r) {
@@ -388,8 +487,8 @@ kernel void pathtracingKernel(
       
       auto sample = bsdf::sample(material, wo, float2(0.0), r);
       
-      ray.origin = wsHitPoint + wsSurfaceNormal * 1e-3f;
-      ray.direction = frame.localToWorld(sample.wi);
+      ray.origin = wsHitPoint + wsSurfaceNormal * 1e-3f * (sample.flags & bsdf::Sample::Transmitted ? -1 : 1);
+      ray.direction = normalize(frame.localToWorld(sample.wi));
       
       if (sample.flags & bsdf::Sample::Emitted) {
         L += attenuation * sample.Le;

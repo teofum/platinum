@@ -120,7 +120,7 @@ void Renderer::render() {
   postEnc->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger) 0, 6);
   postEnc->endEncoding();
 
-  cmd->commit();
+  cmd->commit(); 
 }
 
 void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint32_t sampleCount) {
@@ -360,7 +360,7 @@ void Renderer::rebuildResourcesBuffers() {
     auto materialsBuffer = m_device->newBuffer(
 		  instance.materials.size() * sizeof(Material),
 		  MTL::ResourceStorageModeShared
-		)->retain();
+		);
     
     size_t materialIdx = 0;
     for (auto mid: instance.materials) {

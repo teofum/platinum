@@ -32,6 +32,7 @@ Mesh::~Mesh() {
   m_vertexPositions->release();
   m_vertexData->release();
   m_indices->release();
+  m_materialIndices->release();
 }
 
 Mesh::Mesh(Mesh&& m) noexcept {
@@ -40,10 +41,12 @@ Mesh::Mesh(Mesh&& m) noexcept {
   m_vertexPositions = m.m_vertexPositions;
   m_vertexData = m.m_vertexData;
   m_indices = m.m_indices;
+  m_materialIndices = m.m_materialIndices;
 
   m.m_vertexPositions = nullptr;
   m.m_vertexData = nullptr;
   m.m_indices = nullptr;
+  m.m_materialIndices = nullptr;
 }
 
 Mesh& Mesh::operator=(Mesh&& m) noexcept {
@@ -52,10 +55,12 @@ Mesh& Mesh::operator=(Mesh&& m) noexcept {
   m_vertexPositions = m.m_vertexPositions;
   m_vertexData = m.m_vertexData;
   m_indices = m.m_indices;
+  m_materialIndices = m.m_materialIndices;
 
   m.m_vertexPositions = nullptr;
   m.m_vertexData = nullptr;
   m.m_indices = nullptr;
+  m.m_materialIndices = nullptr;
   return *this;
 }
 
