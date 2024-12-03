@@ -14,10 +14,20 @@ using namespace metal;
 using namespace raytracing;
 using namespace pt::shaders_pt;
 
-constant uint32_t resourcesStride [[function_constant(0)]];
+/*
+ * Type definitions
+ */
+using triangle_instance_intersection = typename intersector<triangle_data, instancing>::result_type;
 
+/*
+ * Constants
+ */
+constant uint32_t resourcesStride [[function_constant(0)]];
 constant float3 backgroundColor(0.0, 0.0, 0.0);
 
+/*
+ * Resource structs
+ */
 struct VertexResource {
   device pt::VertexData* data;
 };
@@ -30,42 +40,83 @@ struct InstanceResource {
   device pt::Material* materials;
 };
 
-constant unsigned int primes[] = {
-   2,    3,   5,   7,  11,  13,  17,  19,
-   23,  29,  31,  37,  41,  43,  47,  53,
-   59,  61,  67,  71,  73,  79,  83,  89,
-   97, 101, 103, 107, 109, 113, 127, 131,
-  137, 139, 149, 151, 157, 163, 167, 173,
- 	179, 181, 191, 193, 197, 199, 211, 223,
-  227, 229, 233, 239, 241, 251, 257, 263,
-  269, 271, 277, 281, 283, 293, 307, 311,
-  313, 317, 331, 337, 347, 349, 353, 359,
-  367, 373, 379, 383, 389, 397, 401, 409,
-  419, 421, 431, 433, 439, 443, 449, 457,
-  461, 463, 467, 479, 487, 491, 499, 503,
-  509, 521, 523, 541, 547, 557, 563, 569,
-  571, 577, 587, 593, 599, 601, 607, 613,
-  617, 619, 631, 641, 643, 647, 653, 659,
-};
-
-float halton(unsigned int i, unsigned int d) {
-  unsigned int b = primes[d];
-  
-  float f = 1.0f;
-  float invB = 1.0f / b;
-  
-  float r = 0;
-  
-  while (i > 0) {
-    f = f * invB;
-    r = r + f * (i % b);
-    i = i / b;
-  }
-  
-  return r;
+/*
+ * Miscellaneous helper functions
+ */
+template<typename T>
+T interpolate(thread T* att, float2 uv) {
+  return (1.0f - uv.x - uv.y) * att[0] + uv.x * att[1] + uv.y * att[2];
 }
 
+__attribute__((always_inline))
+float3 transformVec(float3 p, float4x4 transform) {
+  return (transform * float4(p.x, p.y, p.z, 0.0f)).xyz;
+}
+
+/*
+ * Coordinate frame, we use this over a 4x4 matrix because it allows easy conversion both ways
+ * without having to calculate the inverse.
+ */
+struct Frame {
+  float3 x, y, z;
+  
+  static Frame fromNormal(float3 n) {
+    const auto a = abs(n.x) > 0.5 ? float3(0, 0, 1) : float3(1, 0, 0);
+    
+    const auto b = normalize(cross(n, a));
+    const auto t = cross(n, b);
+    
+    return {t, b, n};
+  }
+  
+  inline float3 worldToLocal(float3 w) const {
+    return float3(dot(w, x), dot(w, y), dot(w, z));
+  }
+  
+  inline float3 localToWorld(float3 l) const {
+    return x * l.x + y * l.y + z * l.z;
+  }
+};
+
+/*
+ * Sampling
+ */
 namespace samplers {
+	constant unsigned int primes[] = {
+	   2,    3,   5,   7,  11,  13,  17,  19,
+	   23,  29,  31,  37,  41,  43,  47,  53,
+	   59,  61,  67,  71,  73,  79,  83,  89,
+	   97, 101, 103, 107, 109, 113, 127, 131,
+	  137, 139, 149, 151, 157, 163, 167, 173,
+	 	179, 181, 191, 193, 197, 199, 211, 223,
+	  227, 229, 233, 239, 241, 251, 257, 263,
+	  269, 271, 277, 281, 283, 293, 307, 311,
+	  313, 317, 331, 337, 347, 349, 353, 359,
+	  367, 373, 379, 383, 389, 397, 401, 409,
+	  419, 421, 431, 433, 439, 443, 449, 457,
+	  461, 463, 467, 479, 487, 491, 499, 503,
+	  509, 521, 523, 541, 547, 557, 563, 569,
+	  571, 577, 587, 593, 599, 601, 607, 613,
+	  617, 619, 631, 641, 643, 647, 653, 659,
+	};
+	
+	float halton(unsigned int i, unsigned int d) {
+	  unsigned int b = primes[d];
+	
+	  float f = 1.0f;
+	  float invB = 1.0f / b;
+	
+	  float r = 0;
+	
+	  while (i > 0) {
+	    f = f * invB;
+	    r = r + f * (i % b);
+	    i = i / b;
+	  }
+	
+	  return r;
+	}
+
   inline float2 sampleDisk(float2 u) {
     const auto r = sqrt(u.x);
     const auto theta = 2.0f * M_PI_F * u.y;
@@ -87,13 +138,24 @@ namespace samplers {
   }
 }
 
+/*
+ * Parametric GGX BSDF implementation
+ * Loosely based on Enterprise PBR and Blender's Principled BSDF
+ */
 namespace bsdf {
+  /*
+   * Schlick fresnel approximation for conductors
+   */
   inline float3 schlick(float3 f0, float cosTheta) {
     const auto k = 1.0f - cosTheta;
     const auto k2 = k * k;
     return f0 + (float3(1.0) - f0) * (k2 * k2 * k);
   }
   
+  /*
+   * Real fresnel equations for dielectrics
+   * We don't use the complex equations for conductors, as they're meaningless in RGB rendering
+   */
   inline float fresnel(float cosTheta, float ior) {
     cosTheta = clamp(cosTheta, 0.0f, 1.0f);
     
@@ -106,6 +168,11 @@ namespace bsdf {
     return (parallel * parallel + perpendicular * perpendicular) * 0.5f;
   }
   
+  /*
+   * Trowbridge-Reitz GGX microfacet distribution implementation
+   * Simple wrapper around all the GGX sampling functions, supports anisotropy. Works with all
+   * directions in tangent space (Z-up, aligned to surface normal)
+   */
   class GGX {
   public:
     explicit GGX(float roughness) noexcept
@@ -117,6 +184,7 @@ namespace bsdf {
       m_alpha = float2(alpha / aspect, alpha * aspect);
     }
     
+    // Microfacet distribution function
     inline float mdf(float3 w) const {
       const auto cos2Theta = w.z * w.z;
       const auto sin2Theta = max(0.0f, 1.0f - cos2Theta);
@@ -137,18 +205,28 @@ namespace bsdf {
       return 1.0f / (M_PI_F * m_alpha.x * m_alpha.y * cos4Theta * k);
     }
     
+    // Smith approximation for G1 masking function
     inline float g1(float3 w) const {
       return 1.0f / (1.0f + lambda(w));
     }
     
+    // Smith approximation for masking+shadowing function
     inline float g(float3 wo, float3 wi) const {
       return 1.0f / (1.0f + lambda(wo) + lambda(wi));
     }
     
+    // Visible microfacet distribution function
     inline float vmdf(float3 w, float3 wm) const {
       return g1(w) / abs(w.z) * mdf(wm) * abs(dot(w, wm));
     }
     
+    // Visible microfacet distribution function, shortcut version
+    // This overload lets us avoid evaluating the MDF twice if we already have its value from earlier
+    inline float vmdf(float3 w, float3 wm, float mdf) const {
+      return g1(w) / abs(w.z) * mdf * abs(dot(w, wm));
+    }
+    
+    // Sample a microfacet from the visible distribution
     inline float3 sampleVmdf(float3 w, float2 u) const {
       auto wh = normalize(w * float3(m_alpha, 1.0));
       if (wh.z < 0) wh *= -1.0;
@@ -166,6 +244,8 @@ namespace bsdf {
       return normalize(float3(m_alpha.x * nh.x, m_alpha.y * nh.y, max(1e-6f, nh.z)));
     }
     
+    // Surfaces with a very small roughness value are considered perfect specular, this helps deal
+    // with the numerical instability at such values and makes almost no visible difference
     inline bool isSmooth() const {
       return m_alpha.x < 1e-3f && m_alpha.y < 1e-3f;
     }
@@ -173,6 +253,7 @@ namespace bsdf {
   private:
     float2 m_alpha;
     
+    // Implementation detail for the masking and shadowing functions
     inline float lambda(float3 w) const {
       const auto cos2Theta = w.z * w.z;
       const auto sin2Theta = 1.0f - cos2Theta;
@@ -189,6 +270,9 @@ namespace bsdf {
     }
   };
   
+  /*
+   * Holds all relevant BSDF sample information
+   */
   struct Sample {
     enum Flags {
       Absorbed 			= 0,
@@ -200,14 +284,55 @@ namespace bsdf {
       Specular 			= 1 << 5,
     };
     
+    float3 wi;
     float3 f;
     float3 Le;
-    float3 wi;
     float pdf;
     int flags = 0;
   };
   
-  Sample sampleMetallic(thread const pt::Material& mat, float3 wo, thread const GGX& ggx, float3 r) {
+  struct Eval {
+    float3 f;
+    float3 Le;
+    float pdf = 0.0f;
+  };
+  
+  /*
+   * Evaluate GGX conductor BRDF and PDF
+   * Internal version, lets us skip the microfacet normal calculation if we already have it (i.e.
+   * if we just sampled the VMDF)
+   */
+  Eval evalMetallic(device const pt::Material& mat, float3 wo, float3 wi, float3 wm, thread const GGX& ggx) {
+    const auto woDotWm = abs(dot(wo, wm));
+    const auto fresnel_ss = schlick(mat.baseColor.rgb, woDotWm);
+    
+    const auto cosTheta_o = abs(wo.z), cosTheta_i = abs(wi.z);
+    const auto brdf_ss = ggx.mdf(wm) * ggx.g(wo, wi) / (4 * cosTheta_o * cosTheta_i);
+    
+    return {
+      .f = fresnel_ss * brdf_ss,
+      .pdf = ggx.vmdf(wo, wm) / (4.0f * woDotWm),
+    };
+  }
+  
+  /*
+   * Evaluate GGX conductor BRDF and PDF
+   */
+  Eval evalMetallic(device const pt::Material& mat, float3 wo, float3 wi, thread const GGX& ggx) {
+    if (ggx.isSmooth()) return {};
+    
+    auto wm = wo + wi;
+    if (length_squared(wm) == 0.0f) return {};
+    wm = normalize(wm * sign(wm.z));
+    
+    return evalMetallic(mat, wo, wi, wm, ggx);
+  }
+  
+  /*
+   * Get an incident light direction by importance sampling the BRDF, and evaluate it
+   */
+  Sample sampleMetallic(device const pt::Material& mat, float3 wo, thread const GGX& ggx, float3 r) {
+    // Handle the special case of perfect specular reflection
     if (ggx.isSmooth()) {
       const auto fresnel_ss = schlick(mat.baseColor.rgb, wo.z);
       
@@ -221,28 +346,20 @@ namespace bsdf {
     }
     
     auto wm = ggx.sampleVmdf(wo, r.xy);
-    const auto woDotWm = abs(dot(wo, wm));
-    
     auto wi = reflect(-wo, wm);
     if (wo.z * wi.z < 0.0f) return {};
     
-    const auto fresnel_ss = schlick(mat.baseColor.rgb, woDotWm);
-    
-    const auto cosTheta_o = abs(wo.z), cosTheta_i = abs(wi.z);
-    const auto brdf_ss = ggx.mdf(wm) * ggx.g(wo, wi) / (4 * cosTheta_o * cosTheta_i);
-    
-    const auto pdf = ggx.vmdf(wo, wm) / (4.0f * woDotWm);
+    const auto eval = evalMetallic(mat, wo, wi, wm, ggx);
     
     return {
       .flags	= Sample::Reflected | Sample::Glossy,
-      .f 			= fresnel_ss * brdf_ss,
-      .Le 		= float3(0.0),
-      .wi			= wi,
-      .pdf		= pdf,
+      .wi     = wi,
+      .f      = eval.f,
+      .pdf    = eval.pdf,
     };
   }
   
-  Sample sampleDielectric(thread const pt::Material& mat, float3 wo, thread const GGX& ggx, float3 r) {
+  Sample sampleDielectric(device const pt::Material& mat, float3 wo, thread const GGX& ggx, float3 r) {
     auto thin = mat.flags & pt::Material::Material_ThinDielectric;
     
     auto ior = mat.ior;
@@ -332,7 +449,7 @@ namespace bsdf {
     }
   }
   
-  Sample sampleGlossy(thread const pt::Material& mat, float3 wo, thread const GGX& ggx, float3 r) {
+  Sample sampleGlossy(device const pt::Material& mat, float3 wo, thread const GGX& ggx, float3 r) {
     // TODO: glossy
     
     auto wi = samplers::sampleCosineHemisphere(r.xy);
@@ -351,7 +468,7 @@ namespace bsdf {
     };
   }
   
-  Sample sample(thread const pt::Material& material, float3 wo, float2 uv, float4 r) {
+  Sample sample(device const pt::Material& material, float3 wo, float2 uv, float4 r) {
     GGX ggx(material.roughness, material.anisotropy);
     
     const auto pMetallic = material.metallic;
@@ -363,37 +480,80 @@ namespace bsdf {
   }
 }
 
-struct Frame {
-  float3 x, y, z;
-  
-  static Frame fromNormal(float3 n) {
-    const auto a = abs(n.x) > 0.5 ? float3(0, 0, 1) : float3(1, 0, 0);
-    
-    const auto b = normalize(cross(n, a));
-    const auto t = cross(n, b);
-    
-    return {t, b, n};
-  }
-  
-  inline float3 worldToLocal(float3 w) const {
-    return float3(dot(w, x), dot(w, y), dot(w, z));
-  }
-  
-  inline float3 localToWorld(float3 l) const {
-    return x * l.x + y * l.y + z * l.z;
-  }
+/*
+ * Groups all the intersection data relevant to us for shading.
+ */
+struct Hit {
+  float3 pos;														// Hit position 						(world space)
+  float3 normal;												// Surface normal 					(world space)
+  float3 wo;														// Outgoing light direction (tangent space)
+  Frame frame;													// Shading coordinate frame, Z-up normal aligned
+  device const pt::Material& material;	// Material
 };
 
-template<typename T>
-T interpolate(thread T* att, float2 uv) {
-  return (1.0f - uv.x - uv.y) * att[0] + uv.x * att[1] + uv.y * att[2];
-}
+/*
+ * Holds references to all the necessary resources.
+ * This is essentially a parameter object to keep the getIntersectionData() function call short.
+ */
+struct Resources {
+  const constant MTLAccelerationStructureInstanceDescriptor* instances;
+  const device void* vertexResources;
+  const device void* primitiveResources;
+  const device void* instanceResources;
+  
+	/*
+	 * Helper function to get relevant data from an intersection: world space position, surface normal,
+	 * material, tangent space outgoing light direction (opposite ray direction) for shading.
+	 * We take this outside of the PT kernel to keep it tidier and so it can be reused by multiple kernels.
+	 */
+	inline Hit getIntersectionData(
+	  const thread ray& ray,
+	  const thread triangle_instance_intersection& intersection
+	) {
+	  auto instanceIdx = intersection.instance_id;
+	  auto geometryIdx = instances[instanceIdx].accelerationStructureIndex;
+	
+	  device auto& vertexResource = *(device VertexResource*)((device uint64_t*)vertexResources + geometryIdx);
+	  device auto& primitiveResource = *(device PrimitiveResource*)((device uint64_t*)primitiveResources + geometryIdx);
+	  device auto& instanceResource = *(device InstanceResource*)((device uint64_t*)instanceResources + instanceIdx);
+	  device auto& data = *(device PrimitiveData*) intersection.primitive_data;
+	
+	  auto materialSlot = *primitiveResource.materialSlot;
+	  device const auto& material = instanceResource.materials[materialSlot];
+	
+	  float3 vertexNormals[3];
+	  for (int i = 0; i < 3; i++) {
+	    vertexNormals[i] = vertexResource.data[data.indices[i]].normal;
+	    // TODO: Interpolate UVs
+	  }
+	
+	  float2 barycentricCoords = intersection.triangle_barycentric_coord;
+	  float3 surfaceNormal = interpolate(vertexNormals, barycentricCoords);
+	
+	  float4x4 objectToWorld(1.0);
+	  for (int i = 0; i < 4; i++)
+	    for (int j = 0; j < 3; j++)
+	      objectToWorld[i][j] = instances[instanceIdx].transformationMatrix[i][j];
+	
+	  float3 wsHitPoint = ray.origin + ray.direction * intersection.distance;
+	  float3 wsSurfaceNormal = normalize(transformVec(surfaceNormal, objectToWorld));
+	
+	  auto frame = Frame::fromNormal(wsSurfaceNormal);
+	  auto wo = frame.worldToLocal(-ray.direction);
+	
+	  return {
+	    .pos      = wsHitPoint,
+	    .normal   = wsSurfaceNormal,
+	    .wo       = wo,
+      .frame		= frame,
+	    .material = material,
+	  };
+	}
+};
 
-__attribute__((always_inline))
-float3 transformVec(float3 p, float4x4 transform) {
-  return (transform * float4(p.x, p.y, p.z, 0.0f)).xyz;
-}
-
+/*
+ * Simple path tracing kernel using BSDF importance sampling.
+ */
 kernel void pathtracingKernel(
   uint2                                                 tid         				[[thread_position_in_grid]],
   constant Constants&                                   constants   				[[buffer(0)]],
@@ -411,9 +571,19 @@ kernel void pathtracingKernel(
     float2 pixel(tid.x, tid.y);
     uint32_t offset = randomTex.read(tid).x;
     
-    float2 r(halton(offset + constants.frameIdx, 0),
-             halton(offset + constants.frameIdx, 1));
+    float2 r(samplers::halton(offset + constants.frameIdx, 0),
+             samplers::halton(offset + constants.frameIdx, 1));
     pixel += r;
+    
+    /*
+     * Create the resources struct for extracting intersection data
+     */
+    Resources resources{
+      .instances = instances,
+      .vertexResources = vertexResources,
+      .primitiveResources = primitiveResources,
+      .instanceResources = instanceResources,
+    };
     
     /*
      * Spawn ray
@@ -426,9 +596,6 @@ kernel void pathtracingKernel(
                                ) - camera.position);
     ray.max_distance = INFINITY;
     
-    float3 attenuation(1.0);
-    float3 L(0.0);
-    
     /*
      * Create an intersector
      */
@@ -437,62 +604,38 @@ kernel void pathtracingKernel(
     i.assume_geometry_type(geometry_type::triangle);
     i.force_opacity(forced_opacity::opaque);
     
-    typename intersector<triangle_data, instancing>::result_type intersection;
+    triangle_instance_intersection intersection;
     
     /*
      * Path tracing
      */
+    float3 attenuation(1.0);
+    float3 L(0.0);
     for (int bounce = 0; bounce < MAX_BOUNCES; bounce++) {
       intersection = i.intersect(ray, accelStruct);
       
+      /*
+       * Stop on ray miss
+       */
       if (intersection.type == intersection_type::none) {
-        L = attenuation * backgroundColor;
+        L += attenuation * backgroundColor;
         break;
       }
       
-      auto instanceIdx = intersection.instance_id;
-      auto geometryIdx = instances[instanceIdx].accelerationStructureIndex;
+      const auto hit = resources.getIntersectionData(ray, intersection);
       
-      device auto& vertexResource = *(device VertexResource*)((device uint64_t*)vertexResources + geometryIdx);
-      device auto& primitiveResource = *(device PrimitiveResource*)((device uint64_t*)primitiveResources + geometryIdx);
-      device auto& instanceResource = *(device InstanceResource*)((device uint64_t*)instanceResources + instanceIdx);
-      device auto& data = *(device PrimitiveData*) intersection.primitive_data;
+      /*
+       * Sample the BSDF to get the next ray direction
+       */
+      auto r = float4(samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 0),
+                      samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 1),
+                      samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 2),
+                      samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 3));
       
-      auto materialSlot = *primitiveResource.materialSlot;
-      auto material = instanceResource.materials[materialSlot];
-      
-      float3 vertexNormals[3];
-      for (int i = 0; i < 3; i++) {
-        vertexNormals[i] = vertexResource.data[data.indices[i]].normal;
-      }
-      
-      float2 barycentricCoords = intersection.triangle_barycentric_coord;
-      float3 surfaceNormal = interpolate(vertexNormals, barycentricCoords);
-      
-      float4x4 objectToWorld(1.0);
-      for (int i = 0; i < 4; i++)
-        for (int j = 0; j < 3; j++)
-          objectToWorld[i][j] = instances[instanceIdx].transformationMatrix[i][j];
-      
-      float3 wsHitPoint = ray.origin + ray.direction * intersection.distance;
-      float3 wsSurfaceNormal = normalize(transformVec(surfaceNormal, objectToWorld));
-      
-      auto frame = Frame::fromNormal(wsSurfaceNormal);
-      auto wo = frame.worldToLocal(-ray.direction);
-      
-      auto r = float4(halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 0),
-                 halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 1),
-                 halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 2),
-                 halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 3));
-      
-      auto sample = bsdf::sample(material, wo, float2(0.0), r);
-      
-      ray.origin = wsHitPoint + wsSurfaceNormal * 1e-3f * (sample.flags & bsdf::Sample::Transmitted ? -1 : 1);
-      ray.direction = normalize(frame.localToWorld(sample.wi));
+      auto sample = bsdf::sample(hit.material, hit.wo, float2(0.0), r);
       
       if (sample.flags & bsdf::Sample::Emitted) {
         L += attenuation * sample.Le;
-        break; // TODO: potentially continue path on light hit
       }
       
       if (!(sample.flags & (bsdf::Sample::Reflected | bsdf::Sample::Transmitted))) break;
@@ -504,9 +647,15 @@ kernel void pathtracingKernel(
        */
       if (bounce > 0) {
         float q = max(0.0, 1.0 - max(attenuation.r, max(attenuation.g, attenuation.b)));
-        if (halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 4) < q) break;
+        if (samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 4) < q) break;
         attenuation /= 1.0 - q;
       }
+      
+      /*
+       * Update ray and continue on path
+       */
+      ray.origin = hit.pos + hit.normal * 1e-3f * (sample.flags & bsdf::Sample::Transmitted ? -1 : 1);
+      ray.direction = normalize(hit.frame.localToWorld(sample.wi));
     }
     
     /*
