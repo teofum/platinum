@@ -172,6 +172,24 @@ void RenderViewport::render() {
   
   ImGui::SeparatorText("Renderer");
   
+  auto selectedKernel = m_renderer->selectedKernel();
+  std::array<std::string, 2> kernelNames = {"Simple BSDF sampler", "MIS + NEE"};
+  if (ImGui::BeginCombo("Render kernel", kernelNames[selectedKernel].c_str())) {
+    float width = ImGui::GetContentRegionAvail().x - 12.0f;
+    
+    ImGui::SetCursorPosX(10.0f);
+    if (widgets::selectable(kernelNames[0].c_str(), selectedKernel == 0, 0, {width, 0}))
+      m_renderer->selectKernel(renderer_pt::Renderer::Integrator_Simple);
+    if (selectedKernel == 0) ImGui::SetItemDefaultFocus();
+    
+    ImGui::SetCursorPosX(10.0f);
+    if (widgets::selectable(kernelNames[1].c_str(), selectedKernel == 1, 0, {width, 0}))
+      m_renderer->selectKernel(renderer_pt::Renderer::Integrator_MIS);
+    if (selectedKernel == 1) ImGui::SetItemDefaultFocus();
+    
+    ImGui::EndCombo();
+  }
+  
   ImGui::DragInt("Samples", &m_nextRenderSampleCount, 1, 0, 1 << 16);
   
   ImGui::End();

@@ -10,6 +10,11 @@ namespace pt::renderer_pt {
 
 class Renderer {
 public:
+  enum Integrators {
+    Integrator_Simple = 0,
+    Integrator_MIS,
+  };
+  
   Renderer(
     MTL::Device* device,
     MTL::CommandQueue* commandQueue,
@@ -21,6 +26,14 @@ public:
   void render();
 
   void startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint32_t sampleCount);
+  
+  [[nodiscard]] constexpr int selectedKernel() const {
+    return m_selectedPipeline;
+  }
+  
+  constexpr void selectKernel(int kernel) {
+    m_selectedPipeline = kernel;
+  }
 
   [[nodiscard]] const MTL::Texture* presentRenderTarget() const;
 
@@ -43,7 +56,12 @@ private:
   MTL::CommandQueue* m_commandQueue = nullptr;
 
   // Path tracing pipeline state
-  MTL::ComputePipelineState* m_pathtracingPipeline = nullptr;
+  constexpr static const std::array<std::string, 2> m_pathtracingPipelineFunctions = {
+    "pathtracingKernel",
+    "misKernel",
+  };
+  int m_selectedPipeline = Integrator_MIS;
+  std::vector<MTL::ComputePipelineState*> m_pathtracingPipelines;
   MTL::RenderPipelineState* m_postprocessPipeline = nullptr;
 
   // Render targets
@@ -55,6 +73,11 @@ private:
   NS::Array* m_meshAccelStructs = nullptr;
   MTL::AccelerationStructure* m_instanceAccelStruct = nullptr;
   MTL::Buffer* m_instanceBuffer = nullptr;
+  
+  // Light data
+  uint32_t m_lightCount = 0;
+  float m_lightTotalPower = 0.0f;
+  MTL::Buffer* m_lightDataBuffer = nullptr;
 
   // Constants and resources
   shaders_pt::Constants m_constants = {};
@@ -86,11 +109,13 @@ private:
 
   void buildConstantsBuffer();
 
-  void rebuildResourcesBuffers();
+  void rebuildResourceBuffers();
 
   void rebuildAccelerationStructures();
 
   void rebuildRenderTargets();
+  
+  void rebuildLightData();
 
   void updateConstants(Scene::NodeID cameraNodeId);
 

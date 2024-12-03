@@ -42,19 +42,19 @@ public:
 
   ~Mesh();
 
-  [[nodiscard]] constexpr const MTL::Buffer* vertexPositions() const {
+  [[nodiscard]] constexpr MTL::Buffer* vertexPositions() const {
     return m_vertexPositions;
   }
 
-  [[nodiscard]] constexpr const MTL::Buffer* vertexData() const {
+  [[nodiscard]] constexpr MTL::Buffer* vertexData() const {
     return m_vertexData;
   }
 
-  [[nodiscard]] constexpr const MTL::Buffer* indices() const {
+  [[nodiscard]] constexpr MTL::Buffer* indices() const {
     return m_indices;
   }
   
-  [[nodiscard]] constexpr const MTL::Buffer* materialIndices() const {
+  [[nodiscard]] constexpr MTL::Buffer* materialIndices() const {
     return m_materialIndices;
   }
 

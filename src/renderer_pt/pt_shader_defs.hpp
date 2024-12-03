@@ -23,8 +23,25 @@ struct CameraData {
   float3 pixelDeltaV;
 };
 
+struct LightData {
+  uint32_t instanceIdx;
+  uint32_t indices[3];
+  float area, power, cumulativePower;
+  float3 emission;
+  
+#ifdef METAL_SHADER
+  
+  inline float pdf() const {
+    return 1.0f / area;
+  }
+  
+#endif
+};
+
 struct Constants {
   uint32_t frameIdx;
+  uint32_t lightCount;
+  float totalLightPower;
   uint2 size;
   CameraData camera;
 };

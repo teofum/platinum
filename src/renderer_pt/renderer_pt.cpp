@@ -23,7 +23,7 @@ Renderer::~Renderer() {
   if (m_accumulator[0] != nullptr) m_accumulator[0]->release();
   if (m_accumulator[1] != nullptr) m_accumulator[1]->release();
 
-  if (m_pathtracingPipeline != nullptr) m_pathtracingPipeline->release();
+  for (auto pipeline: m_pathtracingPipelines) pipeline->release();
   if (m_postprocessPipeline != nullptr) m_postprocessPipeline->release();
   if (m_constantsBuffer != nullptr) m_constantsBuffer->release();
 }
@@ -60,8 +60,8 @@ void Renderer::render() {
     computeEnc->setBuffer(m_primitiveResourcesBuffer, 0, 2);
     computeEnc->setBuffer(m_instanceResourcesBuffer, 0, 3);
     computeEnc->setBuffer(m_instanceBuffer, 0, 4);
-
     computeEnc->setAccelerationStructure(m_instanceAccelStruct, 5);
+    computeEnc->setBuffer(m_lightDataBuffer, 0, 6);
 
     computeEnc->setTexture(m_accumulator[0], 0);
     computeEnc->setTexture(m_accumulator[1], 1);
@@ -86,7 +86,7 @@ void Renderer::render() {
       computeEnc->useResource(instanceMaterialBuffer, MTL::ResourceUsageRead);
     }
 
-    computeEnc->setComputePipelineState(m_pathtracingPipeline);
+    computeEnc->setComputePipelineState(m_pathtracingPipelines[m_selectedPipeline]);
     computeEnc->dispatchThreadgroups(threadgroups, threadsPerThreadgroup);
     computeEnc->endEncoding();
 
@@ -127,12 +127,13 @@ void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint
   if (!equal(viewportSize, m_viewportSize)) {
     m_viewportSize = viewportSize;
     m_aspect = m_viewportSize.x / m_viewportSize.y;
-    rebuildRenderTargets();
   }
 
-  updateConstants(cameraNodeId);
-  rebuildResourcesBuffers();
+  rebuildLightData();
+  rebuildRenderTargets();
+  rebuildResourceBuffers();
   rebuildAccelerationStructures();
+  updateConstants(cameraNodeId);
 
   m_accumulatedFrames = 0;
   m_accumulationFrames = sampleCount;
@@ -238,33 +239,38 @@ void Renderer::buildPipelines() {
   }
 
   /*
-   * Load the PT kernel function and build the compute pipeline
+   * Load the PT kernel functions and build the compute pipelines
    */
   auto stride = static_cast<uint32_t>(m_resourcesStride);
 
-  auto desc = metal_utils::makeComputePipelineDescriptor(
-    {
-      .function = metal_utils::getFunction(
-        lib, "pathtracingKernel", {
-          .constants = {{.value = &stride, .type = MTL::DataTypeUInt}}
-        }
-      ),
-      .threadGroupSizeIsMultipleOfExecutionWidth = true,
-    }
-  );
-
-  m_pathtracingPipeline = m_device->newComputePipelineState(
-    desc,
-    MTL::PipelineOptionNone,
-    nullptr,
-    &error
-  );
-  if (!m_pathtracingPipeline) {
-    std::println(
-      "renderer_pt: Failed to create pathtracing pipeline: {}\n",
-      error->localizedDescription()->utf8String()
+  for (const auto& kernelName: m_pathtracingPipelineFunctions) {
+    auto desc = metal_utils::makeComputePipelineDescriptor(
+     {
+       .function = metal_utils::getFunction(
+            lib, kernelName.c_str(), {
+            .constants = {{.value = &stride, .type = MTL::DataTypeUInt}}
+          }
+        ),
+       .threadGroupSizeIsMultipleOfExecutionWidth = true,
+     }
+   );
+    
+    auto pipeline = m_device->newComputePipelineState(
+      desc,
+      MTL::PipelineOptionNone,
+      nullptr,
+      &error
     );
-    assert(false);
+    if (!pipeline) {
+      std::println(
+       	"renderer_pt: Failed to create pathtracing pipeline {}: {}\n",
+        kernelName,
+       	error->localizedDescription()->utf8String()
+     	);
+      assert(false);
+    }
+    
+    m_pathtracingPipelines.push_back(pipeline);
   }
 
   /*
@@ -299,7 +305,7 @@ void Renderer::buildConstantsBuffer() {
   );
 }
 
-void Renderer::rebuildResourcesBuffers() {
+void Renderer::rebuildResourceBuffers() {
   // Clear old buffers if present
   if (m_vertexResourcesBuffer != nullptr) m_vertexResourcesBuffer->release();
   m_meshVertexDataBuffers.clear();
@@ -318,7 +324,7 @@ void Renderer::rebuildResourcesBuffers() {
   auto meshes = m_store.scene().getAllMeshes();
   
   m_vertexResourcesBuffer = m_device->newBuffer(
-    m_resourcesStride * meshes.size(),
+    m_resourcesStride * 2 * meshes.size(),
     MTL::ResourceStorageModeShared
   );
   m_primitiveResourcesBuffer = m_device->newBuffer(
@@ -329,8 +335,9 @@ void Renderer::rebuildResourcesBuffers() {
   size_t idx = 0;
   m_meshVertexDataBuffers.reserve(meshes.size());
   for (const auto& md: meshes) {
-    auto vertexResourceHandle = (uint64_t*) m_vertexResourcesBuffer->contents() + idx;
-    *vertexResourceHandle = md.mesh->vertexData()->gpuAddress();
+    auto vertexResourceHandle = (uint64_t*) m_vertexResourcesBuffer->contents() + idx * 2;
+    vertexResourceHandle[0] = md.mesh->vertexPositions()->gpuAddress();
+    vertexResourceHandle[1] = md.mesh->vertexData()->gpuAddress();
     
     auto primResourceHandle = (uint64_t*) m_primitiveResourcesBuffer->contents() + idx;
     *primResourceHandle = md.mesh->materialIndices()->gpuAddress();
@@ -491,6 +498,77 @@ void Renderer::rebuildRenderTargets() {
   texd->release();
 }
 
+void Renderer::rebuildLightData() {
+  if (m_lightDataBuffer != nullptr) m_lightDataBuffer->release();
+  
+  /*
+   * Iterate all instances, finding the ones with emissive materials.
+   * For each instance with emissive materials, iterate its primitives. Any primitives that
+   * use an emissive material get added as lights.
+   */
+  std::vector<shaders_pt::LightData> lights;
+  ankerl::unordered_dense::set<Scene::MaterialID> instanceEmissiveMaterials;
+  uint32_t instanceIdx = 0;
+  m_lightTotalPower = 0.0f;
+  for (const auto& instance: m_store.scene().getAllInstances()) {
+    instanceEmissiveMaterials.clear();
+    for (auto mid: instance.materials) {
+      const auto material = m_store.scene().material(mid);
+      if (material->flags & Material::Material_Emissive) {
+        instanceEmissiveMaterials.insert(mid);
+      }
+    }
+    
+    if (!instanceEmissiveMaterials.empty()) {
+      auto materialIndices = (uint32_t*) instance.mesh->materialIndices()->contents();
+      auto indices = (uint32_t*) instance.mesh->indices()->contents();
+      auto vertices = (float3*) instance.mesh->vertexPositions()->contents();
+      
+      auto triangleCount = instance.mesh->indexCount() / 3;
+      for (int i = 0; i < triangleCount; i++) {
+        auto materialId = instance.materials[materialIndices[i]];
+        if (instanceEmissiveMaterials.contains(materialId)) {
+          const auto material = m_store.scene().material(materialId);
+          
+          // Transform the primitive vertices: this ensures the right area is calculated if the
+          // instance is scaled
+          const auto v0 = (instance.transform * make_float4(vertices[indices[i * 3 + 0]], 1.0f)).xyz;
+          const auto v1 = (instance.transform * make_float4(vertices[indices[i * 3 + 1]], 1.0f)).xyz;
+          const auto v2 = (instance.transform * make_float4(vertices[indices[i * 3 + 2]], 1.0f)).xyz;
+          
+          const auto edge1 = v1 - v0;
+          const auto edge2 = v2 - v0;
+          const auto area = length(cross(edge1, edge2)) * 0.5f;
+          
+          const auto lightPower = length(material->emission) * area * std::numbers::pi_v<float>;
+          m_lightTotalPower += lightPower;
+          
+          lights.push_back({
+            .instanceIdx = instanceIdx,
+            .indices = { indices[i * 3 + 0], indices[i * 3 + 1], indices[i * 3 + 2] },
+            .area = area,
+            .power = lightPower,
+            .cumulativePower = m_lightTotalPower,
+            .emission = material->emission * material->emissionStrength,
+          });
+        }
+      }
+    }
+    instanceIdx++;
+  }
+  
+  m_lightCount = (uint32_t) lights.size();
+  
+  /*
+   * Create and fill the lights buffer
+   */
+  m_lightDataBuffer = m_device->newBuffer(
+    sizeof(shaders_pt::LightData) * lights.size(),
+    MTL::ResourceStorageModeShared
+  );
+  memcpy(m_lightDataBuffer->contents(), lights.data(), sizeof(shaders_pt::LightData) * lights.size());
+}
+
 void Renderer::updateConstants(Scene::NodeID cameraNodeId) {
   auto node = m_store.scene().node(cameraNodeId);
   auto transform = m_store.scene().worldTransform(cameraNodeId);
@@ -528,7 +606,9 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId) {
       .topLeft = pos - w - (vu + vv) * 0.5f,
       .pixelDeltaU = vu / m_viewportSize.x,
       .pixelDeltaV = vv / m_viewportSize.y,
-    }
+    },
+    .lightCount = m_lightCount,
+    .totalLightPower = m_lightTotalPower,
   };
 }
 

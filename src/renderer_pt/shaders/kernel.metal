@@ -7,8 +7,8 @@
 #include "../../core/material.hpp"
 #include "../pt_shader_defs.hpp"
 
-#define MAX_BOUNCES 20
-#define DIMS_PER_BOUNCE 5
+#define MAX_BOUNCES 15
+#define DIMS_PER_BOUNCE 8
 
 using namespace metal;
 using namespace raytracing;
@@ -29,6 +29,7 @@ constant float3 backgroundColor(0.0, 0.0, 0.0);
  * Resource structs
  */
 struct VertexResource {
+  device float3* position;
   device pt::VertexData* data;
 };
 
@@ -135,6 +136,19 @@ namespace samplers {
     float sinPhi = sincos(phi, cosPhi);
     
     return float3(cosPhi * sinTheta, sinPhi * sinTheta, cosTheta);
+  }
+  
+  inline float2 sampleTriUniform(float2 u) {
+    float b0, b1;
+    if (u.x < u.y) {
+      b0 = u.x * 0.5f;
+      b1 = u.y - b0;
+    } else {
+      b1 = u.y * 0.5f;
+      b0 = u.x - b1;
+    }
+    
+    return float2(b0, b1);
   }
 }
 
@@ -302,6 +316,7 @@ namespace bsdf {
    * Internal version, lets us skip the microfacet normal calculation if we already have it (i.e.
    * if we just sampled the VMDF)
    */
+  __attribute__((always_inline))
   Eval evalMetallic(device const pt::Material& mat, float3 wo, float3 wi, float3 wm, thread const GGX& ggx) {
     const auto woDotWm = abs(dot(wo, wm));
     const auto fresnel_ss = schlick(mat.baseColor.rgb, woDotWm);
@@ -449,22 +464,59 @@ namespace bsdf {
     }
   }
   
+  Eval evalDiffuse(device const pt::Material& mat, float3 wo, float3 wi) {
+    return {
+      .f = mat.baseColor.rgb,
+      .Le = mat.emission * mat.emissionStrength,
+      .pdf = abs(wi.z),
+    };
+  }
+  
   Sample sampleGlossy(device const pt::Material& mat, float3 wo, thread const GGX& ggx, float3 r) {
     // TODO: glossy
     
     auto wi = samplers::sampleCosineHemisphere(r.xy);
     if (wo.z < 0.0f) wi *= -1.0f;
+        
+    auto diffuse = evalDiffuse(mat, wo, wi);
     
-//    const auto cosTheta_i = wi.z;
     auto flags = Sample::Reflected | Sample::Diffuse;
     if (mat.flags & pt::Material::Material_Emissive) flags |= Sample::Emitted;
-    
     return {
       .flags  = flags,
-      .f      = mat.baseColor.xyz,
-      .Le     = mat.emission * mat.emissionStrength,
       .wi     = wi,
-      .pdf    = abs(wi.z),
+      .f      = diffuse.f,
+      .Le     = diffuse.Le,
+      .pdf    = diffuse.pdf,
+    };
+  }
+  
+  Eval eval(device const pt::Material& material, float3 wo, float3 wi, float2 uv) {
+    const auto cMetallic = material.metallic;
+    const auto cTransmissive = (1.0f - material.metallic) * material.transmission;
+    const auto cDiffuse = (1.0f - material.metallic) * (1.0f - material.transmission);
+    
+    float3 bsdf(0.0);
+    float pdf = 0.0f;
+    GGX ggx(material.roughness, material.anisotropy);
+    
+    if (cMetallic > 0.0f) {
+      const auto bsdfMetallic = evalMetallic(material, wo, wi, ggx);
+      bsdf += cMetallic * bsdfMetallic.f;
+      pdf += cMetallic * bsdfMetallic.pdf;
+    }
+    if (cTransmissive > 0.0f) {
+      // TODO: eval dielectric
+    }
+    if (cDiffuse > 0.0f) {
+      const auto bsdfDiffuse = evalDiffuse(material, wo, wi);
+      bsdf += cDiffuse * bsdfDiffuse.f;
+      pdf += cDiffuse * bsdfDiffuse.pdf;
+    }
+    
+    return {
+      .f = bsdf,
+      .pdf = pdf,
     };
   }
   
@@ -501,6 +553,20 @@ struct Resources {
   const device void* primitiveResources;
   const device void* instanceResources;
   
+  inline device VertexResource& getVertices(uint32_t instanceIdx) {
+    auto geometryIdx = instances[instanceIdx].accelerationStructureIndex;
+   	return *(device VertexResource*)((device uint64_t*)vertexResources + geometryIdx * 2);
+  }
+  
+  inline float4x4 getTransform(uint32_t instanceIdx) {
+    float4x4 objectToWorld(1.0);
+    for (int i = 0; i < 4; i++)
+      for (int j = 0; j < 3; j++)
+        objectToWorld[i][j] = instances[instanceIdx].transformationMatrix[i][j];
+    
+    return objectToWorld;
+  }
+  
 	/*
 	 * Helper function to get relevant data from an intersection: world space position, surface normal,
 	 * material, tangent space outgoing light direction (opposite ray direction) for shading.
@@ -513,7 +579,7 @@ struct Resources {
 	  auto instanceIdx = intersection.instance_id;
 	  auto geometryIdx = instances[instanceIdx].accelerationStructureIndex;
 	
-	  device auto& vertexResource = *(device VertexResource*)((device uint64_t*)vertexResources + geometryIdx);
+	  device auto& vertexResource = *(device VertexResource*)((device uint64_t*)vertexResources + geometryIdx * 2);
 	  device auto& primitiveResource = *(device PrimitiveResource*)((device uint64_t*)primitiveResources + geometryIdx);
 	  device auto& instanceResource = *(device InstanceResource*)((device uint64_t*)instanceResources + instanceIdx);
 	  device auto& data = *(device PrimitiveData*) intersection.primitive_data;
@@ -530,10 +596,7 @@ struct Resources {
 	  float2 barycentricCoords = intersection.triangle_barycentric_coord;
 	  float3 surfaceNormal = interpolate(vertexNormals, barycentricCoords);
 	
-	  float4x4 objectToWorld(1.0);
-	  for (int i = 0; i < 4; i++)
-	    for (int j = 0; j < 3; j++)
-	      objectToWorld[i][j] = instances[instanceIdx].transformationMatrix[i][j];
+    float4x4 objectToWorld = getTransform(instanceIdx);
 	
 	  float3 wsHitPoint = ray.origin + ray.direction * intersection.distance;
 	  float3 wsSurfaceNormal = normalize(transformVec(surfaceNormal, objectToWorld));
@@ -552,6 +615,38 @@ struct Resources {
 };
 
 /*
+ * Spawn ray from camera
+ * Utility function to reuse in multiple kernels
+ */
+__attribute__((always_inline))
+ray spawnRayFromCamera(constant CameraData& camera, float2 pixel) {
+  ray ray;
+  ray.origin = camera.position;
+  ray.direction = normalize((camera.topLeft
+                             + pixel.x * camera.pixelDeltaU
+                             + pixel.y * camera.pixelDeltaV
+                             ) - camera.position);
+  ray.max_distance = INFINITY;
+  ray.min_distance = 1e-3f;
+  
+  return ray;
+}
+
+/*
+ * Create an intersector marked to intersect opaque triangle geometry
+ * Utility function to reuse in multiple kernels
+ */
+__attribute__((always_inline))
+intersector<triangle_data, instancing> createTriangleIntersector() {
+  intersector<triangle_data, instancing> i;
+  i.accept_any_intersection(false);
+  i.assume_geometry_type(geometry_type::triangle);
+  i.force_opacity(forced_opacity::opaque);
+  
+  return i;
+}
+
+/*
  * Simple path tracing kernel using BSDF importance sampling.
  */
 kernel void pathtracingKernel(
@@ -562,6 +657,7 @@ kernel void pathtracingKernel(
   device void*                                          instanceResources 	[[buffer(3)]],
   constant MTLAccelerationStructureInstanceDescriptor*  instances   				[[buffer(4)]],
   instance_acceleration_structure                       accelStruct 				[[buffer(5)]],
+//constant ::LightData*                   lights              [[buffer(6)]],
   texture2d<float>                                      src         				[[texture(0)]],
   texture2d<float, access::write>                       dst         				[[texture(1)]],
   texture2d<uint32_t>                                   randomTex   				[[texture(2)]]
@@ -586,24 +682,10 @@ kernel void pathtracingKernel(
     };
     
     /*
-     * Spawn ray
+     * Spawn ray and create an intersector
      */
-    ray ray;
-    ray.origin = camera.position;
-    ray.direction = normalize((camera.topLeft
-                               + pixel.x * camera.pixelDeltaU
-                               + pixel.y * camera.pixelDeltaV
-                               ) - camera.position);
-    ray.max_distance = INFINITY;
-    
-    /*
-     * Create an intersector
-     */
-    intersector<triangle_data, instancing> i;
-    i.accept_any_intersection(false);
-    i.assume_geometry_type(geometry_type::triangle);
-    i.force_opacity(forced_opacity::opaque);
-    
+    auto ray = spawnRayFromCamera(camera, pixel);
+    auto i = createTriangleIntersector();
     triangle_instance_intersection intersection;
     
     /*
@@ -634,12 +716,18 @@ kernel void pathtracingKernel(
       
       auto sample = bsdf::sample(hit.material, hit.wo, float2(0.0), r);
       
+      /*
+       * Handle light hit
+       */
       if (sample.flags & bsdf::Sample::Emitted) {
         L += attenuation * sample.Le;
       }
       
       if (!(sample.flags & (bsdf::Sample::Reflected | bsdf::Sample::Transmitted))) break;
       
+      /*
+       * Update attenuation
+       */
       attenuation *= sample.f * abs(sample.wi.z) / sample.pdf;
       
       /*
@@ -656,6 +744,222 @@ kernel void pathtracingKernel(
        */
       ray.origin = hit.pos + hit.normal * 1e-3f * (sample.flags & bsdf::Sample::Transmitted ? -1 : 1);
       ray.direction = normalize(hit.frame.localToWorld(sample.wi));
+    }
+    
+    /*
+     * Accumulate samples
+     */
+    if (constants.frameIdx > 0) {
+      float3 L_prev = src.read(tid).xyz;
+      
+      L += L_prev * constants.frameIdx;
+      L /= (constants.frameIdx + 1);
+    }
+    
+    dst.write(float4(L, 1.0f), tid);
+  }
+}
+
+/*
+ * Sample a light from the scene, where the probability of sampling a given light is proportional
+ * to its total emitted power. Very simple sampler, but much better than uniform sampling.
+ */
+constant LightData& sampleLightPower(
+  constant LightData* lights,
+  constant Constants& constants,
+  float r
+) {
+  r *= constants.totalLightPower;
+  
+  // Find the first light with cumulative power >= r using a quick binary search
+  auto sz = constants.lightCount - 1, idx = 0u;
+  while (sz > 0) {
+   	auto h = sz >> 1, middle = idx + h;
+    auto res = lights[middle].cumulativePower < r;
+    idx = res ? (middle + 1) : idx;
+  	sz = res ? sz - (h + 1) : h;
+  }
+  idx = clamp(idx, 0u, constants.lightCount - 1);
+  
+  return lights[idx];
+}
+
+struct LightSample {
+  float3 Li;			// Emitted light
+  float3 pos;			// Sampled light position				(world space)
+  float3 normal;	// Sampled light surface normal (world space)
+  float pdf;			// Light sample PDF at sampled position
+};
+
+/*
+ *
+ */
+LightSample sampleAreaLight(thread Resources& res, constant LightData& light, float2 r) {
+  const device auto& vertices = res.getVertices(light.instanceIdx);
+  
+  float3 vertexPositions[3];
+  float3 vertexNormals[3];
+  for (int i = 0; i < 3; i++) {
+    vertexPositions[i] = vertices.position[light.indices[i]];
+    vertexNormals[i] = vertices.data[light.indices[i]].normal;
+  }
+  
+  auto sampledCoords = samplers::sampleTriUniform(r);
+  auto transform = res.getTransform(light.instanceIdx);
+  
+  auto pos = (transform * float4(interpolate(vertexPositions, sampledCoords), 1.0)).xyz;
+  auto normal = normalize((transform * float4(interpolate(vertexNormals, sampledCoords), 0.0)).xyz);
+  
+  return {
+    .Li = light.emission,
+    .pos = pos,
+    .normal = normal,
+    .pdf = 1.0f / light.area,
+  };
+}
+
+/*
+ * A better path tracing kernel using multiple importance sampling to combine NEE with
+ * BSDF importance sampling.
+ */
+kernel void misKernel(
+  uint2                                                 tid                 [[thread_position_in_grid]],
+  constant Constants&                                   constants           [[buffer(0)]],
+  device void*                                          vertexResources     [[buffer(1)]],
+  device void*                                          primitiveResources  [[buffer(2)]],
+  device void*                                          instanceResources   [[buffer(3)]],
+  constant MTLAccelerationStructureInstanceDescriptor*  instances           [[buffer(4)]],
+  instance_acceleration_structure                       accelStruct         [[buffer(5)]],
+  constant LightData*                   								lights              [[buffer(6)]],
+  texture2d<float>                                      src                 [[texture(0)]],
+  texture2d<float, access::write>                       dst                 [[texture(1)]],
+  texture2d<uint32_t>                                   randomTex           [[texture(2)]]
+) {
+  if (tid.x < constants.size.x && tid.y < constants.size.y) {
+    constant CameraData& camera = constants.camera;
+    float2 pixel(tid.x, tid.y);
+    uint32_t offset = randomTex.read(tid).x;
+    
+    float2 r(samplers::halton(offset + constants.frameIdx, 0),
+             samplers::halton(offset + constants.frameIdx, 1));
+    pixel += r;
+    
+    /*
+     * Create the resources struct for extracting intersection data
+     */
+    Resources resources{
+      .instances = instances,
+      .vertexResources = vertexResources,
+      .primitiveResources = primitiveResources,
+      .instanceResources = instanceResources,
+    };
+    
+    /*
+     * Spawn ray and create an intersector
+     */
+    auto ray = spawnRayFromCamera(camera, pixel);
+    auto i = createTriangleIntersector();
+    triangle_instance_intersection intersection;
+    
+    /*
+     * Path tracing
+     */
+    float3 attenuation(1.0);
+    float3 L(0.0);
+    bool specularBounce = false;
+    for (int bounce = 0; bounce < MAX_BOUNCES; bounce++) {
+      intersection = i.intersect(ray, accelStruct);
+      
+      /*
+       * Stop on ray miss
+       */
+      if (intersection.type == intersection_type::none) {
+        L += attenuation * backgroundColor;
+        break;
+      }
+      
+      const auto hit = resources.getIntersectionData(ray, intersection);
+      
+      /*
+       * Sample the BSDF to get the next ray direction
+       */
+      auto r = float4(samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 0),
+                      samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 1),
+                      samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 2),
+                      samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 3));
+      
+      auto sample = bsdf::sample(hit.material, hit.wo, float2(0.0), r);
+      
+      /*
+       * Handle light hit
+       */
+      if (sample.flags & bsdf::Sample::Emitted) {
+        if (bounce == 0 || specularBounce) {
+          L += attenuation * sample.Le;
+        } else {
+          // TODO: calculate direct lighting contribution from area light
+        }
+      }
+      
+      if (!(sample.flags & (bsdf::Sample::Reflected | bsdf::Sample::Transmitted))) break;
+      
+      /*
+       * Set new ray origin, this is the same used for NEE and for the next bounce
+       */
+      ray.origin = hit.pos;
+      
+      /*
+       * Calculate direct lighting contribution
+       */
+      if (!(sample.flags & (bsdf::Sample::Emitted | bsdf::Sample::Specular)) && constants.lightCount > 0) {
+        auto r = float3(samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 4),
+                        samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 5),
+                        samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 6));
+        
+        const constant auto& light = sampleLightPower(lights, constants, r.z);
+        const auto pLight = light.power / constants.totalLightPower; // Probability of sampling this light
+        
+        const auto lightSample = sampleAreaLight(resources, light, r.xy);
+        const auto wiWorldSpace = normalize(lightSample.pos - hit.pos);
+        const auto wi = hit.frame.worldToLocal(wiWorldSpace);
+        const auto bsdfEval = bsdf::eval(hit.material, hit.wo, wi, float2(0.0));
+        
+        ray.direction = wiWorldSpace;
+        ray.max_distance = length(lightSample.pos - hit.pos) - 1e-3f;
+        i.accept_any_intersection(true);
+        intersection = i.intersect(ray, accelStruct);
+        auto occluded = intersection.type != intersection_type::none;
+        i.accept_any_intersection(false);
+        
+        if (length_squared(bsdfEval.f) > 0.0f && !occluded) {
+          auto pdfLight = pLight * lightSample.pdf / abs(dot(lightSample.normal, wiWorldSpace));
+          pdfLight *= length_squared(lightSample.pos - hit.pos);
+          
+          auto Ld = lightSample.Li * bsdfEval.f * abs(dot(hit.normal, wiWorldSpace)) / (pdfLight + bsdfEval.pdf);
+          L += attenuation * Ld;
+        }
+      }
+      
+      /*
+       * Update attenuation
+       */
+      attenuation *= sample.f * abs(sample.wi.z) / sample.pdf;
+      
+      /*
+       * Russian roulette
+       */
+      if (bounce > 0) {
+        float q = max(0.0, 1.0 - max(attenuation.r, max(attenuation.g, attenuation.b)));
+        if (samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 7) < q) break;
+        attenuation /= 1.0 - q;
+      }
+      
+      /*
+       * Update ray and continue on path
+       */
+      ray.max_distance = INFINITY;
+      ray.direction = normalize(hit.frame.localToWorld(sample.wi));
+      specularBounce = sample.flags & bsdf::Sample::Specular;
     }
     
     /*
