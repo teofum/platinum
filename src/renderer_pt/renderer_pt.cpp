@@ -61,7 +61,7 @@ void Renderer::render() {
     computeEnc->setBuffer(m_instanceResourcesBuffer, 0, 3);
     computeEnc->setBuffer(m_instanceBuffer, 0, 4);
     computeEnc->setAccelerationStructure(m_instanceAccelStruct, 5);
-    computeEnc->setBuffer(m_lightDataBuffer, 0, 6);
+    computeEnc->setBuffer(m_lightDataBuffer, 0, 6); 
 
     computeEnc->setTexture(m_accumulator[0], 0);
     computeEnc->setTexture(m_accumulator[1], 1);
@@ -199,7 +199,7 @@ MTL::AccelerationStructure* Renderer::makeAccelStruct(
   enc->endEncoding();
 
   cmd->commit();
-  cmd->waitUntilCompleted();
+  cmd->waitUntilCompleted(); 
 
   /*
    * Compact the acceleration structure

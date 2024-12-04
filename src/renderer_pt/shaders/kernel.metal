@@ -977,9 +977,9 @@ kernel void misKernel(
         
         if (length_squared(bsdfEval.f) > 0.0f && !occluded) {
           auto pdfLight = pLight * lightSample.pdf / abs(dot(lightSample.normal, wiWorldSpace));
-          pdfLight *= length_squared(lightSample.pos - hit.pos);
-          
-          auto Ld = lightSample.Li * bsdfEval.f * abs(dot(hit.normal, wiWorldSpace)) / (pdfLight + bsdfEval.pdf);
+          auto Ld = lightSample.Li * bsdfEval.f * abs(dot(hit.normal, wiWorldSpace)) 	// Base lighting term
+          					/ length_squared(lightSample.pos - hit.pos)												// Distance attenuation
+          					/ (pdfLight + bsdfEval.pdf);																			// MIS weight/pdf (simplified)
           L += attenuation * Ld;
         }
       }
