@@ -584,7 +584,7 @@ struct Hit {
   float3 normal;												// Surface normal 					(world space)
   float3 wo;														// Outgoing light direction (tangent space)
   Frame frame;													// Shading coordinate frame, Z-up normal aligned
-  device const pt::Material& material;	// Material
+  device const pt::Material* material;	// Material
 };
 
 /*
@@ -653,7 +653,7 @@ struct Resources {
 	    .normal   = wsSurfaceNormal,
 	    .wo       = wo,
       .frame		= frame,
-	    .material = material,
+	    .material = &material,
 	  };
 	}
 };
@@ -758,7 +758,7 @@ kernel void pathtracingKernel(
                       samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 2),
                       samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 3));
       
-      auto sample = bsdf::sample(hit.material, hit.wo, float2(0.0), r);
+      auto sample = bsdf::sample(*hit.material, hit.wo, float2(0.0), r);
       
       /*
        * Handle light hit
@@ -910,7 +910,8 @@ kernel void misKernel(
      */
     float3 attenuation(1.0);
     float3 L(0.0);
-    bool specularBounce = false;
+    Hit lastHit;
+    bsdf::Sample lastSample;
     for (int bounce = 0; bounce < MAX_BOUNCES; bounce++) {
       intersection = i.intersect(ray, accelStruct);
       
@@ -932,16 +933,35 @@ kernel void misKernel(
                       samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 2),
                       samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 3));
       
-      auto sample = bsdf::sample(hit.material, hit.wo, float2(0.0), r);
+      auto sample = bsdf::sample(*hit.material, hit.wo, float2(0.0), r);
       
       /*
        * Handle light hit
        */
-      if (sample.flags & bsdf::Sample::Emitted) {
-        if (bounce == 0 || specularBounce) {
+      if (sample.flags & bsdf::Sample::Emitted && intersection.triangle_front_facing) {
+        if (bounce == 0 || lastSample.flags & bsdf::Sample::Specular) {
           L += attenuation * sample.Le;
         } else {
-          // TODO: calculate direct lighting contribution from area light
+          // TODO: find a way to get an index to the light, so we don't have to calculate the area here
+          const device auto& vertices = resources.getVertices(intersection.instance_id);
+          const device auto& data = *(device PrimitiveData*) intersection.primitive_data;
+          const auto transform = resources.getTransform(intersection.instance_id);
+          
+          float3 wsVertexPositions[3];
+          for (int i = 0; i < 3; i++)
+            wsVertexPositions[i] = (transform * float4(vertices.position[data.indices[i]], 1.0)).xyz;
+          
+          const auto edge1 = wsVertexPositions[1] - wsVertexPositions[0];
+          const auto edge2 = wsVertexPositions[2] - wsVertexPositions[0];
+          const auto area = length(cross(edge1, edge2)) * 0.5f;
+          const auto power = sample.Le * area * M_PI_F;
+          
+          // Calculate light PDF, BSDF weight and do MIS
+          const auto lightPdf = (1.0f / area) * (power / constants.totalLightPower)
+          											/ abs(dot(ray.direction, hit.normal));
+          const auto bsdfWeight = lastSample.pdf / (lastSample.pdf + lightPdf);
+          
+          L += attenuation * bsdfWeight * sample.Le / length_squared(lastHit.pos - hit.pos);
         }
       }
       
@@ -966,7 +986,7 @@ kernel void misKernel(
         const auto lightSample = sampleAreaLight(resources, light, r.xy);
         const auto wiWorldSpace = normalize(lightSample.pos - hit.pos);
         const auto wi = hit.frame.worldToLocal(wiWorldSpace);
-        const auto bsdfEval = bsdf::eval(hit.material, hit.wo, wi, float2(0.0));
+        const auto bsdfEval = bsdf::eval(*hit.material, hit.wo, wi, float2(0.0));
         
         ray.direction = wiWorldSpace;
         ray.max_distance = length(lightSample.pos - hit.pos) - 1e-3f;
@@ -1003,7 +1023,8 @@ kernel void misKernel(
        */
       ray.max_distance = INFINITY;
       ray.direction = normalize(hit.frame.localToWorld(sample.wi));
-      specularBounce = sample.flags & bsdf::Sample::Specular;
+      lastHit = hit;
+      lastSample = sample;
     }
     
     /*

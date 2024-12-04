@@ -353,7 +353,7 @@ void Renderer::rebuildResourceBuffers() {
    * Also create the materials buffers
    * This duplicates materials across instances, but it's a very small struct, this is ok
    */
-  auto instances = m_store.scene().getAllInstances();
+  auto instances = m_store.scene().getAllInstances(Scene::NodeFlags_Visible);
   
   m_instanceResourcesBuffer = m_device->newBuffer(
     m_resourcesStride * instances.size(),
@@ -510,7 +510,7 @@ void Renderer::rebuildLightData() {
   ankerl::unordered_dense::set<Scene::MaterialID> instanceEmissiveMaterials;
   uint32_t instanceIdx = 0;
   m_lightTotalPower = 0.0f;
-  for (const auto& instance: m_store.scene().getAllInstances()) {
+  for (const auto& instance: m_store.scene().getAllInstances(Scene::NodeFlags_Visible)) {
     instanceEmissiveMaterials.clear();
     for (auto mid: instance.materials) {
       const auto material = m_store.scene().material(mid);
