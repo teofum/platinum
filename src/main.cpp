@@ -23,19 +23,19 @@ int main() {
   auto materialId = scene.addMaterial("Default material", material);
 
   // Default cube
-  auto cube = pt::primitives::cube(store.device(), 2.0f);
-  auto meshId = scene.addMesh(std::move(cube));
-  pt::Scene::Node defaultCube("Cube", meshId);
-  defaultCube.materials.push_back(materialId);
-  scene.addNode(std::move(defaultCube));
-
-  // Default camera
-  auto cameraId = scene.addCamera(pt::Camera::withFocalLength(28.0f));
-  pt::Scene::Node cameraNode("Camera");
-  cameraNode.cameraId = cameraId;
-  cameraNode.transform.translation = {-5, 5, 5};
-  cameraNode.transform.track = true;
-  scene.addNode(std::move(cameraNode));
+//  auto cube = pt::primitives::cube(store.device(), 2.0f);
+//  auto meshId = scene.addMesh(std::move(cube));
+//  pt::Scene::Node defaultCube("Cube", meshId);
+//  defaultCube.materials.push_back(materialId);
+//  scene.addNode(std::move(defaultCube));
+//
+//  // Default camera
+//  auto cameraId = scene.addCamera(pt::Camera::withFocalLength(28.0f));
+//  pt::Scene::Node cameraNode("Camera");
+//  cameraNode.cameraId = cameraId;
+//  cameraNode.transform.translation = {-5, 5, 5};
+//  cameraNode.transform.track = true;
+//  scene.addNode(std::move(cameraNode));
 
   fe.start();
 

@@ -366,8 +366,7 @@ void Renderer::buildPipelines() {
   }
 
   /*
-   * Set up a render pipeline descriptor (parameter object)
-   * Set the vertex and fragment funcs and color attachment format (match view)
+   * Create the main render pass pipeline
    */
   auto desc = metal_utils::makeRenderPipelineDescriptor(
     {
@@ -378,11 +377,6 @@ void Renderer::buildPipelines() {
       .stencilFormat = MTL::PixelFormatStencil8,
     }
   );
-
-  /*
-   * Set up a vertex attribute descriptor, this tells Metal where each attribute
-   * is located
-   */
   auto vertexDesc = metal_utils::makeVertexDescriptor(
     {
       .attributes = {
