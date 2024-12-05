@@ -147,4 +147,18 @@ bool context(const char* str_id, ImGuiPopupFlags flags) {
   return open;
 }
 
+bool menu(const char* label) {
+  ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
+  bool open = ImGui::BeginMenu(label);
+  ImGui::PopStyleVar();
+  return open;
+}
+
+bool menuItem(const char* label, const char* shortcut, bool* selected) {
+  ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
+  bool open = ImGui::MenuItem(label, shortcut, selected);
+  ImGui::PopStyleVar();
+  return open;
+}
+
 }

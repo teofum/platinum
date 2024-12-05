@@ -1,13 +1,8 @@
 #include "scene_explorer.hpp"
 
-#include <filesystem>
-#include <nfd.h>
 #include <SDL.h>
 
 #include <core/primitives.hpp>
-#include <loaders/gltf.hpp>
-
-namespace fs = std::filesystem;
 
 namespace pt::frontend::windows {
 
@@ -114,20 +109,7 @@ void SceneExplorer::render() {
     ImGui::OpenPopup("Import_Popup");
   }
   if (widgets::popup("Import_Popup")) {
-    if (widgets::selectable("glTF", false, 0, {100, 0})) {
-      char* path = nullptr;
-      auto result = NFD_OpenDialog("glb, gltf", "../assets", &path);
-
-      if (result == NFD_OKAY) {
-        fs::path filePath(path);
-        free(path);
-
-        loaders::gltf::GltfLoader gltf(m_store.device(), m_store.scene());
-        gltf.load(filePath);
-      } else if (result == NFD_ERROR) {
-        // TODO: handle fs error
-      }
-    }
+    if (widgets::selectable("glTF", false, 0, {100, 0})) m_store.importGltf();
     ImGui::EndPopup();
   }
 

@@ -30,6 +30,8 @@ public:
   constexpr void setDevice(MTL::Device* device) {
     m_device = device->retain();
   }
+  
+  void importGltf();
 
 private:
   std::unique_ptr<Scene> m_scene;

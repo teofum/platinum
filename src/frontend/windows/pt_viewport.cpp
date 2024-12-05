@@ -1,5 +1,8 @@
 #include "pt_viewport.hpp"
 
+#include <OpenImageIO/imageio.h>
+#include <utils/utils.hpp>
+
 namespace pt::frontend::windows {
 
 
@@ -57,10 +60,14 @@ void RenderViewport::render() {
     }
     ImGui::EndDisabled();
     
-    ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetStyle().ItemSpacing.x - 80);
-    ImGui::BeginDisabled(!m_cameraNodeId || m_renderer->isRendering());
-    bool render = ImGui::Button("Render", {80, 0})
-    || (ImGui::IsKeyPressed(ImGuiKey_Space, false) && !ImGui::IsAnyItemActive());
+    ImGui::SameLine(ImGui::GetContentRegionAvail().x - 160);
+    ImGui::BeginDisabled(!canRender());
+    bool render = ImGui::Button("Render", {80, 0});
+    ImGui::EndDisabled();
+    
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!hasImage());
+    if (ImGui::Button("Export", {80, 0})) exportImage();
     ImGui::EndDisabled();
     
     ImGui::Spacing();
@@ -75,13 +82,7 @@ void RenderViewport::render() {
     size.y -= ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.y;
     m_viewportSize = {size.x, size.y};
     
-    if (render && m_cameraNodeId && !m_renderer->isRendering()) {
-      m_renderSize = m_useViewportSizeForRender
-                     ? float2{size.x * m_dpiScaling, size.y * m_dpiScaling}
-                     : m_nextRenderSize;
-      m_renderer->startRender(m_cameraNodeId.value(), m_renderSize, (uint32_t) m_nextRenderSampleCount);
-      m_state.setRendering(true);
-    }
+    if (render) startRender();
     m_renderer->render();
     
     /*
@@ -193,6 +194,39 @@ void RenderViewport::render() {
   ImGui::DragInt("Samples", &m_nextRenderSampleCount, 1, 0, 1 << 16);
   
   ImGui::End();
+}
+
+void RenderViewport::startRender() {
+  if (canRender()) {
+    m_renderSize = m_useViewportSizeForRender ? m_viewportSize * m_dpiScaling : m_nextRenderSize;
+    m_renderer->startRender(m_cameraNodeId.value(), m_renderSize, (uint32_t) m_nextRenderSampleCount);
+    m_state.setRendering(true);
+  }
+}
+
+bool RenderViewport::canRender() const {
+  return m_cameraNodeId && (m_renderer->status() & renderer_pt::Renderer::Status_Ready);
+}
+
+bool RenderViewport::hasImage() const {
+  return m_renderer->status() & renderer_pt::Renderer::Status_Done;
+}
+
+void RenderViewport::exportImage() const {
+  const auto savePath = utils::fileSave("../out", "png");
+  if (savePath){
+    auto out = OIIO::ImageOutput::create(savePath->string());
+    
+    if (out) {
+      uint2 size;
+      auto readbackBuffer = m_renderer->readbackRenderTarget(&size);
+      
+      OIIO::ImageSpec spec(size.x, size.y, 4, OIIO::TypeDesc::UINT8);
+      out->open(savePath->string(), spec);
+      out->write_image(OIIO::TypeDesc::UINT8, readbackBuffer->contents());
+      out->close();
+    }
+  }
 }
 
 bool RenderViewport::handleInputs(const SDL_Event& event) {

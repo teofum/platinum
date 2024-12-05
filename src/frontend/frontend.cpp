@@ -24,7 +24,7 @@ Frontend::Frontend(Store& store) noexcept
     m_properties(m_store, m_state),
     m_sceneExplorer(m_store, m_state),
     m_studioViewport(m_store, m_state, m_dpiScaling),
-    m_renderViewport(m_store, m_state, m_dpiScaling) {
+		m_renderViewport(m_store, m_state, m_dpiScaling) {
 }
 
 Frontend::~Frontend() {
@@ -259,8 +259,9 @@ void Frontend::mainDockSpace() {
   ImGui::Begin("DockSpace", nullptr, windowFlags);
   ImGui::PopStyleVar(3);
 
-  ImGuiIO& io = ImGui::GetIO();
+  renderMenuBar();
 
+  ImGuiIO& io = ImGui::GetIO();
   if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
     auto dockSpaceId = ImGui::GetID("MainDockSpace");
     m_initialized |= ImGui::DockBuilderGetNode(dockSpaceId) != nullptr;
@@ -305,6 +306,60 @@ void Frontend::mainDockSpace() {
   }
 
   ImGui::End();
+}
+
+void Frontend::renderMenuBar() {
+  /*
+   * Process global keyboard shortcuts. We do this here since it keeps the handling code close to
+   * the UI where the shortcuts are displayed
+   */
+  if (!ImGui::IsItemActive()) {
+    // File
+    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_I))
+      m_store.importGltf();
+    
+    // Render
+    if (ImGui::IsKeyPressed(ImGuiKey_Space, ImGuiInputFlags_None))
+      m_renderViewport.startRender();
+    
+    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_E))
+      m_renderViewport.exportImage();
+  }
+  
+  /*
+   * Render menu bar
+   */
+  if (ImGui::BeginMenuBar()) {
+    ImGui::SetNextWindowSize({160, 0});
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8, 6});
+    if (widgets::menu("File")) {
+      if (widgets::menu("Import")) {
+        if (widgets::menuItem("glTF", "Cmd + I")) m_store.importGltf();
+        
+        ImGui::EndMenu();
+      }
+      
+      ImGui::EndMenu();
+    }
+    
+    ImGui::SetNextWindowSize({160, 0});
+    if (widgets::menu("Render")) {
+      ImGui::BeginDisabled(!m_renderViewport.canRender());
+      if (widgets::menuItem("Render", "Space")) m_renderViewport.startRender();
+      ImGui::EndDisabled();
+      
+      ImGui::Separator();
+      
+      ImGui::BeginDisabled(!m_renderViewport.hasImage());
+      if (widgets::menuItem("Render", "Space")) m_renderViewport.exportImage();
+      ImGui::EndDisabled();
+      
+      ImGui::EndMenu();
+    }
+    
+    ImGui::PopStyleVar();
+    ImGui::EndMenuBar();
+  }
 }
 
 }

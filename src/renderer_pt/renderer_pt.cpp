@@ -1,9 +1,9 @@
 #include "renderer_pt.hpp"
-#include "utils/utils.hpp"
 
 #include <span>
 
 #include <utils/metal_utils.hpp>
+#include <utils/utils.hpp>
 
 namespace pt::renderer_pt {
 using metal_utils::ns_shared;
@@ -45,7 +45,7 @@ void Renderer::render() {
    * If rendering the scene, run the path tracing kernel to accumulate samples
    */
   if (m_accumulatedFrames < m_accumulationFrames) {
-    uint2 size{(uint32_t) m_viewportSize.x, (uint32_t) m_viewportSize.y};
+    uint2 size{(uint32_t) m_currentRenderSize.x, (uint32_t) m_currentRenderSize.y};
     auto threadsPerThreadgroup = MTL::Size(32, 32, 1);
     auto threadgroups = MTL::Size(
       (size.x + threadsPerThreadgroup.width - 1) / threadsPerThreadgroup.width,
@@ -124,9 +124,9 @@ void Renderer::render() {
 }
 
 void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint32_t sampleCount) {
-  if (!equal(viewportSize, m_viewportSize)) {
-    m_viewportSize = viewportSize;
-    m_aspect = m_viewportSize.x / m_viewportSize.y;
+  if (!equal(viewportSize, m_currentRenderSize)) {
+    m_currentRenderSize = viewportSize;
+    m_aspect = m_currentRenderSize.x / m_currentRenderSize.y;
   }
 
   rebuildLightData();
@@ -280,7 +280,7 @@ void Renderer::buildPipelines() {
     {
       .vertexFunction = metal_utils::getFunction(lib, "postprocessVertex"),
       .fragmentFunction = metal_utils::getFunction(lib, "postprocessFragment"),
-      .colorAttachments = {MTL::PixelFormatRGBA16Float}
+      .colorAttachments = {MTL::PixelFormatRGBA8Unorm}
     }
   );
 
@@ -466,8 +466,8 @@ void Renderer::rebuildRenderTargets() {
 
   auto texd = MTL::TextureDescriptor::alloc()->init();
   texd->setTextureType(MTL::TextureType2D);
-  texd->setWidth(static_cast<uint32_t>(m_viewportSize.x));
-  texd->setHeight(static_cast<uint32_t>(m_viewportSize.y));
+  texd->setWidth(static_cast<uint32_t>(m_currentRenderSize.x));
+  texd->setHeight(static_cast<uint32_t>(m_currentRenderSize.y));
   texd->setStorageMode(MTL::StorageModeShared);
 
   texd->setUsage(MTL::TextureUsageShaderWrite | MTL::TextureUsageShaderRead);
@@ -476,7 +476,7 @@ void Renderer::rebuildRenderTargets() {
   m_accumulator[1] = m_device->newTexture(texd);
 
   texd->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
-  texd->setPixelFormat(MTL::PixelFormatRGBA16Float);
+  texd->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
   m_renderTarget = m_device->newTexture(texd);
 
   // Temporary crap way of getting randomness into the shader
@@ -485,14 +485,14 @@ void Renderer::rebuildRenderTargets() {
   texd->setPixelFormat(MTL::PixelFormatR32Uint);
   m_randomSource = m_device->newTexture(texd);
 
-  auto k = (size_t) m_viewportSize.x * (size_t) m_viewportSize.y;
+  auto k = (size_t) m_currentRenderSize.x * (size_t) m_currentRenderSize.y;
   std::vector<uint32_t> random(k);
   for (size_t i = 0; i < k; i++) random[i] = rand() % (1024 * 1024);
   m_randomSource->replaceRegion(
-    MTL::Region::Make2D(0, 0, (size_t) m_viewportSize.x, (size_t) m_viewportSize.y),
+    MTL::Region::Make2D(0, 0, (size_t) m_currentRenderSize.x, (size_t) m_currentRenderSize.y),
     0,
     random.data(),
-    sizeof(uint32_t) * (size_t) m_viewportSize.x
+    sizeof(uint32_t) * (size_t) m_currentRenderSize.x
   );
 
   texd->release();
@@ -600,20 +600,24 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId) {
 
   m_constants = {
     .frameIdx = 0,
-    .size = {(uint32_t) m_viewportSize.x, (uint32_t) m_viewportSize.y},
+    .size = {(uint32_t) m_currentRenderSize.x, (uint32_t) m_currentRenderSize.y},
     .camera = {
       .position = pos,
       .topLeft = pos - w - (vu + vv) * 0.5f,
-      .pixelDeltaU = vu / m_viewportSize.x,
-      .pixelDeltaV = vv / m_viewportSize.y,
+      .pixelDeltaU = vu / m_currentRenderSize.x,
+      .pixelDeltaV = vv / m_currentRenderSize.y,
     },
     .lightCount = m_lightCount,
     .totalLightPower = m_lightTotalPower,
   };
 }
 
-bool Renderer::isRendering() const {
-  return m_renderTarget != nullptr && m_accumulatedFrames < m_accumulationFrames;
+int Renderer::status() const {
+  if (m_renderTarget != nullptr && m_accumulatedFrames < m_accumulationFrames) return Status_Busy;
+  
+  int status = Status_Ready;
+  if (m_renderTarget != nullptr) status |= Status_Done;
+  return status;
 }
 
 std::pair<size_t, size_t> Renderer::renderProgress() const {
@@ -622,6 +626,34 @@ std::pair<size_t, size_t> Renderer::renderProgress() const {
 
 size_t Renderer::renderTime() const {
   return m_timer;
+}
+
+NS::SharedPtr<MTL::Buffer> Renderer::readbackRenderTarget(uint2* size) const {
+  auto cmd = m_commandQueue->commandBuffer();
+  auto benc = cmd->blitCommandEncoder();
+  
+  *size = {(uint32_t) m_renderTarget->width(), (uint32_t) m_renderTarget->height()};
+
+  const auto bytesPerRow = sizeof(uchar4) * size->x;
+  const auto bytesPerImage = bytesPerRow * size->y;
+  
+  const auto readbackBuffer = m_device->newBuffer(bytesPerImage, MTL::ResourceStorageModeShared);
+  benc->copyFromTexture(
+    m_renderTarget,
+    0,
+    0,
+    MTL::Origin(0, 0, 0),
+    MTL::Size(size->x, size->y, 1),
+    readbackBuffer,
+    0,
+    bytesPerRow,
+    bytesPerImage
+  );
+  benc->endEncoding();
+  cmd->commit();
+  cmd->waitUntilCompleted();
+  
+  return NS::TransferPtr(readbackBuffer);
 }
 
 }

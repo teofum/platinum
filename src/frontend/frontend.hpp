@@ -68,6 +68,8 @@ private:
   void handleInput(const SDL_Event& event);
 
   void mainDockSpace();
+  
+  void renderMenuBar();
 };
 
 }

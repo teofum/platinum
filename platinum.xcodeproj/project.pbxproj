@@ -14,6 +14,8 @@
 		AB5133F12CFB72C5005738C1 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB5133F02CFB72C5005738C1 /* Foundation.framework */; };
 		AB86A7572CFBAE1C00CC5BA3 /* SDL2.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB86A6F42CFBA80F00CC5BA3 /* SDL2.framework */; };
 		AB86A7582CFBAE1C00CC5BA3 /* SDL2.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = AB86A6F42CFBA80F00CC5BA3 /* SDL2.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		AB8B33EA2D01380E007D139C /* libOpenImageIO.3.0.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = AB8B33E92D01380E007D139C /* libOpenImageIO.3.0.1.dylib */; };
+		AB8B33EC2D0156FE007D139C /* libOpenImageIO_Util.3.0.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = AB8B33EB2D0156FE007D139C /* libOpenImageIO_Util.3.0.1.dylib */; };
 		ABE00B762CFB893A00DA8AED /* libmetal-cpp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ABE00B692CFB891B00DA8AED /* libmetal-cpp.a */; };
 /* End PBXBuildFile section */
 
@@ -74,6 +76,8 @@
 		AB5135802CFB7791005738C1 /* renderer_studio.metallib */ = {isa = PBXFileReference; explicitFileType = "archive.metal-library"; includeInIndex = 0; path = renderer_studio.metallib; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB51358E2CFB77EE005738C1 /* renderer_pt.metallib */ = {isa = PBXFileReference; explicitFileType = "archive.metal-library"; includeInIndex = 0; path = renderer_pt.metallib; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB86A6F42CFBA80F00CC5BA3 /* SDL2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2.framework; path = ../../../../Library/Frameworks/SDL2.framework; sourceTree = "<group>"; };
+		AB8B33E92D01380E007D139C /* libOpenImageIO.3.0.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libOpenImageIO.3.0.1.dylib; path = ../../../../opt/homebrew/Cellar/openimageio/3.0.1.0/lib/libOpenImageIO.3.0.1.dylib; sourceTree = "<group>"; };
+		AB8B33EB2D0156FE007D139C /* libOpenImageIO_Util.3.0.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libOpenImageIO_Util.3.0.1.dylib; path = ../../../../opt/homebrew/Cellar/openimageio/3.0.1.0/lib/libOpenImageIO_Util.3.0.1.dylib; sourceTree = "<group>"; };
 		ABD2D3272CFB9B1900AE082A /* SDL2 */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = SDL2; path = sdl2/SDL2.framework/Versions/A/SDL2; sourceTree = "<group>"; };
 		ABE00B692CFB891B00DA8AED /* libmetal-cpp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libmetal-cpp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ABECF9092CFEA9B400918BB5 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
@@ -327,13 +331,15 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AB86A7572CFBAE1C00CC5BA3 /* SDL2.framework in Frameworks */,
 				ABE00B762CFB893A00DA8AED /* libmetal-cpp.a in Frameworks */,
 				AB5133EF2CFB72B1005738C1 /* QuartzCore.framework in Frameworks */,
 				AB5133E92CFB72A3005738C1 /* Metal.framework in Frameworks */,
 				AB5133ED2CFB72AD005738C1 /* AppKit.framework in Frameworks */,
 				AB5133EB2CFB72A9005738C1 /* MetalKit.framework in Frameworks */,
 				AB5133F12CFB72C5005738C1 /* Foundation.framework in Frameworks */,
+				AB86A7572CFBAE1C00CC5BA3 /* SDL2.framework in Frameworks */,
+				AB8B33EA2D01380E007D139C /* libOpenImageIO.3.0.1.dylib in Frameworks */,
+				AB8B33EC2D0156FE007D139C /* libOpenImageIO_Util.3.0.1.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -377,6 +383,8 @@
 		AB5133DC2CFB7253005738C1 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				AB8B33EB2D0156FE007D139C /* libOpenImageIO_Util.3.0.1.dylib */,
+				AB8B33E92D01380E007D139C /* libOpenImageIO.3.0.1.dylib */,
 				AB86A6F42CFBA80F00CC5BA3 /* SDL2.framework */,
 				ABD2D3272CFB9B1900AE082A /* SDL2 */,
 				AB5133F02CFB72C5005738C1 /* Foundation.framework */,
@@ -653,6 +661,7 @@
 					"$(PROJECT_DIR)/imgui",
 					"$(PROJECT_DIR)/tracy",
 					"$(PROJECT_DIR)/sdl2/include",
+					/opt/homebrew/Cellar/openimageio/3.0.1.0/include,
 				);
 				INSTALL_ROOT = /;
 				LIBRARY_SEARCH_PATHS = (
@@ -660,6 +669,7 @@
 					"$(PROJECT_DIR)/fastgltf/lib",
 					"$(PROJECT_DIR)/nfd",
 					"$(PROJECT_DIR)/sdl2/SDL2.framework/Versions/A",
+					/opt/homebrew/Cellar/openimageio/3.0.1.0/lib,
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.1;
@@ -735,6 +745,7 @@
 					"$(PROJECT_DIR)/imgui",
 					"$(PROJECT_DIR)/tracy",
 					"$(PROJECT_DIR)/sdl2/include",
+					/opt/homebrew/Cellar/openimageio/3.0.1.0/include,
 				);
 				INSTALL_ROOT = /;
 				LIBRARY_SEARCH_PATHS = (
@@ -742,6 +753,7 @@
 					"$(PROJECT_DIR)/fastgltf/lib",
 					"$(PROJECT_DIR)/nfd",
 					"$(PROJECT_DIR)/sdl2/SDL2.framework/Versions/A",
+					/opt/homebrew/Cellar/openimageio/3.0.1.0/lib,
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.1;

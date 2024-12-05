@@ -33,6 +33,10 @@ bool popup(const char* str_id, ImGuiWindowFlags flags = 0);
 
 bool context(const char* str_id = nullptr, ImGuiPopupFlags flags = 1);
 
+bool menu(const char* label);
+
+bool menuItem(const char* label, const char* shortcut = nullptr, bool* selected = nullptr);
+
 }
 
 #endif //PLATINUM_WIDGETS_HPP

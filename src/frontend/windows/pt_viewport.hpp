@@ -15,10 +15,19 @@ public:
   constexpr RenderViewport(Store& store, State& state, float& dpiScaling, bool* open = nullptr) noexcept
     : Window(store, state, open), m_dpiScaling(dpiScaling) {
   }
+  
 
   void init(MTL::Device* device, MTL::CommandQueue* commandQueue);
 
   void render() final;
+  
+  void startRender();
+
+  [[nodiscard]] bool canRender() const;
+  
+  [[nodiscard]] bool hasImage() const;
+  
+  void exportImage() const;
 
   bool handleInputs(const SDL_Event& event);
 

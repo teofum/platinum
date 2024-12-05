@@ -15,6 +15,13 @@ public:
     Integrator_MIS,
   };
   
+  enum Status {
+    Status_Blocked = 0,
+    Status_Ready = 1 << 0,
+    Status_Busy = 1 << 2,
+    Status_Done = 1 << 3,
+  };
+  
   Renderer(
     MTL::Device* device,
     MTL::CommandQueue* commandQueue,
@@ -36,8 +43,10 @@ public:
   }
 
   [[nodiscard]] const MTL::Texture* presentRenderTarget() const;
+  
+  [[nodiscard]] NS::SharedPtr<MTL::Buffer> readbackRenderTarget(uint2* size) const;
 
-  [[nodiscard]] bool isRendering() const;
+  [[nodiscard]] int status() const;
 
   [[nodiscard]] std::pair<size_t, size_t> renderProgress() const;
 
@@ -48,7 +57,7 @@ private:
   Store& m_store;
 
   // Camera and viewport
-  float2 m_viewportSize = {1, 1};
+  float2 m_currentRenderSize = {1, 1};
   float m_aspect = 1.0;
 
   // Metal
