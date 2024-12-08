@@ -41,6 +41,13 @@
 			remoteGlobalIDString = AB51357F2CFB7791005738C1;
 			remoteInfo = renderer_studio;
 		};
+		ABF001CD2D029B5A00C2DC14 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AB5132AF2CFB7024005738C1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ABF001C32D029B4700C2DC14;
+			remoteInfo = tools;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -81,6 +88,7 @@
 		ABD2D3272CFB9B1900AE082A /* SDL2 */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = SDL2; path = sdl2/SDL2.framework/Versions/A/SDL2; sourceTree = "<group>"; };
 		ABE00B692CFB891B00DA8AED /* libmetal-cpp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libmetal-cpp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ABECF9092CFEA9B400918BB5 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		ABF001C42D029B4700C2DC14 /* tools.metallib */ = {isa = PBXFileReference; explicitFileType = "archive.metal-library"; includeInIndex = 0; path = tools.metallib; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -99,6 +107,7 @@
 				frontend/windows/pt_viewport.cpp,
 				frontend/windows/scene_explorer.cpp,
 				frontend/windows/studio_viewport.cpp,
+				frontend/windows/tools/ms_lut_gen.cpp,
 				loaders/gltf.cpp,
 				main.cpp,
 				renderer_pt/renderer_pt.cpp,
@@ -269,6 +278,13 @@
 			);
 			target = ABE00B682CFB891B00DA8AED /* metal-cpp */;
 		};
+		ABF001CC2D029B5400C2DC14 /* Exceptions for "src" folder in "tools" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				frontend/windows/tools/shaders/ms_lut_gen.metal,
+			);
+			target = ABF001C32D029B4700C2DC14 /* tools */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -278,6 +294,7 @@
 				AB5133DB2CFB71A4005738C1 /* Exceptions for "src" folder in "platinum" target */,
 				AB51358B2CFB77D2005738C1 /* Exceptions for "src" folder in "renderer_studio" target */,
 				AB5135972CFB7805005738C1 /* Exceptions for "src" folder in "renderer_pt" target */,
+				ABF001CC2D029B5400C2DC14 /* Exceptions for "src" folder in "tools" target */,
 			);
 			path = src;
 			sourceTree = "<group>";
@@ -376,6 +393,7 @@
 				AB5135802CFB7791005738C1 /* renderer_studio.metallib */,
 				AB51358E2CFB77EE005738C1 /* renderer_pt.metallib */,
 				ABE00B692CFB891B00DA8AED /* libmetal-cpp.a */,
+				ABF001C42D029B4700C2DC14 /* tools.metallib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -421,6 +439,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				ABF001CE2D029B5A00C2DC14 /* PBXTargetDependency */,
 				ABECF90D2D0092C400918BB5 /* PBXTargetDependency */,
 				ABECF90B2D0092C100918BB5 /* PBXTargetDependency */,
 				ABE00B752CFB892B00DA8AED /* PBXTargetDependency */,
@@ -485,6 +504,23 @@
 			productReference = ABE00B692CFB891B00DA8AED /* libmetal-cpp.a */;
 			productType = "com.apple.product-type.library.static";
 		};
+		ABF001C32D029B4700C2DC14 /* tools */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ABF001C82D029B4700C2DC14 /* Build configuration list for PBXNativeTarget "tools" */;
+			buildPhases = (
+				ABF001C22D029B4700C2DC14 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = tools;
+			packageProductDependencies = (
+			);
+			productName = tools;
+			productReference = ABF001C42D029B4700C2DC14 /* tools.metallib */;
+			productType = "com.apple.product-type.metal-library";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -504,6 +540,9 @@
 						CreatedOnToolsVersion = 16.1;
 					};
 					ABE00B682CFB891B00DA8AED = {
+						CreatedOnToolsVersion = 16.1;
+					};
+					ABF001C32D029B4700C2DC14 = {
 						CreatedOnToolsVersion = 16.1;
 					};
 				};
@@ -526,6 +565,7 @@
 				ABE00B682CFB891B00DA8AED /* metal-cpp */,
 				AB51357F2CFB7791005738C1 /* renderer_studio */,
 				AB51358D2CFB77EE005738C1 /* renderer_pt */,
+				ABF001C32D029B4700C2DC14 /* tools */,
 			);
 		};
 /* End PBXProject section */
@@ -559,6 +599,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		ABF001C22D029B4700C2DC14 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -576,6 +623,11 @@
 			isa = PBXTargetDependency;
 			target = AB51357F2CFB7791005738C1 /* renderer_studio */;
 			targetProxy = ABECF90C2D0092C400918BB5 /* PBXContainerItemProxy */;
+		};
+		ABF001CE2D029B5A00C2DC14 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = ABF001C32D029B4700C2DC14 /* tools */;
+			targetProxy = ABF001CD2D029B5A00C2DC14 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -961,6 +1013,34 @@
 			};
 			name = Release;
 		};
+		ABF001C92D029B4700C2DC14 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				VERSIONING_SYSTEM = "";
+			};
+			name = Debug;
+		};
+		ABF001CA2D029B4700C2DC14 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				VERSIONING_SYSTEM = "";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1005,6 +1085,15 @@
 			buildConfigurations = (
 				ABE00B722CFB891B00DA8AED /* Debug */,
 				ABE00B732CFB891B00DA8AED /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		ABF001C82D029B4700C2DC14 /* Build configuration list for PBXNativeTarget "tools" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ABF001C92D029B4700C2DC14 /* Debug */,
+				ABF001CA2D029B4700C2DC14 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

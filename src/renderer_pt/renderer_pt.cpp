@@ -228,8 +228,7 @@ void Renderer::buildPipelines() {
    * Load the shader library
    */
   NS::Error* error = nullptr;
-  MTL::Library* lib = m_device
-    ->newLibrary("renderer_pt.metallib"_ns, &error);
+  MTL::Library* lib = m_device->newLibrary("renderer_pt.metallib"_ns, &error);
   if (!lib) {
     std::println(
       "renderer_pt: Failed to load shader library: {}\n",

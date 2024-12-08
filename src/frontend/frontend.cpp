@@ -24,7 +24,8 @@ Frontend::Frontend(Store& store) noexcept
     m_properties(m_store, m_state),
     m_sceneExplorer(m_store, m_state),
     m_studioViewport(m_store, m_state, m_dpiScaling),
-		m_renderViewport(m_store, m_state, m_dpiScaling) {
+		m_renderViewport(m_store, m_state, m_dpiScaling),
+		m_multiscatterLutGenerator(m_store, m_state, &m_toolMultiscatterLutGeneratorOpen) {
 }
 
 Frontend::~Frontend() {
@@ -133,6 +134,7 @@ Frontend::InitResult Frontend::init() {
    */
   m_studioViewport.init(m_device, m_commandQueue);
   m_renderViewport.init(m_device, m_commandQueue);
+  m_multiscatterLutGenerator.init(m_device, m_commandQueue);
 
   return Frontend::InitResult_Ok;
 }
@@ -225,6 +227,9 @@ void Frontend::drawImGui() {
   // Render controls windows
   m_sceneExplorer.render();
   m_properties.render();
+  
+  // Additional windows
+  if (m_toolMultiscatterLutGeneratorOpen) m_multiscatterLutGenerator.render();
 
   // Update frontend shared state
   //  We do this in between rendering the controls and display windows so any
@@ -351,8 +356,15 @@ void Frontend::renderMenuBar() {
       ImGui::Separator();
       
       ImGui::BeginDisabled(!m_renderViewport.hasImage());
-      if (widgets::menuItem("Render", "Space")) m_renderViewport.exportImage();
+      if (widgets::menuItem("Export to PNG", "Cmd + E")) m_renderViewport.exportImage();
       ImGui::EndDisabled();
+      
+      ImGui::EndMenu();
+    }
+    
+    ImGui::SetNextWindowSize({160, 0});
+    if (widgets::menu("Tools")) {
+      if (widgets::menuItem("Multiscatter GGX LUTs")) m_toolMultiscatterLutGeneratorOpen = true;
       
       ImGui::EndMenu();
     }

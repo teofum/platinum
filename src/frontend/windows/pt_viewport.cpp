@@ -1,10 +1,10 @@
 #include "pt_viewport.hpp"
 
 #include <OpenImageIO/imageio.h>
+
 #include <utils/utils.hpp>
 
 namespace pt::frontend::windows {
-
 
 void RenderViewport::init(MTL::Device* device, MTL::CommandQueue* commandQueue) {
   /*

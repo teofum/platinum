@@ -15,6 +15,7 @@
 #include <frontend/windows/scene_explorer.hpp>
 #include <frontend/windows/studio_viewport.hpp>
 #include <frontend/windows/pt_viewport.hpp>
+#include <frontend/windows/tools/ms_lut_gen.hpp>
 
 namespace pt::frontend {
 
@@ -57,6 +58,11 @@ private:
   windows::SceneExplorer m_sceneExplorer;
   windows::StudioViewport m_studioViewport;
   windows::RenderViewport m_renderViewport;
+  
+  windows::MultiscatterLutGenerator m_multiscatterLutGenerator;
+  
+  // Closeable windows open state
+  bool m_toolMultiscatterLutGeneratorOpen = false;
 
   // ImGui
   bool m_initialized = false;
