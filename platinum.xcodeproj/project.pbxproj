@@ -51,14 +51,15 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		AB5133BE2CFB7108005738C1 /* CopyFiles */ = {
+		AB5133BE2CFB7108005738C1 /* Copy GGX LUT Files */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
+			buildActionMask = 12;
+			dstPath = resource/lut;
+			dstSubfolderSpec = 16;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 1;
+			name = "Copy GGX LUT Files";
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 		AB86A7592CFBAE1C00CC5BA3 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -287,6 +288,17 @@
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		AB8598A12D060DFD000DDA69 /* Exceptions for "resource" folder in "Copy GGX LUT Files" phase from "platinum" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = AB5133BE2CFB7108005738C1 /* Copy GGX LUT Files */;
+			membershipExceptions = (
+				lut/ggx_E_avg.exr,
+				lut/ggx_E.exr,
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AB5132EF2CFB7042005738C1 /* src */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -341,6 +353,14 @@
 			path = sdl2;
 			sourceTree = "<group>";
 		};
+		AB8598982D060D74000DDA69 /* resource */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AB8598A12D060DFD000DDA69 /* Exceptions for "resource" folder in "Copy GGX LUT Files" phase from "platinum" target */,
+			);
+			path = resource;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -373,6 +393,7 @@
 		AB5132AE2CFB7024005738C1 = {
 			isa = PBXGroup;
 			children = (
+				AB8598982D060D74000DDA69 /* resource */,
 				AB5132EF2CFB7042005738C1 /* src */,
 				AB5132F22CFB7091005738C1 /* ankerl */,
 				AB5133032CFB7091005738C1 /* fastgltf */,
@@ -434,7 +455,7 @@
 				AB5133BC2CFB7108005738C1 /* Sources */,
 				AB5133BD2CFB7108005738C1 /* Frameworks */,
 				AB86A7592CFBAE1C00CC5BA3 /* Embed Frameworks */,
-				AB5133BE2CFB7108005738C1 /* CopyFiles */,
+				AB5133BE2CFB7108005738C1 /* Copy GGX LUT Files */,
 			);
 			buildRules = (
 			);

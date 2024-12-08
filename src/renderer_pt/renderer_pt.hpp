@@ -32,7 +32,7 @@ public:
 
   void render();
 
-  void startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint32_t sampleCount);
+  void startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint32_t sampleCount, int flags = 0);
   
   [[nodiscard]] constexpr int selectedKernel() const {
     return m_selectedPipeline;
@@ -103,6 +103,18 @@ private:
   
   MTL::Buffer* m_instanceResourcesBuffer = nullptr;
   std::vector<MTL::Buffer*> m_instanceMaterialBuffers;
+  
+  // LUT textures
+  struct LUTInfo {
+    const char* filename;
+    MTL::TextureType type;
+  };
+  static constexpr std::array<LUTInfo, 2> m_lutInfo = {{
+    {.filename = "ggx_E.exr", .type = MTL::TextureType2D},
+    {.filename = "ggx_E_avg.exr", .type = MTL::TextureType1D},
+  }};
+  std::vector<MTL::Texture*> m_luts;
+  std::vector<uint32_t> m_lutSizes;
 
   // Frame data
   static constexpr const size_t m_maxFramesInFlight = 3;
@@ -117,6 +129,8 @@ private:
   void buildPipelines();
 
   void buildConstantsBuffer();
+  
+  void loadGgxLutTextures();
 
   void rebuildResourceBuffers();
 
@@ -126,8 +140,7 @@ private:
   
   void rebuildLightData();
 
-  void updateConstants(Scene::NodeID cameraNodeId);
-
+  void updateConstants(Scene::NodeID cameraNodeId, int flags);
 };
 
 }

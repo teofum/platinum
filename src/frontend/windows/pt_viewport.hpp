@@ -7,6 +7,7 @@
 #include <frontend/window.hpp>
 #include <frontend/widgets.hpp>
 #include <renderer_pt/renderer_pt.hpp>
+#include <renderer_pt/pt_shader_defs.hpp>
 
 namespace pt::frontend::windows {
 
@@ -71,6 +72,7 @@ private:
   float2 m_nextRenderSize = {1280, 800};
   int32_t m_nextRenderSampleCount = 128;
   bool m_useViewportSizeForRender = true;
+  int m_renderFlags = shaders_pt::RendererFlags_MultiscatterGGX;
 
   void updateScrollAndZoomState();
 };

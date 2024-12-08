@@ -1,9 +1,13 @@
 #include "renderer_pt.hpp"
 
 #include <span>
+#include <filesystem>
+#include <OpenImageIO/imageio.h>
 
 #include <utils/metal_utils.hpp>
 #include <utils/utils.hpp>
+
+namespace fs = std::filesystem;
 
 namespace pt::renderer_pt {
 using metal_utils::ns_shared;
@@ -16,6 +20,7 @@ Renderer::Renderer(
 ) noexcept: m_store(store), m_device(device), m_commandQueue(commandQueue) {
   buildPipelines();
   buildConstantsBuffer();
+  loadGgxLutTextures();
 }
 
 Renderer::~Renderer() {
@@ -26,6 +31,8 @@ Renderer::~Renderer() {
   for (auto pipeline: m_pathtracingPipelines) pipeline->release();
   if (m_postprocessPipeline != nullptr) m_postprocessPipeline->release();
   if (m_constantsBuffer != nullptr) m_constantsBuffer->release();
+  
+  for (auto lut: m_luts) lut->release();
 }
 
 void Renderer::render() {
@@ -66,6 +73,10 @@ void Renderer::render() {
     computeEnc->setTexture(m_accumulator[0], 0);
     computeEnc->setTexture(m_accumulator[1], 1);
     computeEnc->setTexture(m_randomSource, 2);
+    
+    for (uint32_t i = 0; i < m_luts.size(); i++) {
+      computeEnc->setTexture(m_luts[i], 3 + i);
+    }
 
     for (uint32_t i = 0; i < m_meshAccelStructs->count(); i++) {
       computeEnc->useResource(
@@ -120,10 +131,10 @@ void Renderer::render() {
   postEnc->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger) 0, 6);
   postEnc->endEncoding();
 
-  cmd->commit(); 
+  cmd->commit();
 }
 
-void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint32_t sampleCount) {
+void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint32_t sampleCount, int flags) {
   if (!equal(viewportSize, m_currentRenderSize)) {
     m_currentRenderSize = viewportSize;
     m_aspect = m_currentRenderSize.x / m_currentRenderSize.y;
@@ -133,7 +144,7 @@ void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint
   rebuildRenderTargets();
   rebuildResourceBuffers();
   rebuildAccelerationStructures();
-  updateConstants(cameraNodeId);
+  updateConstants(cameraNodeId, flags);
 
   m_accumulatedFrames = 0;
   m_accumulationFrames = sampleCount;
@@ -230,8 +241,8 @@ void Renderer::buildPipelines() {
   NS::Error* error = nullptr;
   MTL::Library* lib = m_device->newLibrary("renderer_pt.metallib"_ns, &error);
   if (!lib) {
-    std::println(
-      "renderer_pt: Failed to load shader library: {}\n",
+    std::println(stderr,
+      "renderer_pt: Failed to load shader library: {}",
       error->localizedDescription()->utf8String()
     );
     assert(false);
@@ -261,8 +272,8 @@ void Renderer::buildPipelines() {
       &error
     );
     if (!pipeline) {
-      std::println(
-       	"renderer_pt: Failed to create pathtracing pipeline {}: {}\n",
+      std::println(stderr,
+       	"renderer_pt: Failed to create pathtracing pipeline {}: {}",
         kernelName,
        	error->localizedDescription()->utf8String()
      	);
@@ -285,8 +296,8 @@ void Renderer::buildPipelines() {
 
   m_postprocessPipeline = m_device->newRenderPipelineState(postDesc, &error);
   if (!m_postprocessPipeline) {
-    std::println(
-      "renderer_pt: Failed to create postprocess pipeline: {}\n",
+    std::println(stderr,
+      "renderer_pt: Failed to create postprocess pipeline:",
       error->localizedDescription()->utf8String()
     );
     assert(false);
@@ -302,6 +313,44 @@ void Renderer::buildConstantsBuffer() {
     m_constantsStride * m_maxFramesInFlight,
     MTL::ResourceStorageModeShared
   );
+}
+
+void Renderer::loadGgxLutTextures() {
+  auto in = OIIO::ImageInput::create("a.exr");
+  
+  
+  m_luts.reserve(m_lutInfo.size());
+  for (auto lut: m_lutInfo) {
+    auto path = fs::current_path() / std::format("resource/lut/{}", lut.filename);
+    auto in = OIIO::ImageInput::open(path.string());
+    if (!in) {
+      std::println(stderr, "renderer_pt: Failed to open file {}", path.string());
+      assert(false);
+    }
+    
+    const auto& spec = in->spec();
+    
+    auto buffer = m_device->newBuffer(
+      sizeof(float) * spec.width * spec.height * spec.depth,
+      MTL::ResourceStorageModeShared
+    );
+    in->read_image(0, 0, 0, -1, spec.format, buffer->contents());
+    
+    auto texd = metal_utils::makeTextureDescriptor({
+      .type = lut.type,
+      .format = MTL::PixelFormatR32Float,
+      .width = (uint32_t) spec.width,
+      .height = (uint32_t) spec.height,
+      .depth = (uint32_t) spec.depth,
+    });
+    auto texture = m_device->newTexture(texd);
+    auto region = MTL::Region(0, 0, 0, spec.width, spec.height, spec.depth);
+    texture->replaceRegion(region, 0, buffer->contents(), sizeof(float) * spec.width);
+    
+    m_luts.push_back(texture);
+    m_lutSizes.push_back(spec.width);
+    buffer->release();
+  }
 }
 
 void Renderer::rebuildResourceBuffers() {
@@ -568,7 +617,7 @@ void Renderer::rebuildLightData() {
   memcpy(m_lightDataBuffer->contents(), lights.data(), sizeof(shaders_pt::LightData) * lights.size());
 }
 
-void Renderer::updateConstants(Scene::NodeID cameraNodeId) {
+void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
   auto node = m_store.scene().node(cameraNodeId);
   auto transform = m_store.scene().worldTransform(cameraNodeId);
   auto camera = m_store.scene().camera(node->cameraId.value());
@@ -608,6 +657,9 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId) {
     },
     .lightCount = m_lightCount,
     .totalLightPower = m_lightTotalPower,
+    .lutSizeE = m_lutSizes[0],
+    .lutSizeEavg = m_lutSizes[1],
+    .flags = flags,
   };
 }
 

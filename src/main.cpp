@@ -18,22 +18,22 @@ int main() {
   
   // Default material
   pt::Material material{
-    .baseColor = {0.8, 0.8, 0.8},
+    .baseColor = {1.0, 1.0, 1.0},
   };
   auto materialId = scene.addMaterial("Default material", material);
 
-  // Default cube
-//  auto cube = pt::primitives::cube(store.device(), 2.0f);
-//  auto meshId = scene.addMesh(std::move(cube));
-//  pt::Scene::Node defaultCube("Cube", meshId);
-//  defaultCube.materials.push_back(materialId);
-//  scene.addNode(std::move(defaultCube));
+//  // Default sphere
+//  auto sphere = pt::primitives::sphere(store.device(), 1.0f, 24, 32);
+//  auto meshId = scene.addMesh(std::move(sphere));
+//  pt::Scene::Node defaultSphere("Sphere", meshId);
+//  defaultSphere.materials.push_back(materialId);
+//  scene.addNode(std::move(defaultSphere));
 //
 //  // Default camera
 //  auto cameraId = scene.addCamera(pt::Camera::withFocalLength(28.0f));
 //  pt::Scene::Node cameraNode("Camera");
 //  cameraNode.cameraId = cameraId;
-//  cameraNode.transform.translation = {-5, 5, 5};
+//  cameraNode.transform.translation = {0, 0, 5};
 //  cameraNode.transform.track = true;
 //  scene.addNode(std::move(cameraNode));
 

@@ -193,13 +193,22 @@ void RenderViewport::render() {
   
   ImGui::DragInt("Samples", &m_nextRenderSampleCount, 1, 0, 1 << 16);
   
+  ImGui::SeparatorText("Options");
+  
+  ImGui::CheckboxFlags("Multiscatter GGX", &m_renderFlags, shaders_pt::RendererFlags_MultiscatterGGX);
+  
   ImGui::End();
 }
 
 void RenderViewport::startRender() {
   if (canRender()) {
     m_renderSize = m_useViewportSizeForRender ? m_viewportSize * m_dpiScaling : m_nextRenderSize;
-    m_renderer->startRender(m_cameraNodeId.value(), m_renderSize, (uint32_t) m_nextRenderSampleCount);
+    m_renderer->startRender(
+      m_cameraNodeId.value(),
+      m_renderSize,
+      (uint32_t) m_nextRenderSampleCount,
+      m_renderFlags
+    );
     m_state.setRendering(true);
   }
 }

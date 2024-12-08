@@ -101,6 +101,16 @@ struct VertexParams {
  */
 NS::SharedPtr<MTL::VertexDescriptor> makeVertexDescriptor(const VertexParams& params);
 
+struct TextureParams {
+  uint32_t width = 1, height = 1, depth = 1;
+  MTL::TextureType type = MTL::TextureType2D;
+  MTL::StorageMode storageMode = MTL::StorageModeShared;
+  MTL::PixelFormat format;
+  MTL::TextureUsage usage = MTL::TextureUsageShaderRead;
+};
+
+NS::SharedPtr<MTL::TextureDescriptor> makeTextureDescriptor(const TextureParams& params);
+
 /**
  * Utility function to enable alpha blending for a color attachment.
  */

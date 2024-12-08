@@ -178,8 +178,7 @@ void MultiscatterLutGenerator::generate() {
   
   std::vector<uint32_t> random(k);
   for (size_t i = 0; i < k; i++) random[i] = rand() % (1024 * 1024);
-  auto region = dim < 3 ? MTL::Region::Make2D(0, 0, m_lutSize, dim == 2 ? m_lutSize : 1)
-              				  : MTL::Region::Make3D(0, 0, 0, m_lutSize, m_lutSize, m_lutSize);
+  auto region = MTL::Region(0, 0, 0, m_lutSize, dim > 1 ? m_lutSize : 1, dim > 2 ? m_lutSize : 1);
   m_randomSource->replaceRegion(
     region,
     0,

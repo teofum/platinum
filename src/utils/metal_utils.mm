@@ -56,6 +56,20 @@ NS::SharedPtr<MTL::VertexDescriptor> makeVertexDescriptor(const VertexParams& pa
   return desc;
 }
 
+NS::SharedPtr<MTL::TextureDescriptor> makeTextureDescriptor(const TextureParams& params) {
+  auto texd = ns_shared<MTL::TextureDescriptor>();
+  
+  texd->setTextureType(params.type);
+  texd->setWidth(params.width);
+  texd->setHeight(params.height);
+  texd->setDepth(params.depth);
+  texd->setStorageMode(params.storageMode);
+  texd->setUsage(params.usage);
+  texd->setPixelFormat(params.format);
+  
+  return texd;
+}
+
 void enableBlending(
   MTL::RenderPipelineColorAttachmentDescriptor* cad,
   MTL::BlendOperation operation,

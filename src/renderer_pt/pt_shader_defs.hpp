@@ -38,9 +38,16 @@ struct LightData {
 #endif
 };
 
+enum RendererFlags {
+  RendererFlags_None = 0,
+  RendererFlags_MultiscatterGGX = 1 << 0,
+};
+
 struct Constants {
   uint32_t frameIdx;
   uint32_t lightCount;
+  uint32_t lutSizeE, lutSizeEavg;
+  int flags;
   float totalLightPower;
   uint2 size;
   CameraData camera;
