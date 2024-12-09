@@ -399,7 +399,7 @@ namespace bsdf {
         const auto brdf_ms = (1.0f - E_wo) * (1.0f - E_wi) / (M_PI_F * (1.0f - E_avg));
         const auto fresnel_ms = F_avg * F_avg * E_avg / (1.0f - F_avg * (1.0f - E_avg));
         
-        brdf += brdf_ms;
+        brdf += fresnel_ms * brdf_ms;
       }
       
       return {
