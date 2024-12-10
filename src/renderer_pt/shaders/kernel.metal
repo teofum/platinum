@@ -7,7 +7,7 @@
 #include "../../core/material.hpp"
 #include "../pt_shader_defs.hpp"
 
-#define MAX_BOUNCES 15
+#define MAX_BOUNCES 10
 #define DIMS_PER_BOUNCE 8
 
 using namespace metal;
@@ -188,6 +188,12 @@ namespace bsdf {
     return (parallel * parallel + perpendicular * perpendicular) * 0.5f;
   }
   
+  inline float avgDielectricFresnelFit(float ior) {
+    return ior >= 1.0f
+           ? (ior - 1.0f) / (4.08567f + 1.00071f * ior)
+           : 0.997118f + 0.1014f * ior - 0.965241 * ior * ior - 0.130607 * ior * ior * ior;
+  }
+  
   /*
    * Trowbridge-Reitz GGX microfacet distribution implementation
    * Simple wrapper around all the GGX sampling functions, supports anisotropy. Works with all
@@ -264,6 +270,16 @@ namespace bsdf {
       return normalize(float3(m_alpha.x * nh.x, m_alpha.y * nh.y, max(1e-6f, nh.z)));
     }
     
+    __attribute__((always_inline))
+    float singleScatterBRDF(float3 wo, float3 wi, float3 wm) const {
+      return mdf(wm) * g(wo, wi) / (4 * abs(wo.z) * abs(wi.z));
+    }
+    
+    __attribute__((always_inline))
+    float pdf(float3 wo, float3 wm) const {
+      return vmdf(wo, wm) / (4.0f * abs(dot(wo, wm)));
+    }
+    
     // Surfaces with a very small roughness value are considered perfect specular, this helps deal
     // with the numerical instability at such values and makes almost no visible difference
     inline bool isSmooth() const {
@@ -323,17 +339,21 @@ namespace bsdf {
     	device const pt::Material& material,
      	thread const texture2d<float>& lutE,
      	thread const texture1d<float>& lutEavg,
+     	thread const texture3d<float>& lutMsE,
+     	thread const texture2d<float>& lutMsEavg,
       constant const Constants& constants
     ) : m_material(material),
     		m_ggx(material.roughness, material.anisotropy),
-    		m_lutE(lutE),
-    		m_lutEavg(lutEavg),
+        m_lutE(lutE),
+        m_lutEavg(lutEavg),
+    		m_lutMsE(lutMsE),
+    		m_lutMsEavg(lutMsEavg),
     		m_constants(constants) {}
     
     Eval eval(float3 wo, float3 wi, float2 uv) {
       const auto cMetallic = m_material.metallic;
-      const auto cTransmissive = (1.0f - m_material.metallic) * m_material.transmission;
-      const auto cDiffuse = (1.0f - m_material.metallic) * (1.0f - m_material.transmission);
+      const auto cTransparent = (1.0f - m_material.metallic) * m_material.transmission;
+      const auto cOpaque = (1.0f - m_material.metallic) * (1.0f - m_material.transmission);
       
       float3 bsdf(0.0);
       float pdf = 0.0f;
@@ -342,15 +362,15 @@ namespace bsdf {
         bsdf += cMetallic * bsdfMetallic.f;
         pdf += cMetallic * bsdfMetallic.pdf;
       }
-      if (cTransmissive > 0.0f) {
-        const auto bsdfDielectric = evalDielectric(wo, wi);
-        bsdf += cTransmissive * bsdfDielectric.f;
-        pdf += cTransmissive * bsdfDielectric.pdf;
+      if (cTransparent > 0.0f) {
+        const auto bsdfTrDielectric = evalDielectric(wo, wi);
+        bsdf += cTransparent * bsdfTrDielectric.f;
+        pdf += cTransparent * bsdfTrDielectric.pdf;
       }
-      if (cDiffuse > 0.0f) {
-        const auto bsdfDiffuse = evalDiffuse(wo, wi);
-        bsdf += cDiffuse * bsdfDiffuse.f / M_PI_F;
-        pdf += cDiffuse * bsdfDiffuse.pdf;
+      if (cOpaque > 0.0f) {
+        const auto bdsfOpDielectric = evalOpaqueDielectric(wo, wi);
+        bsdf += cOpaque * bdsfOpDielectric.f;
+        pdf += cOpaque * bdsfOpDielectric.pdf;
       }
       
       return {
@@ -365,7 +385,7 @@ namespace bsdf {
       
       if (r.w < pMetallic) return sampleMetallic(wo, r.xyz);
       if (r.w < pDielectric) return sampleDielectric(wo, r.xyz);
-      return sampleGlossy(wo, r.xyz);
+      return sampleOpaqueDielectric(wo, r.xyz);
     }
     
   private:
@@ -373,7 +393,24 @@ namespace bsdf {
     GGX m_ggx;
     thread const texture2d<float>& m_lutE;
     thread const texture1d<float>& m_lutEavg;
+    thread const texture3d<float>& m_lutMsE;
+    thread const texture2d<float>& m_lutMsEavg;
     constant const Constants& m_constants;
+    
+    template<typename T>
+    __attribute__((always_inline))
+    T multiscatter(float3 wo, float3 wi, T F_avg, thread float3* out = nullptr) {
+      constexpr sampler s(address::clamp_to_edge, filter::linear);
+      const auto E_wo = m_lutE.sample(s, float2(wo.z, m_material.roughness)).r;
+      const auto E_wi = m_lutE.sample(s, float2(wi.z, m_material.roughness)).r;
+      const auto E_avg = m_lutEavg.sample(s, m_material.roughness).r;
+      const auto brdf_ms = (1.0f - E_wo) * (1.0f - E_wi) / (M_PI_F * (1.0f - E_avg));
+      
+      const auto fresnel_ms = F_avg * F_avg * E_avg / (1.0f - F_avg * (1.0f - E_avg));
+      
+      if (out != nullptr) *out = float3(E_wo, E_wi, E_avg);
+      return fresnel_ms * brdf_ms;
+    }
     
     /*
      * Evaluate GGX conductor BRDF and PDF
@@ -383,28 +420,17 @@ namespace bsdf {
     __attribute__((always_inline))
     Eval evalMetallic(float3 wo, float3 wi, float3 wm) {
       const auto fresnel_ss = schlick(m_material.baseColor.rgb, abs(dot(wo, wm)));
-      
-      const auto cosTheta_o = abs(wo.z), cosTheta_i = abs(wi.z);
-      const auto brdf_ss = m_ggx.mdf(wm) * m_ggx.g(wo, wi) / (4 * cosTheta_o * cosTheta_i);
+      auto brdf = fresnel_ss * m_ggx.singleScatterBRDF(wo, wi, wm);
       
       // Multiple scattering
-      auto brdf = fresnel_ss * brdf_ss;
       if (m_constants.flags & RendererFlags_MultiscatterGGX) {
-        constexpr sampler s(address::clamp_to_edge, filter::linear);
-        const auto E_wo = m_lutE.sample(s, float2(wo.z, m_material.roughness)).r;
-        const auto E_wi = m_lutE.sample(s, float2(wi.z, m_material.roughness)).r;
-        const auto E_avg = m_lutEavg.sample(s, m_material.roughness).r;
         const auto F_avg = (20.0f * m_material.baseColor.rgb + 1.0f) / 21.0f;
-        
-        const auto brdf_ms = (1.0f - E_wo) * (1.0f - E_wi) / (M_PI_F * (1.0f - E_avg));
-        const auto fresnel_ms = F_avg * F_avg * E_avg / (1.0f - F_avg * (1.0f - E_avg));
-        
-        brdf += fresnel_ms * brdf_ms;
+        brdf += multiscatter(wo, wi, F_avg);
       }
       
       return {
         .f = brdf,
-        .pdf = m_ggx.vmdf(wo, wm) / (4.0f * abs(dot(wo, wm))),
+        .pdf = m_ggx.pdf(wo, wm),
       };
     }
     
@@ -583,32 +609,108 @@ namespace bsdf {
       };
     }
     
-    Eval evalDiffuse(float3 wo, float3 wi) {
-      // TODO: glossy
+    Eval evalOpaqueDielectric(float3 wo, float3 wi) {
+      auto wm = wo + wi;
+      wm = normalize(wm * sign(wm.z));
+      if (length_squared(wm) == 0.0f) return {};
+      
+      // IOR parametrization optimized for the common IOR range 1 < eta < 2
+      // See https://www.desmos.com/calculator/1pkvgrisbx for details.
+      const auto iorParam = (m_material.ior - 1.0f) / m_material.ior;
+      
+      const auto fresnel_ss = fresnel(abs(dot(wo, wm)), m_material.ior);
+      
+      constexpr sampler s(address::clamp_to_edge, filter::linear);
+      const auto E_wo = m_lutE.sample(s, float2(wo.z, m_material.roughness)).r;
+      const auto E_ms_wo = m_lutMsE.sample(s, float3(wo.z, m_material.roughness, iorParam)).r;
+      const auto E_ms_wi = m_lutMsE.sample(s, float3(wi.z, m_material.roughness, iorParam)).r;
+      const auto E_ms_avg = m_lutMsEavg.sample(s, float2(iorParam, m_material.roughness)).r;
+      
+      const auto F_avg = avgDielectricFresnelFit(m_material.ior);
+      
+      // Dielectric layer single scattering
+      auto dielectricBrdf = fresnel_ss * m_ggx.singleScatterBRDF(wo, wi, wm);
+      
+      // Multiple scattering
+      if (m_constants.flags & RendererFlags_MultiscatterGGX) {
+        dielectricBrdf += multiscatter(wo, wi, F_avg);
+      }
+      
+      const auto cDiffuse = (1.0f - E_ms_wo) * (1.0f - E_ms_wi) / (M_PI_F * (1.0f - E_ms_avg));
+      const auto diffuseBrdf = cDiffuse * m_material.baseColor.rgb;
+      
+      const auto fresnel_ms = F_avg * F_avg * E_wo / (1.0f - F_avg * (1.0f - E_wo));
+      const auto dielectricFactor = F_avg * E_ms_wo + fresnel_ms * (1.0f - E_ms_wo);
+      
       return {
-        .f = m_material.baseColor.rgb,
-        .Le = m_material.emission * m_material.emissionStrength,
-        .pdf = abs(wi.z),
+        .f = dielectricBrdf + diffuseBrdf,
+        .pdf = m_ggx.pdf(wo, wm) * dielectricFactor + abs(wi.z) * (1.0f - dielectricFactor),
       };
     }
     
-    Sample sampleGlossy(float3 wo, float3 r) {
-      // TODO: glossy
+    Sample sampleOpaqueDielectric(float3 wo, float3 r) {
+      // IOR parametrization optimized for the common IOR range 1 < eta < 2
+      // See https://www.desmos.com/calculator/1pkvgrisbx for details.
+      const auto iorParam = (m_material.ior - 1.0f) / m_material.ior;
       
-      auto wi = samplers::sampleCosineHemisphere(r.xy);
-      if (wo.z < 0.0f) wi *= -1.0f;
+      constexpr sampler s(address::clamp_to_edge, filter::linear);
+      const auto E_wo = m_lutE.sample(s, float2(wo.z, m_material.roughness)).r;
+      const auto E_ms_wo = m_lutMsE.sample(s, float3(wo.z, m_material.roughness, iorParam)).r;
+      const auto E_ms_avg = m_lutMsEavg.sample(s, float2(iorParam, m_material.roughness)).r;
       
-      auto diffuse = evalDiffuse(wo, wi);
+      const auto F_avg = avgDielectricFresnelFit(m_material.ior);
+      const auto fresnel_ms = F_avg * F_avg * E_wo / (1.0f - F_avg * (1.0f - E_wo));
       
-      auto flags = Sample::Reflected | Sample::Diffuse;
-      if (m_material.flags & pt::Material::Material_Emissive) flags |= Sample::Emitted;
-      return {
-        .flags  = flags,
-        .wi     = wi,
-        .f      = diffuse.f,
-        .Le     = diffuse.Le,
-        .pdf    = diffuse.pdf,
-      };
+      const auto dielectricFactor = (F_avg * E_ms_wo + fresnel_ms * (1.0f - E_ms_wo));
+      
+      if (r.z < dielectricFactor) {
+        if (m_ggx.isSmooth()) {
+          const auto fresnel_ss = fresnel(abs(wo.z), m_material.ior);
+          const auto wi = float3(-wo.x, -wo.y, wo.z);
+          
+          return {
+            .flags  = Sample::Reflected | Sample::Specular,
+            .wi     = wi,
+            .f      = float3(fresnel_ss / abs(wi.z)),
+            .pdf    = fresnel_ss,
+          };
+        }
+        
+        const auto wm = m_ggx.sampleVmdf(wo, r.xy);
+        if (length_squared(wm) == 0.0f) return {};
+        
+        const auto wi = reflect(-wo, wm);
+        const auto fresnel_ss = fresnel(abs(dot(wo, wm)), m_material.ior);
+        auto dielectricBrdf = fresnel_ss * m_ggx.singleScatterBRDF(wo, wi, wm);
+        
+        if (m_constants.flags & RendererFlags_MultiscatterGGX) {
+          dielectricBrdf += multiscatter(wo, wi, F_avg);
+        }
+        
+        return {
+          .flags  = Sample::Reflected | Sample::Glossy,
+          .wi     = wi,
+          .f      = float3(dielectricBrdf),
+          .Le     = m_material.emission * m_material.emissionStrength,
+          .pdf    = m_ggx.pdf(wo, wm) * fresnel_ss,
+        };
+      } else {
+        auto wi = samplers::sampleCosineHemisphere(r.xy);
+        if (wo.z < 0.0f) wi *= -1.0f;
+        const auto E_ms_wi = m_lutMsE.sample(s, float3(wi.z, m_material.roughness, iorParam)).r;
+        
+        const auto cDiffuse = (1.0f - E_ms_wo) * (1.0f - E_ms_wi) / (M_PI_F * (1.0f - E_ms_avg));
+        
+        auto flags = Sample::Reflected | Sample::Diffuse;
+        if (m_material.flags & pt::Material::Material_Emissive) flags |= Sample::Emitted;
+        return {
+          .flags  = flags,
+          .wi     = wi,
+          .f      = m_material.baseColor.rgb * cDiffuse,
+          .Le     = m_material.emission * m_material.emissionStrength,
+          .pdf    = abs(wi.z) * cDiffuse,
+        };
+      }
     }
   };
 }
@@ -742,7 +844,9 @@ kernel void pathtracingKernel(
   texture2d<float, access::write>                       dst         				[[texture(1)]],
   texture2d<uint32_t>                                   randomTex   				[[texture(2)]],
   texture2d<float>                                      ggxLutE             [[texture(3)]],
-  texture1d<float>                                      ggxLutEavg          [[texture(4)]]
+  texture1d<float>                                      ggxLutEavg          [[texture(4)]],
+  texture3d<float>                                      ggxLutMsE           [[texture(5)]],
+  texture2d<float>                                      ggxLutMsEavg        [[texture(6)]]
 ) {
   if (tid.x < constants.size.x && tid.y < constants.size.y) {
     constant CameraData& camera = constants.camera;
@@ -796,7 +900,7 @@ kernel void pathtracingKernel(
                       samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 2),
                       samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 3));
       
-      auto bsdf = bsdf::BSDF(*hit.material, ggxLutE, ggxLutEavg, constants);
+      auto bsdf = bsdf::BSDF(*hit.material, ggxLutE, ggxLutEavg, ggxLutMsE, ggxLutMsEavg, constants);
       auto sample = bsdf.sample(hit.wo, float2(0.0), r);
       
       /*
@@ -921,7 +1025,9 @@ kernel void misKernel(
   texture2d<float, access::write>                       dst                 [[texture(1)]],
   texture2d<uint32_t>                                   randomTex           [[texture(2)]],
   texture2d<float>                                      ggxLutE             [[texture(3)]],
-  texture1d<float>																			ggxLutEavg					[[texture(4)]]
+  texture1d<float>																			ggxLutEavg					[[texture(4)]],
+  texture3d<float>                                      ggxLutMsE           [[texture(5)]],
+  texture2d<float>                                      ggxLutMsEavg        [[texture(6)]]
 ) {
   if (tid.x < constants.size.x && tid.y < constants.size.y) {
     constant CameraData& camera = constants.camera;
@@ -977,7 +1083,7 @@ kernel void misKernel(
                       samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 2),
                       samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 3));
       
-      auto bsdf = bsdf::BSDF(*hit.material, ggxLutE, ggxLutEavg, constants);
+      auto bsdf = bsdf::BSDF(*hit.material, ggxLutE, ggxLutEavg, ggxLutMsE, ggxLutMsEavg, constants);
       auto sample = bsdf.sample(hit.wo, float2(0.0), r);
       
       /*

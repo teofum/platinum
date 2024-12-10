@@ -28,9 +28,7 @@ void MultiscatterLutGenerator::render() {
     bool done = m_frameIdx == m_accumulateFrames;
     
     for (uint32_t i = 0; i < m_lutOptions.size(); i++) {
-      ImGui::BeginDisabled(i > 1);
       ImGui::RadioButton(m_lutOptions[i].displayName, (int*) &m_selectedLut, i);
-      ImGui::EndDisabled();
     }
     
     ImGui::Separator();
@@ -78,11 +76,41 @@ void MultiscatterLutGenerator::render() {
     ImGui::PopStyleVar();
     ImGui::PopStyleColor();
     
+    auto dim = m_lutOptions[m_selectedLut].dimensions;
     if (m_accumulator[0] != nullptr) {
-      ImGui::Image(
-       (ImTextureID) m_accumulator[0],
-       {256, 256}
-     );
+      if (dim == 3) {
+        auto cmd = m_commandQueue->commandBuffer();
+        auto benc = cmd->blitCommandEncoder();
+        
+        uint3 size{
+          (uint32_t) m_accumulator[0]->width(),
+          (uint32_t) m_accumulator[0]->height(),
+          (uint32_t) m_accumulator[0]->depth(),
+        };
+        
+        benc->copyFromTexture(
+          m_accumulator[0],
+          0, 0,
+          MTL::Origin(0, 0, m_viewSliceIdx),
+          MTL::Size(size.x, size.y, 1),
+          m_viewSlice,
+          0, 0,
+          MTL::Origin(0, 0, 0)
+        );
+        benc->endEncoding();
+        cmd->commit();
+        cmd->waitUntilCompleted();
+        
+        ImGui::Image(
+          (ImTextureID) m_viewSlice,
+          {256, 256}
+        );
+      } else {
+        ImGui::Image(
+         	(ImTextureID) m_accumulator[0],
+         	{256, 256}
+        );
+      }
     }
     
     ImGui::EndChild();
@@ -94,6 +122,10 @@ void MultiscatterLutGenerator::render() {
                          ? "Ready"
                          : std::format("{} / {}", m_frameIdx, m_accumulateFrames);
     ImGui::ProgressBar(progress, {256, 0}, progressStr.c_str());
+    
+    if (dim == 3) {
+      ImGui::SliderInt("View slice", (int*) &m_viewSliceIdx, 0, m_lutSize - 1);
+    }
     
     ImGui::EndGroup();
     ImGui::EndTable();
@@ -116,7 +148,7 @@ void MultiscatterLutGenerator::frame() {
     auto threadgroups = MTL::Size(
       (m_lutSize + threadsPerThreadgroup.width - 1) / threadsPerThreadgroup.width,
       ((dim > 1 ? m_lutSize : 1) + threadsPerThreadgroup.height - 1) / threadsPerThreadgroup.height,
-      1
+      ((dim > 2 ? m_lutSize : 1) + threadsPerThreadgroup.depth - 1) / threadsPerThreadgroup.depth
     );
     
     auto cmd = m_commandQueue->commandBuffer();
@@ -128,6 +160,10 @@ void MultiscatterLutGenerator::frame() {
     computeEnc->setTexture(m_accumulator[0], 0);
     computeEnc->setTexture(m_accumulator[1], 1);
     computeEnc->setTexture(m_randomSource, 2);
+    
+    for (uint32_t i = 0; i < m_luts.size(); i++) {
+      computeEnc->setTexture(m_luts[i], 3 + i);
+    }
     
     computeEnc->setComputePipelineState(m_pso);
     computeEnc->dispatchThreadgroups(threadgroups, threadsPerThreadgroup);
@@ -155,6 +191,7 @@ void MultiscatterLutGenerator::generate() {
   if (m_accumulator[0] != nullptr) m_accumulator[0]->release();
   if (m_accumulator[1] != nullptr) m_accumulator[1]->release();
   if (m_randomSource != nullptr) m_randomSource->release();
+  if (m_viewSlice != nullptr) m_viewSlice->release();
   
   auto dim = m_lutOptions[m_selectedLut].dimensions;
   auto texd = MTL::TextureDescriptor::alloc()->init();
@@ -172,6 +209,13 @@ void MultiscatterLutGenerator::generate() {
   texd->setUsage(MTL::TextureUsageShaderRead);
   texd->setPixelFormat(MTL::PixelFormatR32Uint);
   m_randomSource = m_device->newTexture(texd);
+  
+  texd->setTextureType(MTL::TextureType2D);
+  texd->setHeight(m_lutSize);
+  texd->setDepth(1);
+  texd->setUsage(MTL::TextureUsageShaderWrite | MTL::TextureUsageShaderRead);
+  texd->setPixelFormat(MTL::PixelFormatR32Float);
+  m_viewSlice = m_device->newTexture(texd);
 
   auto k = 1u;
   for (int i = 0; i < dim; i++) k *= m_lutSize;
@@ -236,7 +280,7 @@ void MultiscatterLutGenerator::generate() {
 
 void MultiscatterLutGenerator::exportToFile() {
   const auto savePath = utils::fileSave("../out", "exr");
-  if (savePath){
+  if (savePath) {
     auto out = OIIO::ImageOutput::create(savePath->string());
     
     if (out) {
@@ -250,9 +294,9 @@ void MultiscatterLutGenerator::exportToFile() {
       };
 
       const auto bytesPerRow = sizeof(float) * size.x;
-      const auto bytesPerImage = bytesPerRow * size.y * size.z;
+      const auto bytesPerImage = bytesPerRow * size.y;
       
-      const auto readbackBuffer = m_device->newBuffer(bytesPerImage, MTL::ResourceStorageModeShared);
+      const auto readbackBuffer = m_device->newBuffer(bytesPerImage * size.z, MTL::ResourceStorageModeShared);
       benc->copyFromTexture(
         m_accumulator[0],
         0,
@@ -268,13 +312,57 @@ void MultiscatterLutGenerator::exportToFile() {
       cmd->commit();
       cmd->waitUntilCompleted();
       
-      OIIO::ImageSpec spec(size.x, size.y, 1, OIIO::TypeDesc::FLOAT);
-      spec.depth = size.z;
+      std::println("buffer length {}", readbackBuffer->length());
       
-      out->open(savePath->string(), spec);
-      out->write_image(OIIO::TypeDesc::FLOAT, readbackBuffer->contents());
-      out->close();
+      for (uint32_t i = 0; i < size.z; i++) {
+        OIIO::ImageSpec spec(size.x, size.y, 1, OIIO::TypeDesc::FLOAT);
+        
+        auto path = size.z > 1
+        						? std::format("{}/{}_{}.exr", savePath->parent_path().string(), savePath->stem().string(), i)
+        						: savePath->string();
+        out->open(path, spec);
+        out->write_image(
+         	OIIO::TypeDesc::FLOAT,
+          ((float*) readbackBuffer->contents()) + (size.x * size.y * i)
+       	);
+        out->close();
+      }
     }
+  }
+}
+
+void MultiscatterLutGenerator::loadGgxLutTextures() {
+  m_luts.reserve(m_lutInfo.size());
+  for (auto lut: m_lutInfo) {
+    auto path = fs::current_path() / std::format("resource/lut/{}", lut.filename);
+    auto in = OIIO::ImageInput::open(path.string());
+    if (!in) {
+      std::println(stderr, "renderer_pt: Failed to open file {}", path.string());
+      assert(false);
+    }
+    
+    const auto& spec = in->spec();
+    
+    auto buffer = m_device->newBuffer(
+      sizeof(float) * spec.width * spec.height * spec.depth,
+      MTL::ResourceStorageModeShared
+    );
+    in->read_image(0, 0, 0, -1, spec.format, buffer->contents());
+    
+    auto texd = metal_utils::makeTextureDescriptor({
+      .type = lut.type,
+      .format = MTL::PixelFormatR32Float,
+      .width = (uint32_t) spec.width,
+      .height = (uint32_t) spec.height,
+      .depth = (uint32_t) spec.depth,
+    });
+    auto texture = m_device->newTexture(texd);
+    auto region = MTL::Region(0, 0, 0, spec.width, spec.height, spec.depth);
+    texture->replaceRegion(region, 0, buffer->contents(), sizeof(float) * spec.width);
+    
+    m_luts.push_back(texture);
+    m_lutSizes.push_back(spec.width);
+    buffer->release();
   }
 }
 

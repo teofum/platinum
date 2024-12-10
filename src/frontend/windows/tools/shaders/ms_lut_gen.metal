@@ -83,15 +83,6 @@ namespace samplers {
  */
 namespace bsdf {
   /*
-   * Schlick fresnel approximation for conductors
-   */
-  inline float schlick(float f0, float cosTheta) {
-    const auto k = 1.0f - cosTheta;
-    const auto k2 = k * k;
-    return f0 + (1.0f - f0) * (k2 * k2 * k);
-  }
-  
-  /*
    * Real fresnel equations for dielectrics
    * We don't use the complex equations for conductors, as they're meaningless in RGB rendering
    */
@@ -105,6 +96,12 @@ namespace bsdf {
     const auto parallel = (ior * cosTheta - cosTheta_t) / (ior * cosTheta + cosTheta_t);
     const auto perpendicular = (cosTheta - ior * cosTheta_t) / (cosTheta + ior * cosTheta_t);
     return (parallel * parallel + perpendicular * perpendicular) * 0.5f;
+  }
+  
+  inline float avgDielectricFresnelFit(float ior) {
+    return ior >= 1.0f
+           ? (ior - 1.0f) / (4.08567f + 1.00071f * ior)
+           : 0.997118f + 0.1014f * ior - 0.965241 * ior * ior - 0.130607 * ior * ior * ior;
   }
   
   /*
@@ -224,40 +221,9 @@ namespace bsdf {
   };
   
   /*
-   * Evaluate GGX conductor BRDF and PDF
-   * Internal version, lets us skip the microfacet normal calculation if we already have it (i.e.
-   * if we just sampled the VMDF)
-   */
-  __attribute__((always_inline))
-  Eval evalMetallic(float3 wo, float3 wi, float3 wm, thread const GGX& ggx) {
-    const auto fresnel_ss = schlick(1.0f, abs(dot(wo, wm)));
-    
-    const auto cosTheta_o = abs(wo.z), cosTheta_i = abs(wi.z);
-    const auto brdf_ss = ggx.mdf(wm) * ggx.g(wo, wi) / (4 * cosTheta_o * cosTheta_i);
-    
-    return {
-      .f = fresnel_ss * brdf_ss,
-      .pdf = ggx.vmdf(wo, wm) / (4.0f * abs(dot(wo, wm))),
-    };
-  }
-  
-  /*
-   * Evaluate GGX conductor BRDF and PDF
-   */
-  Eval evalMetallic(float3 wo, float3 wi, thread const GGX& ggx) {
-    if (ggx.isSmooth()) return {};
-    
-    auto wm = wo + wi;
-    if (length_squared(wm) == 0.0f) return {};
-    wm = normalize(wm * sign(wm.z));
-    
-    return evalMetallic(wo, wi, wm, ggx);
-  }
-  
-  /*
    * Get an incident light direction by importance sampling the BRDF, and evaluate it
    */
-  Sample sampleMetallic(float3 wo, thread const GGX& ggx, float2 r) {
+  Sample sampleSingleScatterGGX(float3 wo, thread const GGX& ggx, float2 r) {
     // Sample the microfacet normal, get incident light direction and evaluate the BRDF
     auto wm = ggx.sampleVmdf(wo, r);
     auto wi = reflect(-wo, wm);
@@ -267,12 +233,47 @@ namespace bsdf {
       .pdf    = 1.0f,
     };
     
-    const auto eval = evalMetallic(wo, wi, wm, ggx);
+    const auto cosTheta_o = abs(wo.z), cosTheta_i = abs(wi.z);
+    const auto brdf_ss = ggx.mdf(wm) * ggx.g(wo, wi) / (4 * cosTheta_o * cosTheta_i);
     
     return {
       .wi     = wi,
-      .f      = eval.f,
-      .pdf    = eval.pdf,
+      .f 			= brdf_ss,
+      .pdf 		= ggx.vmdf(wo, wm) / (4.0f * abs(dot(wo, wm))),
+    };
+  }
+  
+  /*
+   * Get an incident light direction by importance sampling the BRDF, and evaluate it
+   */
+  Sample sampleMultiscatterDielectricGGX(float3 wo, float ior, float roughness, thread const GGX& ggx, float2 r, thread const texture2d<float>& lutE, thread const texture1d<float>& lutEavg) {
+    // Sample the microfacet normal, get incident light direction and evaluate the BRDF
+    auto wm = ggx.sampleVmdf(wo, r);
+    auto wi = reflect(-wo, wm);
+    if (wo.z * wi.z < 0.0f) return {
+      .wi     = wi,
+      .f      = 0.0f,
+      .pdf    = 1.0f,
+    };
+    
+    const auto cosTheta_o = abs(wo.z), cosTheta_i = abs(wi.z);
+    const auto brdf_ss = ggx.mdf(wm) * ggx.g(wo, wi) / (4 * cosTheta_o * cosTheta_i);
+    const auto fresnel_ss = fresnel(abs(dot(wo, wm)), ior);
+    
+    // Multiple scattering
+    constexpr sampler s(address::clamp_to_edge, filter::linear);
+    const auto E_wo = lutE.sample(s, float2(wo.z, roughness)).r;
+    const auto E_wi = lutE.sample(s, float2(wi.z, roughness)).r;
+    const auto E_avg = lutEavg.sample(s, roughness).r;
+    const auto F_avg = avgDielectricFresnelFit(ior);
+    
+    const auto brdf_ms = (1.0f - E_wo) * (1.0f - E_wi) / (M_PI_F * (1.0f - E_avg));
+    const auto fresnel_ms = F_avg * F_avg * E_avg / (1.0f - F_avg * (1.0f - E_avg));
+    
+    return {
+      .wi     = wi,
+      .f      = fresnel_ss * brdf_ss + fresnel_ms * brdf_ms,
+      .pdf    = ggx.vmdf(wo, wm) / (4.0f * abs(dot(wo, wm))),
     };
   }
 }
@@ -316,7 +317,7 @@ kernel void generateDirectionalAlbedoLookup(
   /*
    * Sample the distribution for directional albedo
    */
-  auto sample = bsdf::sampleMetallic(wo, ggx, r);
+  auto sample = bsdf::sampleSingleScatterGGX(wo, ggx, r);
   auto v = sample.f * abs(sample.wi.z) / sample.pdf;
   
   /*
@@ -372,8 +373,135 @@ kernel void generateHemisphericalAlbedoLookup(
   /*
    * Sample the distribution for directional albedo
    */
-  auto sample = bsdf::sampleMetallic(wo, ggx, r.xy);
+  auto sample = bsdf::sampleSingleScatterGGX(wo, ggx, r.xy);
   auto v = 2.0f * sample.f * abs(sample.wi.z) * wo.z / sample.pdf;
+  
+  /*
+   * Accumulate samples
+   */
+  if (frameIdx > 0) {
+    float prev = src.read(tid).r;
+    
+    v += prev * frameIdx;
+    v /= (frameIdx + 1);
+  }
+  
+  dst.write(float4(v, v, v, 1.0), tid);
+}
+
+/**
+ * Generate a multiscatter directional albedo LUT
+ * Tabulates directional albedo E for a multiple scattering dielectric GGX BRDF
+ */
+kernel void generateMultiscatterDirectionalAlbedoLookup(
+  uint3                                                 tid                 [[thread_position_in_grid]],
+  constant uint32_t&                                    size                [[buffer(0)]],
+  constant uint32_t&                                    frameIdx            [[buffer(1)]],
+  texture3d<float>                                      src                 [[texture(0)]],
+  texture3d<float, access::write>                       dst                 [[texture(1)]],
+  texture3d<uint32_t>                                   randomTex           [[texture(2)]],
+  texture2d<float>                                   		lutE           			[[texture(3)]],
+  texture1d<float>                                   		lutEavg           	[[texture(4)]]
+) {
+  /*
+   * Calculate parameters
+   */
+  float iorParam = ((float) tid.z + 0.5f) / (float) size;
+  float roughness = ((float) tid.y + 0.5f) / (float) size;
+  float cosTheta = ((float) tid.x + 0.5f) / (float) size;
+  
+  // Inverse of the IOR parametrization. We use (eta - 1) / eta, which has no physical meaning but
+  // gives a more useful curve for the common IOR range 1 < eta < 2 than F0.
+  // See https://www.desmos.com/calculator/1pkvgrisbx for details.
+  float ior = 1.0f / (1.0f - iorParam);
+  
+  /*
+   * Create GGX distribution
+   */
+  bsdf::GGX ggx(roughness);
+
+  /*
+   * Sample a random value
+   */
+  uint32_t offset = randomTex.read(tid).x;
+  float2 r(samplers::halton(offset + frameIdx, 0),
+           samplers::halton(offset + frameIdx, 1));
+  
+  /*
+   * Get outgoing light dir
+   */
+  float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+  float3 wo(sinTheta, 0.0, cosTheta);
+  
+  /*
+   * Sample the distribution for directional albedo
+   */
+  auto sample = bsdf::sampleMultiscatterDielectricGGX(wo, ior, roughness, ggx, r, lutE, lutEavg);
+  auto v = sample.f * abs(sample.wi.z) / sample.pdf;
+  
+  /*
+   * Accumulate samples
+   */
+  if (frameIdx > 0) {
+    float prev = src.read(tid).r;
+    
+    v += prev * frameIdx;
+    v /= (frameIdx + 1);
+  }
+  
+  dst.write(float4(v, v, v, 1.0), tid);
+}
+
+/**
+ * Generate a multiscatter hemispherical albedo LUT
+ * Tabulates hemispherical albedo E_avg for a multiple scattering dielectric GGX BRDF
+ */
+kernel void generateMultiscatterHemisphericalAlbedoLookup(
+  uint2                                                 tid                 [[thread_position_in_grid]],
+  constant uint32_t&                                    size                [[buffer(0)]],
+  constant uint32_t&                                    frameIdx            [[buffer(1)]],
+  texture2d<float>                                      src                 [[texture(0)]],
+  texture2d<float, access::write>                       dst                 [[texture(1)]],
+  texture2d<uint32_t>                                   randomTex           [[texture(2)]],
+  texture2d<float>                                      lutE                [[texture(3)]],
+  texture1d<float>                                      lutEavg             [[texture(4)]]
+) {
+  /*
+   * Calculate parameters
+   */
+  float roughness = ((float) tid.y + 0.5f) / (float) size;
+  float iorParam = ((float) tid.x + 0.5f) / (float) size;
+  
+  // Inverse of the IOR parametrization. We use (eta - 1) / eta, which has no physical meaning but
+  // gives a more useful curve for the common IOR range 1 < eta < 2 than F0.
+  // See https://www.desmos.com/calculator/1pkvgrisbx for details.
+  float ior = 1.0f / (1.0f - iorParam);
+  
+  /*
+   * Create GGX distribution
+   */
+  bsdf::GGX ggx(roughness);
+
+  /*
+   * Sample a random value
+   */
+  uint32_t offset = randomTex.read(tid).x;
+  float3 r(samplers::halton(offset + frameIdx, 0),
+           samplers::halton(offset + frameIdx, 1),
+           samplers::halton(offset + frameIdx, 2));
+  
+  /*
+   * Get outgoing light dir
+   */
+  float cosTheta = r.z;
+  float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+  float3 wo(sinTheta, 0.0, cosTheta);
+  
+  /*
+   * Sample the distribution for directional albedo
+   */
+  auto sample = bsdf::sampleMultiscatterDielectricGGX(wo, ior, roughness, ggx, r.xy, lutE, lutEavg);
+  auto v = 2.0f * sample.f * abs(sample.wi.z) * abs(wo.z) / sample.pdf;
   
   /*
    * Accumulate samples

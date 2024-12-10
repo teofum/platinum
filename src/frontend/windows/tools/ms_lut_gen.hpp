@@ -27,23 +27,23 @@ private:
   
   static constexpr std::array<LUTDescriptor, 4> m_lutOptions = {{
     {
-      .displayName = "Metallic directional albedo (E)",
+      .displayName = "Single scatter directional albedo (E)",
       .kernelName = "generateDirectionalAlbedoLookup",
       .dimensions = 2,
     },
     {
-      .displayName = "Metallic hemispherical albedo (E_avg)",
+      .displayName = "Single scatter hemispherical albedo (E_avg)",
       .kernelName = "generateHemisphericalAlbedoLookup",
       .dimensions = 1,
     },
     {
-      .displayName = "Dielectric directional albedo (E_base)",
-      .kernelName = "generateHemisphericalAlbedoLookup",
+      .displayName = "Dielectric MS directional albedo (E_base)",
+      .kernelName = "generateMultiscatterDirectionalAlbedoLookup",
       .dimensions = 3,
     },
     {
-      .displayName = "Dielectric hemispherical albedo (E_base_avg)",
-      .kernelName = "generateHemisphericalAlbedoLookup",
+      .displayName = "Dielectric MS hemispherical albedo (E_base_avg)",
+      .kernelName = "generateMultiscatterHemisphericalAlbedoLookup",
       .dimensions = 2,
     },
   }};
@@ -59,6 +59,8 @@ private:
   
   MTL::Texture* m_accumulator[2] = {nullptr, nullptr};
   MTL::Texture* m_randomSource = nullptr;
+  MTL::Texture* m_viewSlice = nullptr;
+  uint32_t m_viewSliceIdx = 0;
   
   MTL::ComputePipelineState* m_pso = nullptr;
   
@@ -67,11 +69,25 @@ private:
   uint32_t m_accumulateFrames = 65536;
   uint32_t m_selectedLut = 0;
   
+  // LUT textures
+  struct LUTInfo {
+    const char* filename;
+    MTL::TextureType type;
+  };
+  static constexpr std::array<LUTInfo, 2> m_lutInfo = {{
+    {.filename = "ggx_E.exr", .type = MTL::TextureType2D},
+    {.filename = "ggx_E_avg.exr", .type = MTL::TextureType1D},
+  }};
+  std::vector<MTL::Texture*> m_luts;
+  std::vector<uint32_t> m_lutSizes;
+  
   void frame();
   
   void generate();
   
   void exportToFile();
+  
+  void loadGgxLutTextures();
 };
 
 }

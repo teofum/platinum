@@ -108,10 +108,13 @@ private:
   struct LUTInfo {
     const char* filename;
     MTL::TextureType type;
+    uint32_t depth = 1;
   };
-  static constexpr std::array<LUTInfo, 2> m_lutInfo = {{
-    {.filename = "ggx_E.exr", .type = MTL::TextureType2D},
-    {.filename = "ggx_E_avg.exr", .type = MTL::TextureType1D},
+  static constexpr std::array<LUTInfo, 4> m_lutInfo = {{
+    {.filename = "ggx_E", .type = MTL::TextureType2D, .depth = 1},
+    {.filename = "ggx_E_avg", .type = MTL::TextureType1D, .depth = 1},
+    {.filename = "ggx_ms_E", .type = MTL::TextureType3D, .depth = 32},
+    {.filename = "ggx_ms_E_avg", .type = MTL::TextureType2D, .depth = 1},
   }};
   std::vector<MTL::Texture*> m_luts;
   std::vector<uint32_t> m_lutSizes;

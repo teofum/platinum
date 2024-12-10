@@ -318,31 +318,58 @@ void Renderer::buildConstantsBuffer() {
 void Renderer::loadGgxLutTextures() {
   m_luts.reserve(m_lutInfo.size());
   for (auto lut: m_lutInfo) {
-    auto path = fs::current_path() / std::format("resource/lut/{}", lut.filename);
+    /*
+     * Load the LUT image. For 3d LUTs, load the first slice.
+     */
+    auto filename = std::format("resource/lut/{}{}.exr", lut.filename, lut.depth > 1 ? "_0" : "");
+    auto path = fs::current_path() / filename;
+
     auto in = OIIO::ImageInput::open(path.string());
     if (!in) {
       std::println(stderr, "renderer_pt: Failed to open file {}", path.string());
       assert(false);
     }
-    
     const auto& spec = in->spec();
     
+    // Create temp buffer for reading the image to
     auto buffer = m_device->newBuffer(
-      sizeof(float) * spec.width * spec.height * spec.depth,
+      sizeof(float) * spec.width * spec.height,
       MTL::ResourceStorageModeShared
     );
     in->read_image(0, 0, 0, -1, spec.format, buffer->contents());
     
+    // Create the texture
     auto texd = metal_utils::makeTextureDescriptor({
       .type = lut.type,
       .format = MTL::PixelFormatR32Float,
       .width = (uint32_t) spec.width,
       .height = (uint32_t) spec.height,
-      .depth = (uint32_t) spec.depth,
+      .depth = (uint32_t) lut.depth,
     });
     auto texture = m_device->newTexture(texd);
-    auto region = MTL::Region(0, 0, 0, spec.width, spec.height, spec.depth);
+    
+    // Load the first slice
+    auto region = MTL::Region(0, 0, 0, spec.width, spec.height, 1);
     texture->replaceRegion(region, 0, buffer->contents(), sizeof(float) * spec.width);
+    
+    /*
+     * For 3d LUTs, load each subsequent slice and copy it to the texture
+     */
+    for (uint32_t zSlice = 1; zSlice < lut.depth; zSlice++) {
+      filename = std::format("resource/lut/{}_{}.exr", lut.filename, zSlice);
+      path = fs::current_path() / filename;
+      
+      in = OIIO::ImageInput::open(path.string());
+      if (!in) {
+        std::println(stderr, "renderer_pt: Failed to open file {}", path.string());
+        assert(false);
+      }
+      const auto& spec = in->spec();
+      in->read_image(0, 0, 0, -1, spec.format, buffer->contents());
+      
+      auto region = MTL::Region(0, 0, zSlice, spec.width, spec.height, 1);
+      texture->replaceRegion(region, 0, buffer->contents(), sizeof(float) * spec.width);
+    }
     
     m_luts.push_back(texture);
     m_lutSizes.push_back(spec.width);
