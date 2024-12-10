@@ -314,7 +314,7 @@ namespace bsdf {
   struct Eval {
     float3 f;
     float3 Le;
-    float pdf = 0.0f;
+    float pdf = 1.0f;
   };
   
   class BSDF {
@@ -349,7 +349,7 @@ namespace bsdf {
       }
       if (cDiffuse > 0.0f) {
         const auto bsdfDiffuse = evalDiffuse(wo, wi);
-        bsdf += cDiffuse * bsdfDiffuse.f;
+        bsdf += cDiffuse * bsdfDiffuse.f / M_PI_F;
         pdf += cDiffuse * bsdfDiffuse.pdf;
       }
       
@@ -415,8 +415,8 @@ namespace bsdf {
       if (m_ggx.isSmooth()) return {};
       
       auto wm = wo + wi;
-      if (length_squared(wm) == 0.0f) return {};
       wm = normalize(wm * sign(wm.z));
+      if (length_squared(wm) == 0.0f) return {};
       
       return evalMetallic(wo, wi, wm);
     }
@@ -870,14 +870,15 @@ constant LightData& sampleLightPower(
 struct LightSample {
   float3 Li;			// Emitted light
   float3 pos;			// Sampled light position				(world space)
-  float3 normal;	// Sampled light surface normal (world space)
+  float3 normal;  // Sampled light surface normal (world space)
+  float3 wi;			// Surface -> light direction		(world space)
   float pdf;			// Light sample PDF at sampled position
 };
 
 /*
  *
  */
-LightSample sampleAreaLight(thread Resources& res, constant LightData& light, float2 r) {
+LightSample sampleAreaLight(thread const Hit& hit, thread Resources& res, constant LightData& light, float2 r) {
   const device auto& vertices = res.getVertices(light.instanceIdx);
   
   float3 vertexPositions[3];
@@ -893,11 +894,13 @@ LightSample sampleAreaLight(thread Resources& res, constant LightData& light, fl
   auto pos = (transform * float4(interpolate(vertexPositions, sampledCoords), 1.0)).xyz;
   auto normal = normalize((transform * float4(interpolate(vertexNormals, sampledCoords), 0.0)).xyz);
   
+  auto wi = normalize(pos - hit.pos);
   return {
     .Li = light.emission,
     .pos = pos,
     .normal = normal,
-    .pdf = 1.0f / light.area,
+    .wi = wi,
+    .pdf = length_squared(pos - hit.pos) / (abs(dot(normal, wi)) * light.area),
   };
 }
 
@@ -984,30 +987,17 @@ kernel void misKernel(
         if (bounce == 0 || lastSample.flags & bsdf::Sample::Specular) {
           L += attenuation * sample.Le;
         } else {
-          // TODO: find a way to get an index to the light, so we don't have to calculate the area here
-          const device auto& vertices = resources.getVertices(intersection.instance_id);
-          const device auto& data = *(device PrimitiveData*) intersection.primitive_data;
-          const auto transform = resources.getTransform(intersection.instance_id);
-          
-          float3 wsVertexPositions[3];
-          for (int i = 0; i < 3; i++)
-            wsVertexPositions[i] = (transform * float4(vertices.position[data.indices[i]], 1.0)).xyz;
-          
-          const auto edge1 = wsVertexPositions[1] - wsVertexPositions[0];
-          const auto edge2 = wsVertexPositions[2] - wsVertexPositions[0];
-          const auto area = length(cross(edge1, edge2)) * 0.5f;
-          const auto power = sample.Le * area * M_PI_F;
-          
-          // Calculate light PDF, BSDF weight and do MIS
-          const auto lightPdf = (1.0f / area) * (power / constants.totalLightPower)
+          // Calculate light PDF, BSDF weight and do MIS.
+          // Sampling pdf is 1 / area, light sample pdf is power / totalPower
+          // Because power = Le * pi * area, the areas cancel each other out and we can simplify
+          const auto lightPdf = (sample.Le * M_PI_F / constants.totalLightPower)
+                                * length_squared(lastHit.pos - hit.pos)
           											/ abs(dot(ray.direction, hit.normal));
           const auto bsdfWeight = lastSample.pdf / (lastSample.pdf + lightPdf);
           
-          L += attenuation * bsdfWeight * sample.Le / length_squared(lastHit.pos - hit.pos);
+          L += attenuation * bsdfWeight * sample.Le;
         }
       }
-      
-      if (!(sample.flags & (bsdf::Sample::Reflected | bsdf::Sample::Transmitted))) break;
       
       /*
        * Set new ray origin, this is the same used for NEE and for the next bounce
@@ -1025,12 +1015,11 @@ kernel void misKernel(
         const constant auto& light = sampleLightPower(lights, constants, r.z);
         const auto pLight = light.power / constants.totalLightPower; // Probability of sampling this light
         
-        const auto lightSample = sampleAreaLight(resources, light, r.xy);
-        const auto wiWorldSpace = normalize(lightSample.pos - hit.pos);
-        const auto wi = hit.frame.worldToLocal(wiWorldSpace);
+        const auto lightSample = sampleAreaLight(hit, resources, light, r.xy);
+        const auto wi = hit.frame.worldToLocal(lightSample.wi);
         const auto bsdfEval = bsdf.eval(hit.wo, wi, float2(0.0));
         
-        ray.direction = wiWorldSpace;
+        ray.direction = lightSample.wi;
         ray.max_distance = length(lightSample.pos - hit.pos) - 1e-3f;
         i.accept_any_intersection(true);
         intersection = i.intersect(ray, accelStruct);
@@ -1038,13 +1027,17 @@ kernel void misKernel(
         i.accept_any_intersection(false);
         
         if (length_squared(bsdfEval.f) > 0.0f && !occluded) {
-          auto pdfLight = pLight * lightSample.pdf / abs(dot(lightSample.normal, wiWorldSpace));
-          auto Ld = lightSample.Li * bsdfEval.f * abs(dot(hit.normal, wiWorldSpace)) 	// Base lighting term
-          					/ length_squared(lightSample.pos - hit.pos)												// Distance attenuation
-          					/ (pdfLight + bsdfEval.pdf);																			// MIS weight/pdf (simplified)
+          auto pdfLight = pLight * lightSample.pdf;
+          auto Ld = lightSample.Li * bsdfEval.f * abs(wi.z) 				// Base lighting term
+          					/ (pdfLight + bsdfEval.pdf);										// MIS weight/pdf (simplified)
           L += attenuation * Ld;
         }
       }
+      
+      /*
+       * If the ray wasn't reflected or transmitted, we can end tracing here
+       */
+      if (!(sample.flags & (bsdf::Sample::Reflected | bsdf::Sample::Transmitted))) break;
       
       /*
        * Update attenuation

@@ -316,9 +316,6 @@ void Renderer::buildConstantsBuffer() {
 }
 
 void Renderer::loadGgxLutTextures() {
-  auto in = OIIO::ImageInput::create("a.exr");
-  
-  
   m_luts.reserve(m_lutInfo.size());
   for (auto lut: m_lutInfo) {
     auto path = fs::current_path() / std::format("resource/lut/{}", lut.filename);
@@ -588,7 +585,8 @@ void Renderer::rebuildLightData() {
           const auto edge2 = v2 - v0;
           const auto area = length(cross(edge1, edge2)) * 0.5f;
           
-          const auto lightPower = length(material->emission) * area * std::numbers::pi_v<float>;
+          const auto emission = material->emission * material->emissionStrength;
+          const auto lightPower = length(emission) * area * std::numbers::pi_v<float>;
           m_lightTotalPower += lightPower;
           
           lights.push_back({
@@ -597,7 +595,7 @@ void Renderer::rebuildLightData() {
             .area = area,
             .power = lightPower,
             .cumulativePower = m_lightTotalPower,
-            .emission = material->emission * material->emissionStrength,
+            .emission = emission,
           });
         }
       }
