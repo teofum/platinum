@@ -25,7 +25,7 @@ private:
     uint32_t dimensions;
   };
   
-  static constexpr std::array<LUTDescriptor, 4> m_lutOptions = {{
+  static constexpr std::array<LUTDescriptor, 8> m_lutOptions = {{
     {
       .displayName = "Single scatter directional albedo (E)",
       .kernelName = "generateDirectionalAlbedoLookup",
@@ -37,13 +37,33 @@ private:
       .dimensions = 1,
     },
     {
-      .displayName = "Dielectric MS directional albedo (E_base)",
+      .displayName = "Dielectric MS directional albedo (E_ms)",
       .kernelName = "generateMultiscatterDirectionalAlbedoLookup",
       .dimensions = 3,
     },
     {
-      .displayName = "Dielectric MS hemispherical albedo (E_base_avg)",
+      .displayName = "Dielectric MS hemispherical albedo (E_ms_avg)",
       .kernelName = "generateMultiscatterHemisphericalAlbedoLookup",
+      .dimensions = 2,
+    },
+    {
+      .displayName = "Transparent directional albedo, eta >= 1 (E_trans_in)",
+      .kernelName = "generateTransparentDirectionalAlbedoInLookup",
+      .dimensions = 3,
+    },
+    {
+      .displayName = "Transparent directional albedo, eta < 1 (E_trans_out)",
+      .kernelName = "generateTransparentDirectionalAlbedoOutLookup",
+      .dimensions = 3,
+    },
+    {
+      .displayName = "Transparent hemispherical albedo, eta >= 1 (E_trans_in_avg)",
+      .kernelName = "generateTransparentHemisphericalAlbedoInLookup",
+      .dimensions = 2,
+    },
+    {
+      .displayName = "Transparent hemispherical albedo, eta < 1 (E_trans_out_avg)",
+      .kernelName = "generateTransparentHemisphericalAlbedoOutLookup",
       .dimensions = 2,
     },
   }};
@@ -68,6 +88,7 @@ private:
   uint32_t m_frameIdx = 0;
   uint32_t m_accumulateFrames = 65536;
   uint32_t m_selectedLut = 0;
+  bool m_shouldStartNextFrame = false;
   
   // LUT textures
   struct LUTInfo {

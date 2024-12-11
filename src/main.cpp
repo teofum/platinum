@@ -18,7 +18,7 @@ int main() {
   
   // Default material
   pt::Material material{
-    .baseColor = {1.0, 1.0, 1.0},
+    .baseColor = {0.8, 0.8, 0.8, 1.0},
   };
   auto materialId = scene.addMaterial("Default material", material);
 

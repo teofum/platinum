@@ -44,15 +44,10 @@ void RenderViewport::render() {
     ImGui::SetNextItemWidth(160);
     ImGui::BeginDisabled(cameras.empty());
     if (ImGui::BeginCombo("##CameraSelect", label.c_str())) {
-      float width = ImGui::GetContentRegionAvail().x - 12.0f;
       for (const auto& cd: cameras) {
         auto name = std::format("{}##Camera_{}", m_store.scene().node(cd.nodeId)->name, cd.nodeId);
         const bool isSelected = cd.nodeId == m_cameraNodeId;
-        
-        ImGui::SetCursorPosX(10.0f);
-        if (widgets::selectable(name.c_str(), isSelected, 0, {width, 0})) {
-          m_cameraNodeId = cd.nodeId;
-        }
+        if (widgets::comboItem(name.c_str(), isSelected)) m_cameraNodeId = cd.nodeId;
         
         if (isSelected) ImGui::SetItemDefaultFocus();
       }
@@ -145,16 +140,11 @@ void RenderViewport::render() {
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
   ImGui::BeginDisabled(cameras.empty());
   if (ImGui::BeginCombo("##CameraSelect", label.c_str())) {
-    float width = ImGui::GetContentRegionAvail().x - 12.0f;
     for (const auto& cd: cameras) {
       auto name = std::format("{}##Camera_{}", m_store.scene().node(cd.nodeId)->name, cd.nodeId);
       const bool isSelected = cd.nodeId == m_cameraNodeId;
+      if (widgets::comboItem(name.c_str(), isSelected)) m_cameraNodeId = cd.nodeId;
       
-      ImGui::SetCursorPosX(10.0f);
-      if (widgets::selectable(name.c_str(), isSelected, 0, {width, 0})) {
-        m_cameraNodeId = cd.nodeId;
-      }
-
       if (isSelected) ImGui::SetItemDefaultFocus();
     }
     ImGui::EndCombo();
@@ -176,15 +166,11 @@ void RenderViewport::render() {
   auto selectedKernel = m_renderer->selectedKernel();
   std::array<std::string, 2> kernelNames = {"Simple BSDF sampler", "MIS + NEE"};
   if (ImGui::BeginCombo("Render kernel", kernelNames[selectedKernel].c_str())) {
-    float width = ImGui::GetContentRegionAvail().x - 12.0f;
-    
-    ImGui::SetCursorPosX(10.0f);
-    if (widgets::selectable(kernelNames[0].c_str(), selectedKernel == 0, 0, {width, 0}))
+    if (widgets::comboItem(kernelNames[0].c_str(), selectedKernel == 0))
       m_renderer->selectKernel(renderer_pt::Renderer::Integrator_Simple);
     if (selectedKernel == 0) ImGui::SetItemDefaultFocus();
     
-    ImGui::SetCursorPosX(10.0f);
-    if (widgets::selectable(kernelNames[1].c_str(), selectedKernel == 1, 0, {width, 0}))
+    if (widgets::comboItem(kernelNames[1].c_str(), selectedKernel == 1))
       m_renderer->selectKernel(renderer_pt::Renderer::Integrator_MIS);
     if (selectedKernel == 1) ImGui::SetItemDefaultFocus();
     

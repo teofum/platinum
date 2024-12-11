@@ -15,121 +15,133 @@ void MultiscatterLutGenerator::init(MTL::Device* device, MTL::CommandQueue* comm
 }
 
 void MultiscatterLutGenerator::render() {
+  if (m_shouldStartNextFrame) {
+    generate();
+    m_shouldStartNextFrame = false;
+  }
+  
   frame();
   
   ImGui::Begin("Multiscatter GGX LUT Generator", m_open);
+  ImGui::BeginGroup();
   
-  if (ImGui::BeginTable("Layout", 2)) {
-    ImGui::TableNextRow();
-    ImGui::TableNextColumn();
-    ImGui::BeginGroup();
-    
-    bool working = m_frameIdx != 0 && m_frameIdx < m_accumulateFrames;
-    bool done = m_frameIdx == m_accumulateFrames;
-    
-    for (uint32_t i = 0; i < m_lutOptions.size(); i++) {
-      ImGui::RadioButton(m_lutOptions[i].displayName, (int*) &m_selectedLut, i);
+  ImGui::PushStyleColor(ImGuiCol_ChildBg, (ImVec4) ImColor::HSV(0.0f, 0.0f, 0.8f));
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+  ImGui::BeginChild(
+    "RenderView",
+    {256, 256},
+    ImGuiChildFlags_Borders,
+    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+  );
+  ImGui::PopStyleVar();
+  ImGui::PopStyleColor();
+  
+  auto dim = m_lutOptions[m_selectedLut].dimensions;
+  if (m_accumulator[0] != nullptr) {
+    if (dim == 3) {
+      auto cmd = m_commandQueue->commandBuffer();
+      auto benc = cmd->blitCommandEncoder();
+      
+      uint3 size{
+        (uint32_t) m_accumulator[0]->width(),
+        (uint32_t) m_accumulator[0]->height(),
+        (uint32_t) m_accumulator[0]->depth(),
+      };
+      
+      benc->copyFromTexture(
+        m_accumulator[0],
+        0, 0,
+        MTL::Origin(0, 0, m_viewSliceIdx),
+        MTL::Size(size.x, size.y, 1),
+        m_viewSlice,
+        0, 0,
+        MTL::Origin(0, 0, 0)
+      );
+      benc->endEncoding();
+      cmd->commit();
+      cmd->waitUntilCompleted();
+      
+      ImGui::Image(
+        (ImTextureID) m_viewSlice,
+        {256, 256}
+      );
+    } else {
+      ImGui::Image(
+         (ImTextureID) m_accumulator[0],
+         {256, 256}
+      );
     }
-    
-    ImGui::Separator();
-    
+  }
+  
+  ImGui::EndChild();
+  
+  auto progress = (float) m_frameIdx / (float) m_accumulateFrames;
+  auto progressStr = m_frameIdx == m_accumulateFrames
+                     ? "Done!"
+                     : m_frameIdx == 0
+                       ? "Ready"
+                       : std::format("{} / {}", m_frameIdx, m_accumulateFrames);
+  ImGui::ProgressBar(progress, {256, 0}, progressStr.c_str());
+  
+  if (dim == 3) {
+    ImGui::SetNextItemWidth(256 - 80);
+    ImGui::SliderInt("View slice", (int*) &m_viewSliceIdx, 0, m_lutSize - 1);
+  }
+  
+  ImGui::EndGroup();
+  
+  ImGui::SameLine();
+  ImGui::BeginGroup();
+  
+  bool working = m_frameIdx != 0 && m_frameIdx < m_accumulateFrames;
+  bool done = m_frameIdx == m_accumulateFrames;
+  
+  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+  if (ImGui::BeginCombo("##LUTOption", m_lutOptions[m_selectedLut].displayName)) {
+    for (uint32_t i = 0; i < m_lutOptions.size(); i++) {
+      const auto isSelected = i == m_selectedLut;
+      if (widgets::comboItem(m_lutOptions[i].displayName, isSelected)) m_selectedLut = i;
+      
+      if (isSelected) ImGui::SetItemDefaultFocus();
+    }
+    ImGui::EndCombo();
+  }
+  
+  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 80);
+  if (ImGui::BeginCombo("LUT Size", std::format("{}px", m_lutSize).c_str())) {
     for (uint32_t size = 16; size <= 1024; size <<= 1) {
       const auto label = std::format("{}px", size);
-      ImGui::RadioButton(label.c_str(), (int*) &m_lutSize, size);
-    }
-    
-    ImGui::Separator();
-    
-    if (ImGui::BeginTable("Buttons", 2)) {
-      ImGui::TableNextRow();
-      ImGui::TableNextColumn();
-      ImGui::BeginDisabled(working);
-      if (ImGui::Button("Generate", {ImGui::GetContentRegionAvail().x, 0})) {
-        generate();
-      }
-      ImGui::EndDisabled();
+      const auto isSelected = size == m_lutSize;
+      if (widgets::comboItem(label.c_str(), isSelected)) m_lutSize = size;
       
-      ImGui::TableNextColumn();
-      ImGui::BeginDisabled(!done);
-      if (ImGui::Button("Export", {ImGui::GetContentRegionAvail().x, 0})) {
-        exportToFile();
-      }
-      ImGui::EndDisabled();
-      
-      ImGui::EndTable();
+      if (isSelected) ImGui::SetItemDefaultFocus();
     }
-    
-    
-    ImGui::EndGroup();
+    ImGui::EndCombo();
+  }
+  
+  ImGui::Separator();
+  
+  if (ImGui::BeginTable("Buttons", 2)) {
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    ImGui::BeginDisabled(working);
+    if (ImGui::Button("Generate", {ImGui::GetContentRegionAvail().x, 0})) {
+      m_shouldStartNextFrame = true;
+    }
+    ImGui::EndDisabled();
     
     ImGui::TableNextColumn();
-    ImGui::BeginGroup();
-    
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, (ImVec4) ImColor::HSV(0.0f, 0.0f, 0.8f));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
-    ImGui::BeginChild(
-      "RenderView",
-      {256, 256},
-      ImGuiChildFlags_Borders,
-      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
-    );
-    ImGui::PopStyleVar();
-    ImGui::PopStyleColor();
-    
-    auto dim = m_lutOptions[m_selectedLut].dimensions;
-    if (m_accumulator[0] != nullptr) {
-      if (dim == 3) {
-        auto cmd = m_commandQueue->commandBuffer();
-        auto benc = cmd->blitCommandEncoder();
-        
-        uint3 size{
-          (uint32_t) m_accumulator[0]->width(),
-          (uint32_t) m_accumulator[0]->height(),
-          (uint32_t) m_accumulator[0]->depth(),
-        };
-        
-        benc->copyFromTexture(
-          m_accumulator[0],
-          0, 0,
-          MTL::Origin(0, 0, m_viewSliceIdx),
-          MTL::Size(size.x, size.y, 1),
-          m_viewSlice,
-          0, 0,
-          MTL::Origin(0, 0, 0)
-        );
-        benc->endEncoding();
-        cmd->commit();
-        cmd->waitUntilCompleted();
-        
-        ImGui::Image(
-          (ImTextureID) m_viewSlice,
-          {256, 256}
-        );
-      } else {
-        ImGui::Image(
-         	(ImTextureID) m_accumulator[0],
-         	{256, 256}
-        );
-      }
+    ImGui::BeginDisabled(!done);
+    if (ImGui::Button("Export", {ImGui::GetContentRegionAvail().x, 0})) {
+      exportToFile();
     }
+    ImGui::EndDisabled();
     
-    ImGui::EndChild();
-    
-    auto progress = (float) m_frameIdx / (float) m_accumulateFrames;
-    auto progressStr = m_frameIdx == m_accumulateFrames
-                       ? "Done!"
-                       : m_frameIdx == 0
-                         ? "Ready"
-                         : std::format("{} / {}", m_frameIdx, m_accumulateFrames);
-    ImGui::ProgressBar(progress, {256, 0}, progressStr.c_str());
-    
-    if (dim == 3) {
-      ImGui::SliderInt("View slice", (int*) &m_viewSliceIdx, 0, m_lutSize - 1);
-    }
-    
-    ImGui::EndGroup();
     ImGui::EndTable();
   }
+  
+  
+  ImGui::EndGroup();
   
   ImGui::End();
 }

@@ -103,22 +103,17 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
       auto nextMaterialId = selectedId;
       ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
       if (ImGui::BeginCombo("##MaterialSelect", selectedName.c_str())) {
-        float width = ImGui::GetContentRegionAvail().x - 12.0f;
         for (const auto& md: m_store.scene().getAllMaterials()) {
           auto isSelected = selectedId == md.materialId;
-          
-          ImGui::SetCursorPosX(10.0f);
-          if (widgets::selectable(md.name.c_str(), isSelected, 0, {width, 0})) {
+          if (widgets::comboItem(md.name.c_str(), isSelected))
             nextMaterialId = md.materialId;
-          }
         }
         
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
         
-        ImGui::SetCursorPosX(10.0f);
-        if (widgets::selectable("New material", false, 0, {width, 0})) {
+        if (widgets::comboItem("New material", false)) {
           auto name = std::format("Material {}", m_store.scene().getAllMaterials().size() + 1);
           nextMaterialId = m_store.scene().addMaterial(name, Material{ .baseColor = {0.8, 0.8, 0.8} });
         }

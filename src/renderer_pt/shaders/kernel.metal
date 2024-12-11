@@ -341,6 +341,10 @@ namespace bsdf {
      	thread const texture1d<float>& lutEavg,
      	thread const texture3d<float>& lutMsE,
      	thread const texture2d<float>& lutMsEavg,
+     	thread const texture3d<float>& lutETransIn,
+     	thread const texture3d<float>& lutETransOut,
+     	thread const texture2d<float>& lutEavgTransIn,
+     	thread const texture2d<float>& lutEavgTransOut,
       constant const Constants& constants
     ) : m_material(material),
     		m_ggx(material.roughness, material.anisotropy),
@@ -348,6 +352,10 @@ namespace bsdf {
         m_lutEavg(lutEavg),
     		m_lutMsE(lutMsE),
     		m_lutMsEavg(lutMsEavg),
+    		m_lutETransIn(lutETransIn),
+    		m_lutETransOut(lutETransOut),
+    		m_lutEavgTransIn(lutEavgTransIn),
+    		m_lutEavgTransOut(lutEavgTransOut),
     		m_constants(constants) {}
     
     Eval eval(float3 wo, float3 wi, float2 uv) {
@@ -395,11 +403,19 @@ namespace bsdf {
     thread const texture1d<float>& m_lutEavg;
     thread const texture3d<float>& m_lutMsE;
     thread const texture2d<float>& m_lutMsEavg;
+    thread const texture3d<float>& m_lutETransIn;
+    thread const texture3d<float>& m_lutETransOut;
+    thread const texture2d<float>& m_lutEavgTransIn;
+    thread const texture2d<float>& m_lutEavgTransOut;
     constant const Constants& m_constants;
     
+    /*
+     * Multiple scattering term for GGX BRDF
+     * Implementation of Kulla & Conty, https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
+     */
     template<typename T>
     __attribute__((always_inline))
-    T multiscatter(float3 wo, float3 wi, T F_avg, thread float3* out = nullptr) {
+    T multiscatter(float3 wo, float3 wi, T F_avg) {
       constexpr sampler s(address::clamp_to_edge, filter::linear);
       const auto E_wo = m_lutE.sample(s, float2(wo.z, m_material.roughness)).r;
       const auto E_wi = m_lutE.sample(s, float2(wi.z, m_material.roughness)).r;
@@ -408,8 +424,33 @@ namespace bsdf {
       
       const auto fresnel_ms = F_avg * F_avg * E_avg / (1.0f - F_avg * (1.0f - E_avg));
       
-      if (out != nullptr) *out = float3(E_wo, E_wi, E_avg);
       return fresnel_ms * brdf_ms;
+    }
+    
+    /*
+     * Multiple scattering multiplier for transparent dielectric GGX BSDF
+     * E. Turquin's method (https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf)
+     * This method is not reciprocal, but I couldn't get the K&C method working for a transparent BSDF.
+     * TODO: revisit this later
+     */
+    __attribute__((always_inline))
+    float transparentMultiscatter(float3 wo, float3 wi, float ior) {
+      constexpr sampler s(address::clamp_to_edge, filter::linear);
+      
+      if (ior < 1.0f) {
+        // For IOR < 1, we simply use 1 - eta, which falls nicely in the 0-1 range.
+        const auto iorParam = 1.0f - (1.0f / ior);
+        const auto E_wo = m_lutETransOut.sample(s, float3(abs(wo.z), m_material.roughness, iorParam)).r;
+        
+        return 1.0f / E_wo;
+      } else {
+        // IOR parametrization optimized for the common IOR range 1 < eta < 2
+        // See https://www.desmos.com/calculator/1pkvgrisbx for details.
+        const auto iorParam = (ior - 1.0f) / ior;
+        const auto E_wo = m_lutETransIn.sample(s, float3(abs(wo.z), m_material.roughness, iorParam)).r;
+        
+        return 1.0f / E_wo;
+      }
     }
     
     /*
@@ -490,35 +531,42 @@ namespace bsdf {
       auto cosTheta_o = wo.z, cosTheta_i = wi.z;
       const auto isReflection = cosTheta_o * cosTheta_i > 0.0f;
       
-      // TODO: multiple scattering
+      float3 bsdf;
+      float pdf, k = fresnel_ss;
       if (isReflection) {
-        const auto brdf_ss = m_ggx.mdf(wm) * m_ggx.g(wo, wi) / (4 * cosTheta_o * cosTheta_i);
-        
-        return {
-          .f = float3(fresnel_ss * brdf_ss),
-          .pdf = fresnel_ss * m_ggx.vmdf(wo, wm) / (4 * abs(dot(wo, wm))),
-        };
-      } else if (thin) {
-        wi = reflect(wi, float3(0.0, 0.0, 1.0));
-        wm = normalize(wi + wo);
-        const auto btdf_ss = m_ggx.mdf(wm) * m_ggx.g(wo, wi) / (4 * abs(wo.z) * abs(wi.z));
-        
-        return {
-          .f = (1.0f - fresnel_ss) * btdf_ss * m_material.baseColor.rgb,
-          .pdf = (1.0f - fresnel_ss) * m_ggx.vmdf(wo, wm) / (4 * abs(dot(wo, wm))),
-        };
+        bsdf = float3(m_ggx.singleScatterBRDF(wo, wi, wm));
+        pdf = m_ggx.pdf(wo, wm);
       } else {
-        auto denom = dot(wi, wm) * ior + dot(wo, wm);
-        denom *= denom;
+        k = 1.0f - fresnel_ss;
         
-        const auto dwm_dwi = abs(dot(wi, wm)) / denom;
-        const auto btdf_ss = m_ggx.mdf(wm) * m_ggx.g(wo, wi) * abs(dot(wi, wm) * dot(wo, wm) / (wi.z * wo.z * denom));
+        float btdf_ss;
+        if (thin) {
+          wi = reflect(wi, float3(0.0, 0.0, 1.0));
+          wm = normalize(wi + wo);
+          
+          btdf_ss = m_ggx.singleScatterBRDF(wo, wi, wm);
+          pdf = m_ggx.pdf(wo, wm);
+        } else {
+          auto denom = dot(wi, wm) * ior + dot(wo, wm);
+          denom *= denom;
+          
+          const auto dwm_dwi = abs(dot(wi, wm)) / denom;
+          btdf_ss = m_ggx.mdf(wm) * m_ggx.g(wo, wi) * abs(dot(wi, wm) * dot(wo, wm) / (wi.z * wo.z * denom));
+          pdf = m_ggx.vmdf(wo, wm) * dwm_dwi;
+        }
         
-        return {
-          .f = (1.0f - fresnel_ss) * btdf_ss * m_material.baseColor.rgb,
-          .pdf = (1.0f - fresnel_ss) * m_ggx.vmdf(wo, wm) * dwm_dwi,
-        };
+        bsdf = m_material.baseColor.rgb * btdf_ss;
       }
+      
+      // Multiple scattering
+      if (m_constants.flags & RendererFlags_MultiscatterGGX) {
+        bsdf *= transparentMultiscatter(wo, wi, ior);
+      }
+      
+      return {
+        .f = k * bsdf,
+        .pdf = k * pdf,
+      };
     }
     
     /*
@@ -569,7 +617,7 @@ namespace bsdf {
         return {
           .flags  = flags,
           .wi     = wi,
-          .f      = pdf,
+          .f      = pdf * color / abs(wi.z),
           .Le     = float3(0.0),
           .pdf    = pdf,
         };
@@ -581,8 +629,6 @@ namespace bsdf {
       
       float3 wi;
       int flags = Sample::Glossy;
-      
-      // TODO: multiple scattering
       
       // Get the incident light direction and evaluate the BSDF
       if (r.z < fresnel_ss) {
@@ -846,7 +892,11 @@ kernel void pathtracingKernel(
   texture2d<float>                                      ggxLutE             [[texture(3)]],
   texture1d<float>                                      ggxLutEavg          [[texture(4)]],
   texture3d<float>                                      ggxLutMsE           [[texture(5)]],
-  texture2d<float>                                      ggxLutMsEavg        [[texture(6)]]
+  texture2d<float>                                      ggxLutMsEavg        [[texture(6)]],
+  texture3d<float>                                      ggxLutETransIn      [[texture(7)]],
+  texture3d<float>                                      ggxLutETransOut     [[texture(8)]],
+  texture2d<float>                                      ggxLutEavgTransIn   [[texture(9)]],
+  texture2d<float>                                      ggxLutEavgTransOut  [[texture(10)]]
 ) {
   if (tid.x < constants.size.x && tid.y < constants.size.y) {
     constant CameraData& camera = constants.camera;
@@ -900,7 +950,7 @@ kernel void pathtracingKernel(
                       samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 2),
                       samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 3));
       
-      auto bsdf = bsdf::BSDF(*hit.material, ggxLutE, ggxLutEavg, ggxLutMsE, ggxLutMsEavg, constants);
+      auto bsdf = bsdf::BSDF(*hit.material, ggxLutE, ggxLutEavg, ggxLutMsE, ggxLutMsEavg, ggxLutETransIn, ggxLutETransOut, ggxLutEavgTransIn, ggxLutEavgTransOut, constants);
       auto sample = bsdf.sample(hit.wo, float2(0.0), r);
       
       /*
@@ -1027,7 +1077,11 @@ kernel void misKernel(
   texture2d<float>                                      ggxLutE             [[texture(3)]],
   texture1d<float>																			ggxLutEavg					[[texture(4)]],
   texture3d<float>                                      ggxLutMsE           [[texture(5)]],
-  texture2d<float>                                      ggxLutMsEavg        [[texture(6)]]
+  texture2d<float>                                      ggxLutMsEavg        [[texture(6)]],
+  texture3d<float>                                      ggxLutETransIn      [[texture(7)]],
+  texture3d<float>                                      ggxLutETransOut     [[texture(8)]],
+  texture2d<float>                                      ggxLutEavgTransIn   [[texture(9)]],
+  texture2d<float>                                      ggxLutEavgTransOut  [[texture(10)]]
 ) {
   if (tid.x < constants.size.x && tid.y < constants.size.y) {
     constant CameraData& camera = constants.camera;
@@ -1083,13 +1137,13 @@ kernel void misKernel(
                       samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 2),
                       samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 3));
       
-      auto bsdf = bsdf::BSDF(*hit.material, ggxLutE, ggxLutEavg, ggxLutMsE, ggxLutMsEavg, constants);
+      auto bsdf = bsdf::BSDF(*hit.material, ggxLutE, ggxLutEavg, ggxLutMsE, ggxLutMsEavg, ggxLutETransIn, ggxLutETransOut, ggxLutEavgTransIn, ggxLutEavgTransOut, constants);
       auto sample = bsdf.sample(hit.wo, float2(0.0), r);
       
       /*
        * Handle light hit
        */
-      if (sample.flags & bsdf::Sample::Emitted && intersection.triangle_front_facing) {
+      if (sample.flags & bsdf::Sample::Emitted) {
         if (bounce == 0 || lastSample.flags & bsdf::Sample::Specular) {
           L += attenuation * sample.Le;
         } else {

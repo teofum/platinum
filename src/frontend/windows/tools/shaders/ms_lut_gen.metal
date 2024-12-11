@@ -180,6 +180,16 @@ namespace bsdf {
       return normalize(float3(m_alpha.x * nh.x, m_alpha.y * nh.y, max(1e-6f, nh.z)));
     }
     
+    __attribute__((always_inline))
+    float singleScatterBRDF(float3 wo, float3 wi, float3 wm) const {
+      return mdf(wm) * g(wo, wi) / (4 * abs(wo.z) * abs(wi.z));
+    }
+    
+    __attribute__((always_inline))
+    float pdf(float3 wo, float3 wm) const {
+      return vmdf(wo, wm) / (4.0f * abs(dot(wo, wm)));
+    }
+    
     // Surfaces with a very small roughness value are considered perfect specular, this helps deal
     // with the numerical instability at such values and makes almost no visible difference
     inline bool isSmooth() const {
@@ -213,11 +223,6 @@ namespace bsdf {
     float3 wi;
     float f;
     float pdf;
-  };
-  
-  struct Eval {
-    float f;
-    float pdf = 0.0f;
   };
   
   /*
@@ -274,6 +279,56 @@ namespace bsdf {
       .wi     = wi,
       .f      = fresnel_ss * brdf_ss + fresnel_ms * brdf_ms,
       .pdf    = ggx.vmdf(wo, wm) / (4.0f * abs(dot(wo, wm))),
+    };
+  }
+  
+  /*
+   * Get an incident light direction by importance sampling the BSDF, and evaluate it
+   */
+  Sample sampleTransparentDielectricGGX(float3 wo, thread const GGX& ggx, float ior, float3 r, bool thin = false) {
+    // Sample the microfacet normal and evaluate single-scattering fresnel
+    const auto wm = ggx.sampleVmdf(wo, r.xy);
+    const auto fresnel_ss = fresnel(abs(dot(wo, wm)), ior);
+    
+    float3 wi;
+    if (r.z < fresnel_ss) {
+      wi = reflect(-wo, wm);
+      if (wo.z * wi.z < 0.0f) return {
+        .wi     = wi,
+        .f      = 0.0f,
+        .pdf    = 1.0f,
+      };
+    } else if (thin) {
+      wi = reflect(-wo, wm) * float3(1.0, 1.0, -1.0);
+    } else {
+      wi = refract(-wo, wm * sign(dot(wo, wm)), 1.0f / ior);
+      if (wo.z * wi.z >= 0.0f) return {
+        .wi     = wi,
+        .f      = 0.0f,
+        .pdf    = 1.0f,
+      };
+    }
+    
+    const auto isReflection = wo.z * wi.z > 0.0f;
+    
+    float bsdf, pdf;
+    if (isReflection || thin) {
+      bsdf = ggx.singleScatterBRDF(wo, wi, wm);
+      pdf = ggx.pdf(wo, wm);
+    } else {
+      auto denom = dot(wi, wm) * ior + dot(wo, wm);
+      denom *= denom;
+      
+      const auto dwm_dwi = abs(dot(wi, wm)) / denom;
+      bsdf = ggx.mdf(wm) * ggx.g(wo, wi) * abs(dot(wi, wm) * dot(wo, wm) / (wi.z * wo.z * denom));
+      pdf = ggx.vmdf(wo, wm) * dwm_dwi;
+    }
+    
+    float k = isReflection ? fresnel_ss : 1.0f - fresnel_ss;
+    return {
+      .wi     = wi,
+      .f      = k * bsdf,
+      .pdf    = k * pdf,
     };
   }
 }
@@ -514,4 +569,173 @@ kernel void generateMultiscatterHemisphericalAlbedoLookup(
   }
   
   dst.write(float4(v, v, v, 1.0), tid);
+}
+
+/**
+ * Tabulates directional albedo E for a transparent dielectric GGX BSDF
+ */
+void generateTransparentDirectionalAlbedoLookup(
+  uint3                            	tid,
+  constant uint32_t&               	size,
+  constant uint32_t&               	frameIdx,
+  texture3d<float>                 	src,
+  texture3d<float, access::write>  	dst,
+  texture3d<uint32_t>              	randomTex,
+  bool 															out
+) {
+  /*
+   * Calculate parameters
+   */
+  float iorParam = ((float) tid.z + 0.5f) / (float) size;
+  float roughness = ((float) tid.y + 0.5f) / (float) size;
+  float cosTheta = ((float) tid.x + 0.5f) / (float) size;
+  
+  // Inverse of the IOR parametrization. We use (eta - 1) / eta, which has no physical meaning but
+  // gives a more useful curve for the common IOR range 1 < eta < 2 than F0.
+  // For eta < 1, we simply use 1 - eta as this fits the entire 0 < eta < 1 range nicely.
+  float ior = out ? 1.0f - iorParam : 1.0f / (1.0f - iorParam);
+  
+  /*
+   * Create GGX distribution
+   */
+  bsdf::GGX ggx(roughness);
+
+  /*
+   * Sample a random value
+   */
+  uint32_t offset = randomTex.read(tid).x;
+  float3 r(samplers::halton(offset + frameIdx, 0),
+           samplers::halton(offset + frameIdx, 1),
+           samplers::halton(offset + frameIdx, 2));
+  
+  /*
+   * Get outgoing light dir
+   */
+  float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+  float3 wo(sinTheta, 0.0, cosTheta * (out ? -1 : 1));
+  
+  /*
+   * Sample the distribution for directional albedo
+   */
+  auto sample = bsdf::sampleTransparentDielectricGGX(wo, ggx, ior, r);
+  auto v = sample.f * abs(sample.wi.z) / sample.pdf;
+  
+  /*
+   * Accumulate samples
+   */
+  if (frameIdx > 0) {
+    float prev = src.read(tid).r;
+    
+    v += prev * frameIdx;
+    v /= (frameIdx + 1);
+  }
+  
+  dst.write(float4(v, v, v, 1.0), tid);
+}
+
+kernel void generateTransparentDirectionalAlbedoInLookup(
+  uint3                                                 tid                 [[thread_position_in_grid]],
+  constant uint32_t&                                    size                [[buffer(0)]],
+  constant uint32_t&                                    frameIdx            [[buffer(1)]],
+  texture3d<float>                                      src                 [[texture(0)]],
+  texture3d<float, access::write>                       dst                 [[texture(1)]],
+  texture3d<uint32_t>                                   randomTex           [[texture(2)]]
+) {
+  generateTransparentDirectionalAlbedoLookup(tid, size, frameIdx, src, dst, randomTex, false);
+}
+
+kernel void generateTransparentDirectionalAlbedoOutLookup(
+  uint3                                                 tid                 [[thread_position_in_grid]],
+  constant uint32_t&                                    size                [[buffer(0)]],
+  constant uint32_t&                                    frameIdx            [[buffer(1)]],
+  texture3d<float>                                      src                 [[texture(0)]],
+  texture3d<float, access::write>                       dst                 [[texture(1)]],
+  texture3d<uint32_t>                                   randomTex           [[texture(2)]]
+) {
+  generateTransparentDirectionalAlbedoLookup(tid, size, frameIdx, src, dst, randomTex, true);
+}
+
+/**
+ * Tabulates directional albedo E for a transparent dielectric GGX BSDF
+ */
+void generateTransparentHemisphericalAlbedoLookup(
+  uint2                              tid,
+  constant uint32_t&                 size,
+  constant uint32_t&                 frameIdx,
+  texture2d<float>                   src,
+  texture2d<float, access::write>    dst,
+  texture2d<uint32_t>                randomTex,
+  bool                               out
+) {
+  /*
+   * Calculate parameters
+   */
+  float roughness = ((float) tid.y + 0.5f) / (float) size;
+  float iorParam = ((float) tid.x + 0.5f) / (float) size;
+  
+  // Inverse of the IOR parametrization. We use (eta - 1) / eta, which has no physical meaning but
+  // gives a more useful curve for the common IOR range 1 < eta < 2 than F0.
+  // For eta < 1, we simply use 1 - eta as this fits the entire 0 < eta < 1 range nicely.
+  float ior = out ? 1.0f - iorParam : 1.0f / (1.0f - iorParam);
+  
+  /*
+   * Create GGX distribution
+   */
+  bsdf::GGX ggx(roughness);
+
+  /*
+   * Sample a random value
+   */
+  uint32_t offset = randomTex.read(tid).x;
+  float4 r(samplers::halton(offset + frameIdx, 0),
+           samplers::halton(offset + frameIdx, 1),
+           samplers::halton(offset + frameIdx, 2),
+           samplers::halton(offset + frameIdx, 2));
+  
+  /*
+   * Get outgoing light dir
+   */
+  float cosTheta = r.w * 2.0f - 1.0f;
+  float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+  float3 wo(sinTheta, 0.0, cosTheta);
+  
+  /*
+   * Sample the distribution for directional albedo
+   */
+  auto sample = bsdf::sampleTransparentDielectricGGX(wo, ggx, ior, r.xyz);
+  auto v = sample.f * abs(sample.wi.z) / sample.pdf;
+  
+  /*
+   * Accumulate samples
+   */
+  if (frameIdx > 0) {
+    float prev = src.read(tid).r;
+    
+    v += prev * frameIdx;
+    v /= (frameIdx + 1);
+  }
+  
+  dst.write(float4(v, v, v, 1.0), tid);
+}
+
+kernel void generateTransparentHemisphericalAlbedoInLookup(
+  uint2                                                 tid                 [[thread_position_in_grid]],
+  constant uint32_t&                                    size                [[buffer(0)]],
+  constant uint32_t&                                    frameIdx            [[buffer(1)]],
+  texture2d<float>                                      src                 [[texture(0)]],
+  texture2d<float, access::write>                       dst                 [[texture(1)]],
+  texture2d<uint32_t>                                   randomTex           [[texture(2)]]
+) {
+  generateTransparentHemisphericalAlbedoLookup(tid, size, frameIdx, src, dst, randomTex, false);
+}
+
+kernel void generateTransparentHemisphericalAlbedoOutLookup(
+  uint2                                                 tid                 [[thread_position_in_grid]],
+  constant uint32_t&                                    size                [[buffer(0)]],
+  constant uint32_t&                                    frameIdx            [[buffer(1)]],
+  texture2d<float>                                      src                 [[texture(0)]],
+  texture2d<float, access::write>                       dst                 [[texture(1)]],
+  texture2d<uint32_t>                                   randomTex           [[texture(2)]]
+) {
+  generateTransparentHemisphericalAlbedoLookup(tid, size, frameIdx, src, dst, randomTex, true);
 }

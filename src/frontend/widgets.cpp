@@ -133,6 +133,11 @@ bool selectable(const char* label, bool selected, ImGuiSelectableFlags flags, co
   return clicked;
 }
 
+bool comboItem(const char* label, bool selected, ImGuiSelectableFlags flags) {
+  ImGui::SetCursorPosX(10.0f);
+  return selectable(label, selected, flags, {ImGui::GetContentRegionAvail().x - 6.0f, 0});
+}
+
 bool popup(const char* str_id, ImGuiWindowFlags flags) {
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8, 6});
   bool open = ImGui::BeginPopup(str_id, flags);
