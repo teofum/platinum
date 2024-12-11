@@ -371,7 +371,7 @@ namespace bsdf {
         pdf += cMetallic * bsdfMetallic.pdf;
       }
       if (cTransparent > 0.0f) {
-        const auto bsdfTrDielectric = evalDielectric(wo, wi);
+        const auto bsdfTrDielectric = evalTransparentDielectric(wo, wi);
         bsdf += cTransparent * bsdfTrDielectric.f;
         pdf += cTransparent * bsdfTrDielectric.pdf;
       }
@@ -392,7 +392,7 @@ namespace bsdf {
       const auto pDielectric = m_material.metallic + (1.0f - m_material.metallic) * m_material.transmission;
       
       if (r.w < pMetallic) return sampleMetallic(wo, r.xyz);
-      if (r.w < pDielectric) return sampleDielectric(wo, r.xyz);
+      if (r.w < pDielectric) return sampleTransparentDielectric(wo, r.xyz);
       return sampleOpaqueDielectric(wo, r.xyz);
     }
     
@@ -420,8 +420,8 @@ namespace bsdf {
       const auto E_wo = m_lutE.sample(s, float2(wo.z, m_material.roughness)).r;
       const auto E_wi = m_lutE.sample(s, float2(wi.z, m_material.roughness)).r;
       const auto E_avg = m_lutEavg.sample(s, m_material.roughness).r;
-      const auto brdf_ms = (1.0f - E_wo) * (1.0f - E_wi) / (M_PI_F * (1.0f - E_avg));
       
+      const auto brdf_ms = (1.0f - E_wo) * (1.0f - E_wi) / (M_PI_F * (1.0f - E_avg));
       const auto fresnel_ms = F_avg * F_avg * E_avg / (1.0f - F_avg * (1.0f - E_avg));
       
       return fresnel_ms * brdf_ms;
@@ -451,6 +451,38 @@ namespace bsdf {
         
         return 1.0f / E_wo;
       }
+    }
+
+    /*
+     * Blending factor for opaque dielectrics, accounting for a multiple scattering dielectric BRDF.
+     * Returns a float4 containing the blending weight of the dielectric component (x) and the sampled
+     * LUTs for E_wo, E_ms_wo, E_ms_avg in the yzw components to be reused later.
+     */
+    __attribute__((always_inline))
+    float4 opaqueDielectricFactor(float3 wo, float F_avg) {
+      // IOR parametrization optimized for the common IOR range 1 < eta < 2
+      // See https://www.desmos.com/calculator/1pkvgrisbx for details.
+      const auto iorParam = (m_material.ior - 1.0f) / m_material.ior;
+      
+      constexpr sampler s(address::clamp_to_edge, filter::linear);
+      const auto E_wo = m_lutE.sample(s, float2(wo.z, m_material.roughness)).r;
+      const auto E_ms_wo = m_lutMsE.sample(s, float3(wo.z, m_material.roughness, iorParam)).r;
+      const auto E_ms_avg = m_lutMsEavg.sample(s, float2(iorParam, m_material.roughness)).r;
+      
+      const auto fresnel_ms = F_avg * F_avg * E_wo / (1.0f - F_avg * (1.0f - E_wo));
+      const auto dielectricFactor = F_avg * E_ms_wo + fresnel_ms * (1.0f - E_ms_wo);
+      
+      return float4(dielectricFactor, E_wo, E_ms_wo, E_ms_avg);
+    }
+    
+    __attribute__((always_inline))
+    float diffuseFactor(float3 wi, float E_ms_wo, float E_ms_avg) {
+      const auto iorParam = (m_material.ior - 1.0f) / m_material.ior;
+      
+      constexpr sampler s(address::clamp_to_edge, filter::linear);
+      const auto E_ms_wi = m_lutMsE.sample(s, float3(wi.z, m_material.roughness, iorParam)).r;
+      
+      return (1.0f - E_ms_wo) * (1.0f - E_ms_wi) / (M_PI_F * (1.0f - E_ms_avg));
     }
     
     /*
@@ -489,6 +521,7 @@ namespace bsdf {
     }
     
     /*
+     * Sample GGX conductor BRDF
      * Get an incident light direction by importance sampling the BRDF, and evaluate it
      */
     Sample sampleMetallic(float3 wo, float3 r) {
@@ -520,12 +553,12 @@ namespace bsdf {
     }
     
     /*
-     * Evaluate GGX dielectric BSDF and PDF
+     * Evaluate GGX transparent dielectric BSDF and PDF
      * Internal version, lets us skip the microfacet normal and fresnel calculations if we already
      * have them (i.e. after sampling the BSDF)
      */
     __attribute__((always_inline))
-    Eval evalDielectric(float3 wo, float3 wi, float3 wm, float fresnel_ss, float ior) {
+    Eval evalTransparentDielectric(float3 wo, float3 wi, float3 wm, float fresnel_ss, float ior) {
       const bool thin = m_material.flags & pt::Material::Material_ThinDielectric;
       
       auto cosTheta_o = wo.z, cosTheta_i = wi.z;
@@ -570,9 +603,9 @@ namespace bsdf {
     }
     
     /*
-     * Evaluate GGX dielectric BSDF and PDF
+     * Evaluate GGX transparent dielectric BSDF and PDF
      */
-    Eval evalDielectric(float3 wo, float3 wi) {
+    Eval evalTransparentDielectric(float3 wo, float3 wi) {
       if (m_ggx.isSmooth()) return {};
       const bool thin = m_material.flags & pt::Material::Material_ThinDielectric;
       const auto ior = (!thin && wo.z < 0.0f && wi.z < 0.0f) ? 1.0f / m_material.ior : m_material.ior;
@@ -584,13 +617,14 @@ namespace bsdf {
       if (dot(wi, wm) * wi.z < 0.0f || dot(wo, wm) * wo.z < 0.0f) return {};
       
       const auto fresnel_ss = fresnel(dot(wo, wm), ior);
-      return evalDielectric(wo, wi, wm, fresnel_ss, ior);
+      return evalTransparentDielectric(wo, wi, wm, fresnel_ss, ior);
     }
     
     /*
+     * Sample GGX transparent dielectric BSDF
      * Get an incident light direction by importance sampling the BSDF, and evaluate it
      */
-    Sample sampleDielectric(float3 wo, float3 r) {
+    Sample sampleTransparentDielectric(float3 wo, float3 r) {
       const bool thin = m_material.flags & pt::Material::Material_ThinDielectric;
       auto ior = (wo.z < 0.0f && !thin) ? 1.0f / m_material.ior : m_material.ior;
       
@@ -644,7 +678,7 @@ namespace bsdf {
         flags |= Sample::Transmitted;
       }
       
-      const auto eval = evalDielectric(wo, wi, wm, fresnel_ss, ior);
+      const auto eval = evalTransparentDielectric(wo, wi, wm, fresnel_ss, ior);
       
       return {
         .flags  = flags,
@@ -655,61 +689,46 @@ namespace bsdf {
       };
     }
     
+    /*
+     * Evaluate GGX opaque dielectric BRDF (diffuse + dielectric GGX) and PDF
+     */
     Eval evalOpaqueDielectric(float3 wo, float3 wi) {
       auto wm = wo + wi;
       wm = normalize(wm * sign(wm.z));
       if (length_squared(wm) == 0.0f) return {};
       
-      // IOR parametrization optimized for the common IOR range 1 < eta < 2
-      // See https://www.desmos.com/calculator/1pkvgrisbx for details.
-      const auto iorParam = (m_material.ior - 1.0f) / m_material.ior;
-      
       const auto fresnel_ss = fresnel(abs(dot(wo, wm)), m_material.ior);
-      
-      constexpr sampler s(address::clamp_to_edge, filter::linear);
-      const auto E_wo = m_lutE.sample(s, float2(wo.z, m_material.roughness)).r;
-      const auto E_ms_wo = m_lutMsE.sample(s, float3(wo.z, m_material.roughness, iorParam)).r;
-      const auto E_ms_wi = m_lutMsE.sample(s, float3(wi.z, m_material.roughness, iorParam)).r;
-      const auto E_ms_avg = m_lutMsEavg.sample(s, float2(iorParam, m_material.roughness)).r;
-      
       const auto F_avg = avgDielectricFresnelFit(m_material.ior);
       
-      // Dielectric layer single scattering
+      // Dielectric single scattering BRDF
       auto dielectricBrdf = fresnel_ss * m_ggx.singleScatterBRDF(wo, wi, wm);
       
       // Multiple scattering
       if (m_constants.flags & RendererFlags_MultiscatterGGX) {
         dielectricBrdf += multiscatter(wo, wi, F_avg);
       }
-      
-      const auto cDiffuse = (1.0f - E_ms_wo) * (1.0f - E_ms_wi) / (M_PI_F * (1.0f - E_ms_avg));
+    
+      // Diffuse BRDF
+      const auto blendingFactor = opaqueDielectricFactor(wo, F_avg);
+      const auto cDiffuse = diffuseFactor(wi, blendingFactor.z, blendingFactor.w);
       const auto diffuseBrdf = cDiffuse * m_material.baseColor.rgb;
-      
-      const auto fresnel_ms = F_avg * F_avg * E_wo / (1.0f - F_avg * (1.0f - E_wo));
-      const auto dielectricFactor = F_avg * E_ms_wo + fresnel_ms * (1.0f - E_ms_wo);
       
       return {
         .f = dielectricBrdf + diffuseBrdf,
-        .pdf = m_ggx.pdf(wo, wm) * dielectricFactor + abs(wi.z) * (1.0f - dielectricFactor),
+        .pdf = m_ggx.pdf(wo, wm) * blendingFactor.x + abs(wi.z) * (1.0f - blendingFactor.x),
       };
     }
     
+    /*
+     * Sample GGX opaque dielectric BRDF (diffuse + dielectric GGX)
+     * Get an incident light direction by importance sampling the BRDF, and evaluate it
+     */
     Sample sampleOpaqueDielectric(float3 wo, float3 r) {
-      // IOR parametrization optimized for the common IOR range 1 < eta < 2
-      // See https://www.desmos.com/calculator/1pkvgrisbx for details.
-      const auto iorParam = (m_material.ior - 1.0f) / m_material.ior;
-      
-      constexpr sampler s(address::clamp_to_edge, filter::linear);
-      const auto E_wo = m_lutE.sample(s, float2(wo.z, m_material.roughness)).r;
-      const auto E_ms_wo = m_lutMsE.sample(s, float3(wo.z, m_material.roughness, iorParam)).r;
-      const auto E_ms_avg = m_lutMsEavg.sample(s, float2(iorParam, m_material.roughness)).r;
-      
       const auto F_avg = avgDielectricFresnelFit(m_material.ior);
-      const auto fresnel_ms = F_avg * F_avg * E_wo / (1.0f - F_avg * (1.0f - E_wo));
+      const auto blendingFactor = opaqueDielectricFactor(wo, F_avg);
       
-      const auto dielectricFactor = (F_avg * E_ms_wo + fresnel_ms * (1.0f - E_ms_wo));
-      
-      if (r.z < dielectricFactor) {
+      if (r.z < blendingFactor.x) {
+        // Sample the dielectric BRDF
         if (m_ggx.isSmooth()) {
           const auto fresnel_ss = fresnel(abs(wo.z), m_material.ior);
           const auto wi = float3(-wo.x, -wo.y, wo.z);
@@ -737,15 +756,14 @@ namespace bsdf {
           .flags  = Sample::Reflected | Sample::Glossy,
           .wi     = wi,
           .f      = float3(dielectricBrdf),
-          .Le     = m_material.emission * m_material.emissionStrength,
           .pdf    = m_ggx.pdf(wo, wm) * fresnel_ss,
         };
       } else {
+        // Sample the underlying diffuse BRDF
         auto wi = samplers::sampleCosineHemisphere(r.xy);
         if (wo.z < 0.0f) wi *= -1.0f;
-        const auto E_ms_wi = m_lutMsE.sample(s, float3(wi.z, m_material.roughness, iorParam)).r;
         
-        const auto cDiffuse = (1.0f - E_ms_wo) * (1.0f - E_ms_wi) / (M_PI_F * (1.0f - E_ms_avg));
+        const auto cDiffuse = diffuseFactor(wi, blendingFactor.z, blendingFactor.w);
         
         auto flags = Sample::Reflected | Sample::Diffuse;
         if (m_material.flags & pt::Material::Material_Emissive) flags |= Sample::Emitted;
