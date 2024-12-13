@@ -53,7 +53,7 @@ void Renderer::render() {
    */
   if (m_accumulatedFrames < m_accumulationFrames) {
     uint2 size{(uint32_t) m_currentRenderSize.x, (uint32_t) m_currentRenderSize.y};
-    auto threadsPerThreadgroup = MTL::Size(32, 32, 1);
+    auto threadsPerThreadgroup = MTL::Size(8, 8, 1);
     auto threadgroups = MTL::Size(
       (size.x + threadsPerThreadgroup.width - 1) / threadsPerThreadgroup.width,
       (size.y + threadsPerThreadgroup.height - 1) / threadsPerThreadgroup.height,
