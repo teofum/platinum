@@ -1184,17 +1184,17 @@ LightSample sampleAreaLight(thread const Hit& hit, thread Resources& res, consta
   const device auto& vertices = res.getVertices(light.instanceIdx);
   
   float3 vertexPositions[3];
-  float3 vertexNormals[3];
   for (int i = 0; i < 3; i++) {
     vertexPositions[i] = vertices.position[light.indices[i]];
-    vertexNormals[i] = vertices.data[light.indices[i]].normal;
   }
   
   auto sampledCoords = samplers::sampleTriUniform(r);
   auto transform = res.getTransform(light.instanceIdx);
   
+  auto osNormal = normalize(cross(vertexPositions[1] - vertexPositions[0], vertexPositions[2] - vertexPositions[0]));
+  
   auto pos = (transform * float4(interpolate(vertexPositions, sampledCoords), 1.0)).xyz;
-  auto normal = normalize((transform * float4(interpolate(vertexNormals, sampledCoords), 0.0)).xyz);
+  auto normal = normalize((transform * float4(osNormal, 0.0)).xyz);
   
   auto wi = normalize(pos - hit.pos);
   return {
