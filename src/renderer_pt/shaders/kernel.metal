@@ -396,6 +396,12 @@ namespace bsdf {
     float pdf = 1.0f;
   };
   
+  struct ClearcoatEval {
+    float3 f;						// Clearcoat BRDF
+    float fresnel;
+    float pdf = 1.0f;
+  };
+  
   class BSDF {
   public:
     BSDF(
@@ -410,7 +416,8 @@ namespace bsdf {
      	thread const texture2d<float>& lutEavgTransOut,
       constant const Constants& constants
     ) : m_material(material),
-    		m_ggx(material.roughness, material.anisotropy),
+        m_ggx(material.roughness, material.anisotropy),
+    		m_ggxCoat(material.clearcoatRoughness),
         m_lutE(lutE),
         m_lutEavg(lutEavg),
     		m_lutMsE(lutMsE),
@@ -444,6 +451,13 @@ namespace bsdf {
         pdf += cOpaque * bdsfOpDielectric.pdf;
       }
       
+      // Clearcoat
+      if (m_material.clearcoat > 0.0f) {
+        const auto coat = evalClearcoat(wo, wi);
+        bsdf = (1.0f - m_material.clearcoat * coat.fresnel) * bsdf + m_material.clearcoat * coat.f;
+        pdf = (1.0f - m_material.clearcoat * coat.fresnel) * pdf + m_material.clearcoat * coat.pdf;
+      }
+      
       return {
         .f = bsdf,
         .pdf = pdf,
@@ -451,17 +465,22 @@ namespace bsdf {
     }
     
     Sample sample(float3 wo, float2 uv, float4 r) {
-      const auto pMetallic = m_material.metallic;
-      const auto pDielectric = m_material.metallic + (1.0f - m_material.metallic) * m_material.transmission;
+      // TODO: clearcoat sample should probably be uncorrelated
+      const auto wmCoat = m_ggxCoat.isSmooth() ? float3(0, 0, 1) : m_ggxCoat.sampleVmdf(wo, r.xy);
       
+      const auto pClearcoat = m_material.clearcoat * fresnel(dot(wo, wmCoat), m_clearcoatIor);
+      const auto pMetallic = (1.0f - pClearcoat) * m_material.metallic;
+      const auto pTransparent = (1.0f - pClearcoat) * m_material.metallic + (1.0f - m_material.metallic) * m_material.transmission;
+      
+      if (r.w < pClearcoat) return sampleClearcoat(wo, r.xyz);
       if (r.w < pMetallic) return sampleMetallic(wo, r.xyz);
-      if (r.w < pDielectric) return sampleTransparentDielectric(wo, r.xyz);
+      if (r.w < pTransparent) return sampleTransparentDielectric(wo, r.xyz);
       return sampleOpaqueDielectric(wo, r.xyz);
     }
     
   private:
     device const pt::Material& m_material;
-    GGX m_ggx;
+    GGX m_ggx, m_ggxCoat;
     thread const texture2d<float>& m_lutE;
     thread const texture1d<float>& m_lutEavg;
     thread const texture3d<float>& m_lutMsE;
@@ -471,6 +490,7 @@ namespace bsdf {
     thread const texture2d<float>& m_lutEavgTransIn;
     thread const texture2d<float>& m_lutEavgTransOut;
     constant const Constants& m_constants;
+    constant constexpr static float m_clearcoatIor = 1.5f;
     
     /*
      * Multiple scattering term for GGX BRDF
@@ -838,6 +858,49 @@ namespace bsdf {
           .pdf    = abs(wi.z) * cDiffuse,
         };
       }
+    }
+    
+    ClearcoatEval evalClearcoat(float3 wo, float3 wi) {
+      if (m_ggxCoat.isSmooth() || wo.z * wi.z == 0.0f) return {};
+      
+      auto wm = wo + wi;
+      wm = normalize(wm * sign(wm.z));
+      if (length_squared(wm) == 0.0f) return {};
+      
+      const auto fresnel_ss = fresnel(dot(wo, wm), m_clearcoatIor);
+      return {
+        .f = fresnel_ss * m_ggxCoat.singleScatterBRDF(wo, wi, wm),
+        .fresnel = max(fresnel(dot(wo, wm), m_clearcoatIor), fresnel(dot(wi, wm), m_clearcoatIor)),
+        .pdf = m_ggxCoat.pdf(wo, wm),
+      };
+    }
+    
+    Sample sampleClearcoat(float3 wo, float3 r) {
+      if (m_ggxCoat.isSmooth()) {
+        const auto fresnel_ss = fresnel(wo.z, m_clearcoatIor);
+        const float3 wi(-wo.xy, wo.z);
+        
+        return {
+          .flags = Sample::Reflected | Sample::Specular,
+          .wi = wi,
+          .f = float3(fresnel_ss / abs(wi.z)),
+          .pdf = fresnel_ss,
+        };
+      }
+      
+      // Sample the microfacet normal and evaluate single-scattering fresnel
+      const auto wm = m_ggxCoat.sampleVmdf(wo, r.xy);
+      const auto wi = reflect(-wo, wm);
+      if (wo.z * wi.z < 0.0f) return {};
+      
+      const auto fresnel_ss = fresnel(abs(dot(wo, wm)), m_clearcoatIor);
+      
+      return {
+        .flags = Sample::Reflected | Sample::Glossy,
+        .wi = wi,
+        .f = float3(fresnel_ss * m_ggxCoat.singleScatterBRDF(wo, wi, wm)),
+        .pdf = fresnel_ss * m_ggxCoat.pdf(wo, wm),
+      };
     }
   };
 }
