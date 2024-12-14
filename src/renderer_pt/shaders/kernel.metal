@@ -450,13 +450,13 @@ namespace bsdf {
         bsdf += cOpaque * bdsfOpDielectric.f;
         pdf += cOpaque * bdsfOpDielectric.pdf;
       }
-      
-      // Clearcoat
-      if (m_material.clearcoat > 0.0f) {
-        const auto coat = evalClearcoat(wo, wi);
-        bsdf = (1.0f - m_material.clearcoat * coat.fresnel) * bsdf + m_material.clearcoat * coat.f;
-        pdf = (1.0f - m_material.clearcoat * coat.fresnel) * pdf + m_material.clearcoat * coat.pdf;
-      }
+//      
+//      // Clearcoat
+//      if (m_material.clearcoat > 0.0f) {
+//        const auto coat = evalClearcoat(wo, wi);
+//        bsdf = (1.0f - m_material.clearcoat * coat.fresnel) * bsdf + m_material.clearcoat * coat.f;
+//        pdf = (1.0f - m_material.clearcoat * coat.fresnel) * pdf + m_material.clearcoat * coat.pdf;
+//      }
       
       return {
         .f = bsdf,
@@ -596,9 +596,8 @@ namespace bsdf {
     Eval evalMetallic(float3 wo, float3 wi) {
       if (m_ggx.isSmooth()) return {};
       
-      auto wm = wo + wi;
-      wm = normalize(wm * sign(wm.z));
-      if (length_squared(wm) == 0.0f) return {};
+      const auto wm = normalize(wo + wi);
+      if (length_squared(wm) == 0.0f || wm.z <= 0.0f || wo.z * wi.z < 0.0f) return {};
       
       return evalMetallic(wo, wi, wm);
     }
@@ -784,11 +783,16 @@ namespace bsdf {
       const auto F_avg = avgDielectricFresnelFit(m_material.ior);
       
       // Dielectric single scattering BRDF
-      auto dielectricBrdf = fresnel_ss * m_ggx.singleScatterBRDF(wo, wi, wm);
-      
-      // Multiple scattering
-      if (m_constants.flags & RendererFlags_MultiscatterGGX) {
-        dielectricBrdf += multiscatter(wo, wi, F_avg);
+      float dielectricBrdf = 0.0f, dielectricPdf = 0.0f;
+      if (!m_ggx.isSmooth()) {
+        dielectricBrdf = fresnel_ss * m_ggx.singleScatterBRDF(wo, wi, wm);
+        
+        // Multiple scattering
+        if (m_constants.flags & RendererFlags_MultiscatterGGX) {
+          dielectricBrdf += multiscatter(wo, wi, F_avg);
+        }
+        
+        dielectricPdf = m_ggx.pdf(wo, wm) * fresnel_ss;
       }
     
       // Diffuse BRDF
@@ -798,7 +802,7 @@ namespace bsdf {
       
       return {
         .f = dielectricBrdf + diffuseBrdf,
-        .pdf = m_ggx.pdf(wo, wm) * blendingFactor.x + abs(wi.z) * (1.0f - blendingFactor.x),
+        .pdf = dielectricPdf + abs(wi.z) * cDiffuse,
       };
     }
     
@@ -1309,6 +1313,11 @@ kernel void misKernel(
       ray.origin = hit.pos;
       
       /*
+       * If the ray wasn't reflected or transmitted, we can end tracing here
+       */
+      if (!(sample.flags & (bsdf::Sample::Reflected | bsdf::Sample::Transmitted))) break;
+      
+      /*
        * Calculate direct lighting contribution
        */
       if (!(sample.flags & (bsdf::Sample::Emitted | bsdf::Sample::Specular)) && constants.lightCount > 0) {
@@ -1337,11 +1346,6 @@ kernel void misKernel(
           L += attenuation * Ld;
         }
       }
-      
-      /*
-       * If the ray wasn't reflected or transmitted, we can end tracing here
-       */
-      if (!(sample.flags & (bsdf::Sample::Reflected | bsdf::Sample::Transmitted))) break;
       
       /*
        * Update attenuation
