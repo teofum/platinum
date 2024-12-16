@@ -54,6 +54,11 @@ float3 transformVec(float3 p, float4x4 transform) {
   return (transform * float4(p.x, p.y, p.z, 0.0f)).xyz;
 }
 
+__attribute__((always_inline))
+float3 transformPoint(float3 p, float4x4 transform) {
+  return (transform * float4(p.x, p.y, p.z, 1.0f)).xyz;
+}
+
 /*
  * Coordinate frame, we use this over a 4x4 matrix because it allows easy conversion both ways
  * without having to calculate the inverse.
@@ -596,8 +601,9 @@ namespace bsdf {
     Eval evalMetallic(float3 wo, float3 wi) {
       if (m_ggx.isSmooth()) return {};
       
-      const auto wm = normalize(wo + wi);
-      if (length_squared(wm) == 0.0f || wm.z <= 0.0f || wo.z * wi.z < 0.0f) return {};
+      float3 wm = normalize(wo + wi);
+      wm *= sign(wm.z);
+      if (length_squared(wm) == 0.0f || wo.z * wi.z < 0.0f) return {};
       
       return evalMetallic(wo, wi, wm);
     }
@@ -914,7 +920,8 @@ namespace bsdf {
  */
 struct Hit {
   float3 pos;														// Hit position 						(world space)
-  float3 normal;												// Surface normal 					(world space)
+  float3 normal;                        // Surface normal           (world space)
+  float3 geometricNormal;								// Geometric (face) normal 	(world space)
   float3 wo;														// Outgoing light direction (tangent space)
   Frame frame;													// Shading coordinate frame, Z-up normal aligned
   device const pt::Material* material;	// Material
@@ -964,19 +971,23 @@ struct Resources {
 	  auto materialSlot = *primitiveResource.materialSlot;
 	  device const auto& material = instanceResource.materials[materialSlot];
 	
+    float3 vertexPositions[3];
 	  float3 vertexNormals[3];
 	  for (int i = 0; i < 3; i++) {
+      vertexPositions[i] = vertexResource.position[data.indices[i]];
 	    vertexNormals[i] = vertexResource.data[data.indices[i]].normal;
 	    // TODO: Interpolate UVs
 	  }
 	
 	  float2 barycentricCoords = intersection.triangle_barycentric_coord;
 	  float3 surfaceNormal = interpolate(vertexNormals, barycentricCoords);
+    float3 geometricNormal = normalize(cross(vertexPositions[1] - vertexPositions[0], vertexPositions[2] - vertexPositions[0]));
 	
     float4x4 objectToWorld = getTransform(instanceIdx);
 	
 	  float3 wsHitPoint = ray.origin + ray.direction * intersection.distance;
-	  float3 wsSurfaceNormal = normalize(transformVec(surfaceNormal, objectToWorld));
+    float3 wsSurfaceNormal = normalize(transformVec(surfaceNormal, objectToWorld));
+    float3 wsGeometricNormal = normalize(transformVec(geometricNormal, objectToWorld));
 	
 	  auto frame = Frame::fromNormal(wsSurfaceNormal);
 	  auto wo = frame.worldToLocal(-ray.direction);
@@ -984,6 +995,7 @@ struct Resources {
 	  return {
 	    .pos      = wsHitPoint,
 	    .normal   = wsSurfaceNormal,
+      .geometricNormal = wsGeometricNormal,
 	    .wo       = wo,
       .frame		= frame,
 	    .material = &material,
@@ -1178,7 +1190,7 @@ struct LightSample {
 };
 
 /*
- *
+ * Sample an area light.
  */
 LightSample sampleAreaLight(thread const Hit& hit, thread Resources& res, constant LightData& light, float2 r) {
   const device auto& vertices = res.getVertices(light.instanceIdx);
@@ -1191,10 +1203,10 @@ LightSample sampleAreaLight(thread const Hit& hit, thread Resources& res, consta
   auto sampledCoords = samplers::sampleTriUniform(r);
   auto transform = res.getTransform(light.instanceIdx);
   
-  auto osNormal = normalize(cross(vertexPositions[1] - vertexPositions[0], vertexPositions[2] - vertexPositions[0]));
+  auto osNormal = cross(vertexPositions[1] - vertexPositions[0], vertexPositions[2] - vertexPositions[0]);
   
-  auto pos = (transform * float4(interpolate(vertexPositions, sampledCoords), 1.0)).xyz;
-  auto normal = normalize((transform * float4(osNormal, 0.0)).xyz);
+  auto pos = transformPoint(interpolate(vertexPositions, sampledCoords), transform);
+  auto normal = normalize(transformVec(osNormal, transform));
   
   auto wi = normalize(pos - hit.pos);
   return {
@@ -1298,9 +1310,9 @@ kernel void misKernel(
           // Calculate light PDF, BSDF weight and do MIS.
           // Sampling pdf is 1 / area, light sample pdf is power / totalPower
           // Because power = Le * pi * area, the areas cancel each other out and we can simplify
-          const auto lightPdf = (sample.Le * M_PI_F / constants.totalLightPower)
+          const auto lightPdf = (length(sample.Le) * M_PI_F / constants.totalLightPower)
                                 * length_squared(lastHit.pos - hit.pos)
-          											/ abs(dot(ray.direction, hit.normal));
+          											/ abs(dot(ray.direction, hit.geometricNormal));
           const auto bsdfWeight = lastSample.pdf / (lastSample.pdf + lightPdf);
           
           L += attenuation * bsdfWeight * sample.Le;
@@ -1332,18 +1344,20 @@ kernel void misKernel(
         const auto wi = hit.frame.worldToLocal(lightSample.wi);
         const auto bsdfEval = bsdf.eval(hit.wo, wi, float2(0.0));
         
-        ray.direction = lightSample.wi;
-        ray.max_distance = length(lightSample.pos - hit.pos) - 1e-3f;
-        i.accept_any_intersection(true);
-        intersection = i.intersect(ray, accelStruct);
-        auto occluded = intersection.type != intersection_type::none;
-        i.accept_any_intersection(false);
-        
-        if (length_squared(bsdfEval.f) > 0.0f && !occluded) {
-          auto pdfLight = pLight * lightSample.pdf;
-          auto Ld = lightSample.Li * bsdfEval.f * abs(wi.z) 				// Base lighting term
-          					/ (pdfLight + bsdfEval.pdf);										// MIS weight/pdf (simplified)
-          L += attenuation * Ld;
+        if (length_squared(bsdfEval.f) > 0.0f) {
+          ray.direction = lightSample.wi;
+          ray.max_distance = length(lightSample.pos - hit.pos) - 1e-3f;
+          i.accept_any_intersection(true);
+          intersection = i.intersect(ray, accelStruct);
+          auto occluded = intersection.type != intersection_type::none;
+          i.accept_any_intersection(false);
+          
+          if (!occluded) {
+            auto pdfLight = pLight * lightSample.pdf;
+            auto Ld = lightSample.Li * bsdfEval.f * abs(wi.z)    // Base lighting term
+                      / (pdfLight + bsdfEval.pdf);               // MIS weight/pdf (simplified)
+            L += attenuation * Ld;
+          }
         }
       }
       
