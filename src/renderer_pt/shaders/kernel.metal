@@ -434,6 +434,8 @@ namespace bsdf {
     		m_constants(constants) {}
     
     Eval eval(float3 wo, float3 wi, float2 uv) {
+      if (wo.z < 1e-3f || wi.z < 1e-3f) return {};
+      
       const auto cMetallic = m_material.metallic;
       const auto cTransparent = (1.0f - m_material.metallic) * m_material.transmission;
       const auto cOpaque = (1.0f - m_material.metallic) * (1.0f - m_material.transmission);
@@ -602,8 +604,8 @@ namespace bsdf {
       if (m_ggx.isSmooth()) return {};
       
       float3 wm = normalize(wo + wi);
+      if (length_squared(wm) == 0.0f) return {};
       wm *= sign(wm.z);
-      if (length_squared(wm) == 0.0f || wo.z * wi.z < 0.0f) return {};
       
       return evalMetallic(wo, wi, wm);
     }
@@ -1200,15 +1202,15 @@ LightSample sampleAreaLight(thread const Hit& hit, thread Resources& res, consta
     vertexPositions[i] = vertices.position[light.indices[i]];
   }
   
-  auto sampledCoords = samplers::sampleTriUniform(r);
-  auto transform = res.getTransform(light.instanceIdx);
+  const float2 sampledCoords = samplers::sampleTriUniform(r);
+  const auto transform = res.getTransform(light.instanceIdx);
   
-  auto osNormal = cross(vertexPositions[1] - vertexPositions[0], vertexPositions[2] - vertexPositions[0]);
+  const float3 osNormal = cross(vertexPositions[1] - vertexPositions[0], vertexPositions[2] - vertexPositions[0]);
   
-  auto pos = transformPoint(interpolate(vertexPositions, sampledCoords), transform);
-  auto normal = normalize(transformVec(osNormal, transform));
+  const float3 pos = transformPoint(interpolate(vertexPositions, sampledCoords), transform);
+  const float3 normal = normalize(transformVec(osNormal, transform));
   
-  auto wi = normalize(pos - hit.pos);
+  const float3 wi = normalize(pos - hit.pos);
   return {
     .Li = light.emission,
     .pos = pos,
@@ -1310,10 +1312,10 @@ kernel void misKernel(
           // Calculate light PDF, BSDF weight and do MIS.
           // Sampling pdf is 1 / area, light sample pdf is power / totalPower
           // Because power = Le * pi * area, the areas cancel each other out and we can simplify
-          const auto lightPdf = (length(sample.Le) * M_PI_F / constants.totalLightPower)
+          const float lightPdf = (dot(sample.Le, float3(0, 1, 0)) * M_PI_F / constants.totalLightPower)
                                 * length_squared(lastHit.pos - hit.pos)
           											/ abs(dot(ray.direction, hit.geometricNormal));
-          const auto bsdfWeight = lastSample.pdf / (lastSample.pdf + lightPdf);
+          const float bsdfWeight = lastSample.pdf / (lastSample.pdf + lightPdf);
           
           L += attenuation * bsdfWeight * sample.Le;
         }
@@ -1325,11 +1327,6 @@ kernel void misKernel(
       ray.origin = hit.pos;
       
       /*
-       * If the ray wasn't reflected or transmitted, we can end tracing here
-       */
-      if (!(sample.flags & (bsdf::Sample::Reflected | bsdf::Sample::Transmitted))) break;
-      
-      /*
        * Calculate direct lighting contribution
        */
       if (!(sample.flags & (bsdf::Sample::Emitted | bsdf::Sample::Specular)) && constants.lightCount > 0) {
@@ -1338,13 +1335,13 @@ kernel void misKernel(
                         samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 6));
         
         const constant auto& light = sampleLightPower(lights, constants, r.z);
-        const auto pLight = light.power / constants.totalLightPower; // Probability of sampling this light
+        const float pLight = light.power / constants.totalLightPower; // Probability of sampling this light
         
         const auto lightSample = sampleAreaLight(hit, resources, light, r.xy);
-        const auto wi = hit.frame.worldToLocal(lightSample.wi);
+        const float3 wi = hit.frame.worldToLocal(lightSample.wi);
         const auto bsdfEval = bsdf.eval(hit.wo, wi, float2(0.0));
         
-        if (length_squared(bsdfEval.f) > 0.0f) {
+        if (true) {
           ray.direction = lightSample.wi;
           ray.max_distance = length(lightSample.pos - hit.pos) - 1e-3f;
           i.accept_any_intersection(true);
@@ -1353,13 +1350,18 @@ kernel void misKernel(
           i.accept_any_intersection(false);
           
           if (!occluded) {
-            auto pdfLight = pLight * lightSample.pdf;
-            auto Ld = lightSample.Li * bsdfEval.f * abs(wi.z)    // Base lighting term
+            float pdfLight = pLight * lightSample.pdf;
+            float3 Ld = lightSample.Li * bsdfEval.f * abs(wi.z)  // Base lighting term
                       / (pdfLight + bsdfEval.pdf);               // MIS weight/pdf (simplified)
             L += attenuation * Ld;
           }
         }
       }
+      
+      /*
+       * If the ray wasn't reflected or transmitted, we can end tracing here
+       */
+      if (!(sample.flags & (bsdf::Sample::Reflected | bsdf::Sample::Transmitted))) break;
       
       /*
        * Update attenuation
