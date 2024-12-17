@@ -787,8 +787,9 @@ namespace bsdf {
       wm = normalize(wm * sign(wm.z));
       if (length_squared(wm) == 0.0f) return {};
       
-      const auto fresnel_ss = fresnel(abs(dot(wo, wm)), m_material.ior);
-      const auto F_avg = avgDielectricFresnelFit(m_material.ior);
+      const float fresnel_ss = fresnel(abs(dot(wo, wm)), m_material.ior);
+      const float F_avg = avgDielectricFresnelFit(m_material.ior);
+      const float4 blendingFactor = opaqueDielectricFactor(wo, F_avg);
       
       // Dielectric single scattering BRDF
       float dielectricBrdf = 0.0f, dielectricPdf = 0.0f;
@@ -800,17 +801,17 @@ namespace bsdf {
           dielectricBrdf += multiscatter(wo, wi, F_avg);
         }
         
-        dielectricPdf = m_ggx.pdf(wo, wm) * fresnel_ss;
+        dielectricPdf = m_ggx.pdf(wo, wm);
       }
     
       // Diffuse BRDF
-      const auto blendingFactor = opaqueDielectricFactor(wo, F_avg);
-      const auto cDiffuse = diffuseFactor(wi, blendingFactor.z, blendingFactor.w);
-      const auto diffuseBrdf = cDiffuse * m_material.baseColor.rgb;
+      const float cDiffuse = diffuseFactor(wi, blendingFactor.z, blendingFactor.w);
+      const float3 diffuseBrdf = cDiffuse * m_material.baseColor.rgb;
+      const float diffusePdf = abs(wi.z) / M_PI_F;
       
       return {
-        .f = dielectricBrdf + diffuseBrdf,
-        .pdf = dielectricPdf + abs(wi.z) * cDiffuse,
+        .f = float3(dielectricBrdf) + diffuseBrdf,
+        .pdf = dielectricPdf * blendingFactor.x + diffusePdf * (1.0f - blendingFactor.x),
       };
     }
     
@@ -832,7 +833,7 @@ namespace bsdf {
             .flags  = Sample::Reflected | Sample::Specular,
             .wi     = wi,
             .f      = float3(fresnel_ss / abs(wi.z)),
-            .pdf    = fresnel_ss,
+            .pdf    = blendingFactor.x,
           };
         }
         
@@ -851,7 +852,7 @@ namespace bsdf {
           .flags  = Sample::Reflected | Sample::Glossy,
           .wi     = wi,
           .f      = float3(dielectricBrdf),
-          .pdf    = m_ggx.pdf(wo, wm) * fresnel_ss,
+          .pdf    = m_ggx.pdf(wo, wm) * blendingFactor.x,
         };
       } else {
         // Sample the underlying diffuse BRDF
@@ -867,7 +868,7 @@ namespace bsdf {
           .wi     = wi,
           .f      = m_material.baseColor.rgb * cDiffuse,
           .Le     = m_material.emission * m_material.emissionStrength,
-          .pdf    = abs(wi.z) * cDiffuse,
+          .pdf    = abs(wi.z) * (1.0 - blendingFactor.x) / M_PI_F,
         };
       }
     }
