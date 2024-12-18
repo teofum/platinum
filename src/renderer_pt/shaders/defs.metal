@@ -140,7 +140,7 @@ namespace bsdf {
     inline float lambda(float3 w) const;
   };
   
-  enum Sample_Flags {
+  enum SampleFlags {
     Sample_Absorbed      = 0,
     Sample_Emitted       = 1 << 0,
     Sample_Reflected     = 1 << 1,
@@ -149,6 +149,15 @@ namespace bsdf {
     Sample_Glossy        = 1 << 4,
     Sample_Specular      = 1 << 5,
   };
+    
+  enum MaterialLobe {
+    Lobe_Invalid = 0,
+    Lobe_Diffuse,
+    Lobe_Metallic,
+    Lobe_Dielectric,
+    Lobe_Transparent,
+    Lobe_Clearcoat,
+  };
       
   struct Sample {
     float3 wi;
@@ -156,6 +165,7 @@ namespace bsdf {
     float3 Le;
     float pdf;
     int flags = 0;
+    MaterialLobe lobe = Lobe_Invalid;
   };
   
   struct Eval {
@@ -179,7 +189,7 @@ namespace bsdf {
       constant const Constants& constants
     );
     
-    Eval eval(float3 wo, float3 wi, float2 uv);
+    Eval eval(float3 wo, float3 wi, float2 uv, MaterialLobe lobe);
     Sample sample(float3 wo, float2 uv, float4 r);
     
   private:
@@ -218,7 +228,10 @@ namespace bsdf {
     float transparentMultiscatter(float3 wo, float3 wi, float ior);
     
     __attribute__((always_inline))
-    float diffuseFactor(float3 wo, float3 wi, float ior, float r);
+    float diffuseFactor(float3 wo, float3 wi);
+    
+    __attribute__((always_inline))
+    float4 opaqueDielectricFactor(float3 wo, float F_avg);
     
     __attribute__((always_inline))
     Eval evalMetallic(float3 wo, float3 wi, float3 wm);
@@ -232,6 +245,7 @@ namespace bsdf {
     Eval evalTransparentDielectric(float3 wo, float3 wi);
     Sample sampleTransparentDielectric(float3 wo, float3 r);
     
+    Eval evalDiffuse(float3 wo, float3 wi);
     Eval evalOpaqueDielectric(float3 wo, float3 wi);
     Sample sampleOpaqueDielectric(float3 wo, float3 r);
     

@@ -85,6 +85,6 @@ fragment float4 postprocessFragment(
   constexpr sampler sampler(min_filter::nearest, mag_filter::nearest, mip_filter::none);
   
   float3 color = src.sample(sampler, in.uv).xyz;
-//  color = agx::apply(color);
+  color = agx::apply(color);
   return float4(color, 1.0f);
 }

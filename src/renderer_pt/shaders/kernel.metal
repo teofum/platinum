@@ -508,9 +508,9 @@ kernel void misKernel(
         
         const auto lightSample = sampleAreaLight(hit, resources, light, r.xy);
         const float3 wi = hit.frame.worldToLocal(lightSample.wi);
-        const auto bsdfEval = bsdf.eval(hit.wo, wi, float2(0.0));
+        const auto bsdfEval = bsdf.eval(hit.wo, wi, float2(0.0), sample.lobe);
         
-        if (true) {
+        if (length_squared(bsdfEval.f) > 0.0f) {
           ray.direction = lightSample.wi;
           ray.max_distance = length(lightSample.pos - hit.pos) - 1e-3f;
           i.accept_any_intersection(true);
