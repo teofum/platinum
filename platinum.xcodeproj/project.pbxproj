@@ -147,8 +147,10 @@
 		AB5135972CFB7805005738C1 /* Exceptions for "src" folder in "renderer_pt" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				renderer_pt/shaders/bsdf.metal,
 				renderer_pt/shaders/kernel.metal,
 				renderer_pt/shaders/postprocess.metal,
+				renderer_pt/shaders/samplers.metal,
 			);
 			target = AB51358D2CFB77EE005738C1 /* renderer_pt */;
 		};
