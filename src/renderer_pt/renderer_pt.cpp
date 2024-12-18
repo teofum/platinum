@@ -85,6 +85,10 @@ void Renderer::render() {
       );
     }
     
+    for (auto meshVertexPositionBuffer: m_meshVertexPositionBuffers) {
+      computeEnc->useResource(meshVertexPositionBuffer, MTL::ResourceUsageRead);
+    }
+    
     for (auto meshVertexDataBuffer: m_meshVertexDataBuffers) {
       computeEnc->useResource(meshVertexDataBuffer, MTL::ResourceUsageRead);
     }
@@ -414,6 +418,7 @@ void Renderer::rebuildResourceBuffers() {
     auto primResourceHandle = (uint64_t*) m_primitiveResourcesBuffer->contents() + idx;
     *primResourceHandle = md.mesh->materialIndices()->gpuAddress();
     
+    m_meshVertexPositionBuffers.push_back(md.mesh->vertexPositions());
     m_meshVertexDataBuffers.push_back(md.mesh->vertexData());
     m_meshMaterialIndexBuffers.push_back(md.mesh->materialIndices());
     
@@ -613,7 +618,7 @@ void Renderer::rebuildLightData() {
           const auto area = length(cross(edge1, edge2)) * 0.5f;
           
           const auto emission = material->emission * material->emissionStrength;
-          const auto lightPower = length(emission) * area * std::numbers::pi_v<float>;
+          const auto lightPower = dot(emission, float3{0, 1, 0}) * area * std::numbers::pi_v<float>;
           m_lightTotalPower += lightPower;
           
           lights.push_back({

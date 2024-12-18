@@ -232,19 +232,16 @@ namespace bsdf {
     // Sample the microfacet normal, get incident light direction and evaluate the BRDF
     auto wm = ggx.sampleVmdf(wo, r);
     auto wi = reflect(-wo, wm);
-    if (wo.z * wi.z < 0.0f) return {
+    if (wm.z <= 0.0f || wo.z * wi.z < 0.0f) return {
       .wi     = wi,
       .f      = 0.0f,
       .pdf    = 1.0f,
     };
     
-    const auto cosTheta_o = abs(wo.z), cosTheta_i = abs(wi.z);
-    const auto brdf_ss = ggx.mdf(wm) * ggx.g(wo, wi) / (4 * cosTheta_o * cosTheta_i);
-    
     return {
       .wi     = wi,
-      .f 			= brdf_ss,
-      .pdf 		= ggx.vmdf(wo, wm) / (4.0f * abs(dot(wo, wm))),
+      .f 			= ggx.singleScatterBRDF(wo, wi, wm),
+      .pdf 		= ggx.pdf(wo, wm),
     };
   }
   
@@ -374,6 +371,11 @@ kernel void generateDirectionalAlbedoLookup(
    */
   auto sample = bsdf::sampleSingleScatterGGX(wo, ggx, r);
   auto v = sample.f * abs(sample.wi.z) / sample.pdf;
+  
+  // Funny hack
+  if (roughness < 2.0f / 32.0f && cosTheta < 1.0f / 32.0f) {
+    v *= 0.961f;
+  }
   
   /*
    * Accumulate samples

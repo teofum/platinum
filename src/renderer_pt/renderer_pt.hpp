@@ -96,6 +96,7 @@ private:
   static constexpr const size_t m_resourcesStride = sizeof(uint64_t);
   
   MTL::Buffer* m_vertexResourcesBuffer = nullptr;
+  std::vector<const MTL::Buffer*> m_meshVertexPositionBuffers;
   std::vector<const MTL::Buffer*> m_meshVertexDataBuffers;
   
   MTL::Buffer* m_primitiveResourcesBuffer = nullptr;

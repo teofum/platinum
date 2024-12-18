@@ -23,7 +23,7 @@ int main() {
   auto materialId = scene.addMaterial("Default material", material);
 
 //  // Default sphere
-//  auto sphere = pt::primitives::sphere(store.device(), 1.0f, 24, 32);
+//  auto sphere = pt::primitives::sphere(store.device(), 1.0f, 48, 64);
 //  auto meshId = scene.addMesh(std::move(sphere));
 //  pt::Scene::Node defaultSphere("Sphere", meshId);
 //  defaultSphere.materials.push_back(materialId);

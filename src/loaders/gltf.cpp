@@ -139,63 +139,39 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
      * Copy primitive vertex normals
      */
     const auto nmlAttrib = prim.findAttribute("NORMAL");
-    const auto& nmlAccessor = m_asset->accessors[nmlAttrib->accessorIndex];
-    primitiveVertexPositions.reserve(nmlAccessor.count);
-    primitiveVertexData.reserve(nmlAccessor.count);
-
-    size_t i = 0;
-    auto normalIt = fastgltf::iterateAccessor<float3>(*m_asset, nmlAccessor);
-    for (auto normal: normalIt) primitiveVertexData[i++].normal = normal;
+    if (nmlAttrib != prim.attributes.end()) {
+      const auto& nmlAccessor = m_asset->accessors[nmlAttrib->accessorIndex];
+      
+      size_t i = 0;
+      auto normalIt = fastgltf::iterateAccessor<float3>(*m_asset, nmlAccessor);
+      for (auto normal: normalIt) primitiveVertexData[i++].normal = normal;
+    }
 
     /*
      * Copy primitive texture coordinates
      * TODO: gltf supports multiple texture coordinates per object, how should we handle that?
      */
     const auto texAttrib = prim.findAttribute("TEXCOORD_0");
-    const auto& texAccessor = m_asset->accessors[texAttrib->accessorIndex];
-    primitiveVertexPositions.reserve(texAccessor.count);
-    primitiveVertexData.reserve(texAccessor.count);
-
-    i = 0;
-    if (texAccessor.type == fastgltf::AccessorType::Vec2) {
+    if (texAttrib != prim.attributes.end()) {
+      const auto& texAccessor = m_asset->accessors[texAttrib->accessorIndex];
+      
+      size_t i = 0;
       auto texCoordIt = fastgltf::iterateAccessor<float2>(*m_asset, texAccessor);
       for (auto texCoords: texCoordIt) primitiveVertexData[i++].texCoords = texCoords;
-    } else {
-      auto texCoordIt = fastgltf::iterateAccessor<float3>(*m_asset, texAccessor);
-      for (auto texCoords: texCoordIt) primitiveVertexData[i++].texCoords = texCoords.xy;
     }
-
+    
     /*
      * Copy primitive vertex tangents, if present
      */
     const auto tanAttrib = prim.findAttribute("TANGENT");
-    const auto& tanAccessor = m_asset->accessors[tanAttrib->accessorIndex];
-    primitiveVertexPositions.reserve(tanAccessor.count);
-    primitiveVertexData.reserve(tanAccessor.count);
-
-    i = 0;
-    if (tanAccessor.type == fastgltf::AccessorType::Vec4) {
-      std::println("[Info] gltf: Tangents are Vec4");
+    if (tanAttrib != prim.attributes.end()) {
+      const auto& tanAccessor = m_asset->accessors[tanAttrib->accessorIndex];
+      
+      size_t i = 0;
       auto tangentIt = fastgltf::iterateAccessor<float4>(*m_asset, tanAccessor);
-      for (auto tangent: tangentIt) {
-        primitiveVertexData[i++].tangent = tangent;
-        if (i >= primitiveVertexData.size()) {
-          std::println(stderr, "[Warn] gltf: Tangent count exceeds vertex count");
-          break;
-        }
-      }
-    } else {
-      std::println("[Info] gltf: Tangents are Vec3");
-      auto tangentIt = fastgltf::iterateAccessor<float3>(*m_asset, tanAccessor);
-      for (auto tangent: tangentIt) {
-        primitiveVertexData[i++].tangent = make_float4(tangent, 1.0f);
-        if (i >= primitiveVertexData.size()) {
-          std::println(stderr, "[Warn] gltf: Tangent count exceeds vertex count");
-          break;
-        }
-      }
+      for (auto tangent: tangentIt) primitiveVertexData[i++].tangent = tangent;
     }
-
+    
     /*
      * Copy primitive data into mesh data buffers
      */
