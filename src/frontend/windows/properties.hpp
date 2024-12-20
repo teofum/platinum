@@ -30,6 +30,8 @@ private:
   void renderCameraProperties(Scene::CameraID id);
   
   void renderMaterialProperties(Scene::MaterialID id);
+  
+  void renderTextureProperties(Scene::TextureID id);
 };
 
 }

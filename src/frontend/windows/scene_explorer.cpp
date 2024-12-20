@@ -40,8 +40,16 @@ void SceneExplorer::render() {
         renderNode(0);
         break;
         
+      case Mode_Meshes:
+        renderMeshesList();
+        break;
+        
       case Mode_Materials:
         renderMaterialsList();
+        break;
+        
+      case Mode_Textures:
+        renderTexturesList();
         break;
     }
     ImGui::PopStyleVar();
@@ -265,6 +273,30 @@ void SceneExplorer::renderNode(Scene::NodeID id, uint32_t level) {
   ImGui::PopID();
 }
 
+void SceneExplorer::renderMeshesList() {
+  for (const auto& md: m_store.scene().getAllMeshes()) {
+    auto flags = m_baseFlags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+    
+    bool selected = m_state.selectedMesh() == md.meshId;
+    if (selected) {
+      flags |= ImGuiTreeNodeFlags_Selected;
+    } else {
+      ImGui::PushStyleColor(
+        ImGuiCol_Header,
+        ImGui::GetStyleColorVec4(ImGuiCol_FrameBg)
+      );
+    }
+    
+    auto label = std::format("Mesh ({})", md.meshId);
+    ImGui::TreeNodeEx(label.c_str(), flags);
+    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+      m_state.selectMesh(md.meshId);
+    }
+
+    if (!selected) ImGui::PopStyleColor();
+  }
+}
+
 void SceneExplorer::renderMaterialsList() {
   for (const auto& md: m_store.scene().getAllMaterials()) {
     auto flags = m_baseFlags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
@@ -283,6 +315,30 @@ void SceneExplorer::renderMaterialsList() {
     ImGui::TreeNodeEx(label.c_str(), flags);
     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
       m_state.selectMaterial(md.materialId);
+    }
+
+    if (!selected) ImGui::PopStyleColor();
+  }
+}
+
+void SceneExplorer::renderTexturesList() {
+  for (const auto& td: m_store.scene().getAllTextures()) {
+    auto flags = m_baseFlags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+    
+    bool selected = m_state.selectedTexture() == td.textureId;
+    if (selected) {
+      flags |= ImGuiTreeNodeFlags_Selected;
+    } else {
+      ImGui::PushStyleColor(
+        ImGuiCol_Header,
+        ImGui::GetStyleColorVec4(ImGuiCol_FrameBg)
+      );
+    }
+    
+    auto label = std::format("Texture ({})", td.textureId);
+    ImGui::TreeNodeEx(label.c_str(), flags);
+    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+      m_state.selectTexture(td.textureId);
     }
 
     if (!selected) ImGui::PopStyleColor();

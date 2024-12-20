@@ -7,6 +7,7 @@ void State::update() {
   m_selectedMeshId = m_nextMeshId;
   m_selectedCameraId = m_nextCameraId;
   m_selectedMaterialId = m_nextMaterialId;
+  m_selectedTextureId = m_nextTextureId;
 
   if (m_nodeAction == NodeAction_Remove && m_actionNodeId) {
     m_store.scene().removeNode(m_actionNodeId.value(), m_removeOptions);

@@ -14,6 +14,8 @@ void Properties::render() {
     renderCameraProperties(m_state.selectedCamera().value());
   } else if (m_state.selectedMaterial()) {
     renderMaterialProperties(m_state.selectedMaterial().value());
+  } else if (m_state.selectedTexture()) {
+    renderTextureProperties(m_state.selectedTexture().value());
   } else {
     ImGui::Text("[ Nothing selected ]");
   }
@@ -251,6 +253,38 @@ void Properties::renderMaterialProperties(Scene::MaterialID id) {
       ImGui::PopTextWrapPos();
       ImGui::EndTooltip();
   }
+}
+
+void Properties::renderTextureProperties(Scene::TextureID id) {
+  MTL::Texture* texture = m_store.scene().texture(id);
+
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("Texture [id: %u]", id);
+  
+  ImGui::Spacing();
+
+  ImGui::Text("%lux%lu", texture->width(), texture->height());
+  
+  ImGui::Separator();
+  
+  const float width = ImGui::GetContentRegionAvail().x;
+  ImGui::PushStyleColor(ImGuiCol_ChildBg, (ImVec4) ImColor::HSV(0.0f, 0.0f, 0.8f));
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+  ImGui::BeginChild(
+    "TextureView",
+    {width, width * texture->height() / texture->width()},
+    ImGuiChildFlags_Borders,
+    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+  );
+  ImGui::PopStyleVar();
+  ImGui::PopStyleColor();
+  
+  ImGui::Image(
+    (ImTextureID) texture,
+    {width, width * texture->height() / texture->width()}
+  );
+
+  ImGui::EndChild();
 }
 
 }

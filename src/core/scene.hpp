@@ -55,6 +55,11 @@ public:
     MaterialID materialId = 0;
     const std::string& name;
   };
+  
+  struct TextureData {
+    const MTL::Texture* texture = nullptr;
+    TextureID textureId = 0;
+  };
 
   struct InstanceData {
     const Mesh* mesh = nullptr;
@@ -169,6 +174,8 @@ public:
   [[nodiscard]] std::vector<CameraData> getAllCameras(int filter = 0) const;
   
   [[nodiscard]] std::vector<MaterialData> getAllMaterials() const;
+  
+  [[nodiscard]] std::vector<TextureData> getAllTextures() const;
 
 private:
   NodeID m_nextNodeId;

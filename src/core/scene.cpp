@@ -230,6 +230,17 @@ std::vector<Scene::CameraData> Scene::getAllCameras(int filter) const {
   return cameras;
 }
 
+std::vector<Scene::TextureData> Scene::getAllTextures() const {
+  std::vector<TextureData> textures;
+  textures.reserve(m_textures.size());
+
+  for (const auto& texture: m_textures) {
+    textures.emplace_back(texture.second.get(), texture.first);
+  }
+
+  return textures;
+}
+
 void Scene::traverseHierarchy(
   const std::function<void(NodeID id, const Node*, const float4x4&)>& cb,
   int filter
