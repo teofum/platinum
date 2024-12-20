@@ -18,6 +18,7 @@ public:
 
 private:
   uint32_t m_selectedMaterialIdx = 0;
+  Scene::NodeID m_lastNodeId = 0;
   static constexpr const ImGuiColorEditFlags m_colorFlags =
   	ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoOptions | ImGuiColorEditFlags_NoSidePreview
   | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_DisplayRGB

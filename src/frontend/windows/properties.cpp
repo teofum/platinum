@@ -25,6 +25,9 @@ void Properties::render() {
 
 void Properties::renderNodeProperties(Scene::NodeID id) {
   Scene::Node* node = m_store.scene().node(id);
+  
+  if (id != m_lastNodeId) m_selectedMaterialIdx = 0;
+  m_lastNodeId = id;
 
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
   ImGui::BeginDisabled(id == 0);
@@ -82,6 +85,7 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
       /*
        * Material slot selection
        */
+      auto nextSlotId = m_selectedMaterialIdx;
      	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
       ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {8, 6});
       auto open = ImGui::BeginListBox("##SlotSelect", {0, 5 * ImGui::GetTextLineHeightWithSpacing()});
@@ -93,7 +97,7 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
           auto label = std::format("[{}]: {}", i, name);
           
           if (widgets::selectable(label.c_str(), isSelected)) {
-            m_selectedMaterialIdx = i;
+            nextSlotId = i;
           }
         }
         ImGui::EndListBox();
@@ -128,6 +132,7 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
       
       // Update material ID
       node->materials[m_selectedMaterialIdx] = nextMaterialId;
+      m_selectedMaterialIdx = nextSlotId;
     }
   }
 }
