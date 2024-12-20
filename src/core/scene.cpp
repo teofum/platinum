@@ -87,14 +87,14 @@ void Scene::removeNode(Scene::NodeID id, int flags) {
   // Decrease refcount of mesh/camera if present and handle orphaned objects
   if (removed->meshId) {
     const auto rc = --m_meshRc[removed->meshId.value()];
-    if (rc == 0 && (flags & RemoveOptions_RemoveOrphanedObjects)) {
+    if (rc == 0 && !(flags & RemoveOptions_KeepOrphanedObjects)) {
       m_meshes.erase(removed->meshId.value());
       m_nextMeshId = removed->meshId.value();
     }
   }
   if (removed->cameraId) {
     const auto rc = --m_cameraRc[removed->cameraId.value()];
-    if (rc == 0 && (flags & RemoveOptions_RemoveOrphanedObjects)) {
+    if (rc == 0 && !(flags & RemoveOptions_KeepOrphanedObjects)) {
       m_cameras.erase(removed->cameraId.value());
       m_nextCameraId = removed->cameraId.value();
     }
