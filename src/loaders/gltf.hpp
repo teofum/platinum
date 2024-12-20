@@ -39,28 +39,44 @@ enum LoadOptions {
 
 class GltfLoader {
 public:
-  explicit GltfLoader(MTL::Device* device, Scene& scene) noexcept
-    : m_device(device), m_scene(scene) {
-  }
+  explicit GltfLoader(MTL::Device* device, MTL::CommandQueue* commandQueue, Scene& scene) noexcept;
 
   void load(const fs::path& path, int options = LoadOptions_Default);
 
 private:
+  enum class TextureType {
+    RGBA,
+    RGB,
+    Mono,
+    RoughnessMetallic,
+  };
+  
   MTL::Device* m_device;
-  Scene& m_scene;
+  MTL::CommandQueue* m_commandQueue;
+  MTL::ComputePipelineState* m_textureConverterPso = nullptr;
+  
   std::unique_ptr<fastgltf::Asset> m_asset;
   std::vector<Scene::MeshID> m_meshIds;
   ankerl::unordered_dense::map<Scene::MeshID, std::vector<Scene::MaterialID>> m_meshMaterials;
   
+  Scene& m_scene;
   std::vector<Scene::CameraID> m_cameraIds;
   std::vector<Scene::MaterialID> m_materialIds;
+  std::vector<Scene::TextureID> m_textureIds;
+  
+  ankerl::unordered_dense::map<uint32_t, TextureType> m_texturesToLoad;
+  
   int m_options;
+  
+  static std::pair<MTL::PixelFormat, std::vector<uint8_t>> getAttributesForTexture(TextureType type);
 
   void loadMesh(const fastgltf::Mesh& gltfMesh);
 
   void loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent = 0);
   
   void loadMaterial(const fastgltf::Material& gltfMat);
+  
+  [[nodiscard]] Scene::TextureID loadTexture(const fastgltf::Texture& gltfTex, TextureType type);
 };
 
 

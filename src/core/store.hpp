@@ -31,11 +31,16 @@ public:
     m_device = device->retain();
   }
   
+  constexpr void setCommandQueue(MTL::CommandQueue* commandQueue) {
+    m_commandQueue = commandQueue->retain();
+  }
+  
   void importGltf();
 
 private:
   std::unique_ptr<Scene> m_scene;
   MTL::Device* m_device = nullptr;
+  MTL::CommandQueue* m_commandQueue = nullptr;
 };
 
 }

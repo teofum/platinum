@@ -19,6 +19,7 @@ public:
   using MeshID = uint16_t;
   using CameraID = uint16_t;
   using MaterialID = uint16_t;
+  using TextureID = uint16_t;
 
   enum NodeFlags {
     NodeFlags_None = 0,
@@ -86,6 +87,8 @@ public:
   NodeID addNode(Node&& node, NodeID parent = 0);
   
   MaterialID addMaterial(const std::string_view& name, Material material);
+  
+  TextureID addTexture(NS::SharedPtr<MTL::Texture> texture);
 
   void removeNode(NodeID id, int flags = 0);
 
@@ -144,6 +147,18 @@ public:
   [[nodiscard]] constexpr std::string& materialName(MaterialID id) {
     return m_materialNames.at(id);
   }
+  
+  [[nodiscard]] constexpr const MTL::Texture* texture(TextureID id) const {
+    return m_textures.at(id).get();
+  }
+
+  [[nodiscard]] constexpr MTL::Texture* texture(TextureID id) {
+    return m_textures.at(id).get();
+  }
+
+  [[nodiscard]] constexpr uint16_t textureUsers(TextureID id) {
+    return m_textureRc.at(id);
+  }
 
   [[nodiscard]] float4x4 worldTransform(NodeID id) const;
 
@@ -160,6 +175,7 @@ private:
   MeshID m_nextMeshId;
   CameraID m_nextCameraId;
   MaterialID m_nextMaterialId;
+  TextureID m_nextTextureId;
 
   ankerl::unordered_dense::map<NodeID, std::unique_ptr<Node>> m_nodes;
   ankerl::unordered_dense::map<MaterialID, Material> m_materials;
@@ -170,6 +186,9 @@ private:
   
   ankerl::unordered_dense::map<CameraID, Camera> m_cameras;
   ankerl::unordered_dense::map<CameraID, uint16_t> m_cameraRc; // Refcount
+  
+  ankerl::unordered_dense::map<TextureID, NS::SharedPtr<MTL::Texture>> m_textures;
+  ankerl::unordered_dense::map<TextureID, uint16_t> m_textureRc; // Refcount
 
   void traverseHierarchy(
     const std::function<void(NodeID id, const Node*, const float4x4&)>& cb,

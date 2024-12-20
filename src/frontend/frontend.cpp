@@ -122,12 +122,17 @@ Frontend::InitResult Frontend::init() {
   m_layer = static_cast<CA::MetalLayer*>(SDL_RenderGetMetalLayer(m_sdlRenderer));
   m_layer->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
   m_device = metal_utils::getDevice(m_layer);
-  m_store.setDevice(m_device);
 
   ImGui_ImplMetal_Init(m_device);
   ImGui_ImplSDL2_InitForMetal(m_sdlWindow);
 
   m_commandQueue = m_device->newCommandQueue();
+  
+  /*
+   * Initialize store
+   */
+  m_store.setDevice(m_device);
+  m_store.setCommandQueue(m_commandQueue);
 
   /*
    * Initialize windows that need it

@@ -20,6 +20,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		AB7553E32D1521240037E10C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AB5132AF2CFB7024005738C1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AB7553D92D15210F0037E10C;
+			remoteInfo = loaders;
+		};
 		ABE00B742CFB892B00DA8AED /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = AB5132AF2CFB7024005738C1 /* Project object */;
@@ -83,6 +90,7 @@
 		AB5133F02CFB72C5005738C1 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		AB5135802CFB7791005738C1 /* renderer_studio.metallib */ = {isa = PBXFileReference; explicitFileType = "archive.metal-library"; includeInIndex = 0; path = renderer_studio.metallib; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB51358E2CFB77EE005738C1 /* renderer_pt.metallib */ = {isa = PBXFileReference; explicitFileType = "archive.metal-library"; includeInIndex = 0; path = renderer_pt.metallib; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB7553DA2D15210F0037E10C /* loaders.metallib */ = {isa = PBXFileReference; explicitFileType = "archive.metal-library"; includeInIndex = 0; path = loaders.metallib; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB86A6F42CFBA80F00CC5BA3 /* SDL2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2.framework; path = ../../../../Library/Frameworks/SDL2.framework; sourceTree = "<group>"; };
 		AB8B33E92D01380E007D139C /* libOpenImageIO.3.0.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libOpenImageIO.3.0.1.dylib; path = ../../../../opt/homebrew/Cellar/openimageio/3.0.1.0/lib/libOpenImageIO.3.0.1.dylib; sourceTree = "<group>"; };
 		AB8B33EB2D0156FE007D139C /* libOpenImageIO_Util.3.0.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libOpenImageIO_Util.3.0.1.dylib; path = ../../../../opt/homebrew/Cellar/openimageio/3.0.1.0/lib/libOpenImageIO_Util.3.0.1.dylib; sourceTree = "<group>"; };
@@ -153,6 +161,13 @@
 				renderer_pt/shaders/samplers.metal,
 			);
 			target = AB51358D2CFB77EE005738C1 /* renderer_pt */;
+		};
+		AB7553E22D15211F0037E10C /* Exceptions for "src" folder in "loaders" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				loaders/texture_converter.metal,
+			);
+			target = AB7553D92D15210F0037E10C /* loaders */;
 		};
 		AB8F69EC2CFBA43A00C69CF6 /* Exceptions for "imgui" folder in "platinum" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -408,6 +423,7 @@
 				AB51358B2CFB77D2005738C1 /* Exceptions for "src" folder in "renderer_studio" target */,
 				AB5135972CFB7805005738C1 /* Exceptions for "src" folder in "renderer_pt" target */,
 				ABF001CC2D029B5400C2DC14 /* Exceptions for "src" folder in "tools" target */,
+				AB7553E22D15211F0037E10C /* Exceptions for "src" folder in "loaders" target */,
 			);
 			path = src;
 			sourceTree = "<group>";
@@ -516,6 +532,7 @@
 				AB51358E2CFB77EE005738C1 /* renderer_pt.metallib */,
 				ABE00B692CFB891B00DA8AED /* libmetal-cpp.a */,
 				ABF001C42D029B4700C2DC14 /* tools.metallib */,
+				AB7553DA2D15210F0037E10C /* loaders.metallib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -561,6 +578,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				AB7553E42D1521240037E10C /* PBXTargetDependency */,
 				ABF001CE2D029B5A00C2DC14 /* PBXTargetDependency */,
 				ABECF90D2D0092C400918BB5 /* PBXTargetDependency */,
 				ABECF90B2D0092C100918BB5 /* PBXTargetDependency */,
@@ -605,6 +623,23 @@
 			);
 			productName = renderer_pt;
 			productReference = AB51358E2CFB77EE005738C1 /* renderer_pt.metallib */;
+			productType = "com.apple.product-type.metal-library";
+		};
+		AB7553D92D15210F0037E10C /* loaders */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AB7553DE2D15210F0037E10C /* Build configuration list for PBXNativeTarget "loaders" */;
+			buildPhases = (
+				AB7553D82D15210F0037E10C /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = loaders;
+			packageProductDependencies = (
+			);
+			productName = loaders;
+			productReference = AB7553DA2D15210F0037E10C /* loaders.metallib */;
 			productType = "com.apple.product-type.metal-library";
 		};
 		ABE00B682CFB891B00DA8AED /* metal-cpp */ = {
@@ -661,6 +696,9 @@
 					AB51358D2CFB77EE005738C1 = {
 						CreatedOnToolsVersion = 16.1;
 					};
+					AB7553D92D15210F0037E10C = {
+						CreatedOnToolsVersion = 16.1;
+					};
 					ABE00B682CFB891B00DA8AED = {
 						CreatedOnToolsVersion = 16.1;
 					};
@@ -688,6 +726,7 @@
 				AB51357F2CFB7791005738C1 /* renderer_studio */,
 				AB51358D2CFB77EE005738C1 /* renderer_pt */,
 				ABF001C32D029B4700C2DC14 /* tools */,
+				AB7553D92D15210F0037E10C /* loaders */,
 			);
 		};
 /* End PBXProject section */
@@ -714,6 +753,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AB7553D82D15210F0037E10C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		ABE00B662CFB891B00DA8AED /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -731,6 +777,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		AB7553E42D1521240037E10C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AB7553D92D15210F0037E10C /* loaders */;
+			targetProxy = AB7553E32D1521240037E10C /* PBXContainerItemProxy */;
+		};
 		ABE00B752CFB892B00DA8AED /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = ABE00B682CFB891B00DA8AED /* metal-cpp */;
@@ -998,6 +1049,34 @@
 			};
 			name = Release;
 		};
+		AB7553DF2D15210F0037E10C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				VERSIONING_SYSTEM = "";
+			};
+			name = Debug;
+		};
+		AB7553E02D15210F0037E10C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				VERSIONING_SYSTEM = "";
+			};
+			name = Release;
+		};
 		ABE00B722CFB891B00DA8AED /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1198,6 +1277,15 @@
 			buildConfigurations = (
 				AB5135932CFB77EE005738C1 /* Debug */,
 				AB5135942CFB77EE005738C1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AB7553DE2D15210F0037E10C /* Build configuration list for PBXNativeTarget "loaders" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB7553DF2D15210F0037E10C /* Debug */,
+				AB7553E02D15210F0037E10C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

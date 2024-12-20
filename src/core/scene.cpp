@@ -49,6 +49,14 @@ Scene::MaterialID Scene::addMaterial(const std::string_view& name, Material mate
   return id;
 }
 
+Scene::TextureID Scene::addTexture(NS::SharedPtr<MTL::Texture> texture) {
+  TextureID id = m_nextTextureId++;
+  m_textures[id] = texture;
+  while (m_textures.contains(m_nextTextureId)) m_nextTextureId++; // Find next unused ID
+
+  return id;
+}
+
 void Scene::removeNode(Scene::NodeID id, int flags) {
   if (id == 0) return; // Can't remove the root node
 

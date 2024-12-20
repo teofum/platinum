@@ -1,6 +1,13 @@
 #include "gltf.hpp"
 
+#include <OpenImageIO/imageio.h>
+#include <OpenImageIO/filesystem.h>
+
+#include <utils/metal_utils.hpp>
+
 namespace pt::loaders::gltf {
+using metal_utils::ns_shared;
+using metal_utils::operator ""_ns;
 
 static float3 eulerFromQuat(fastgltf::math::fquat q) {
   float qw = q.w(), qx = q.x(), qy = q.y(), qz = q.z();
@@ -18,6 +25,61 @@ static float3 eulerFromQuat(fastgltf::math::fquat q) {
   };
 }
 
+GltfLoader::GltfLoader(MTL::Device* device, MTL::CommandQueue* commandQueue, Scene& scene) noexcept
+: m_device(device), m_commandQueue(commandQueue), m_scene(scene) {
+  /*
+   * Load the shader library
+   */
+  NS::Error* error = nullptr;
+  MTL::Library* lib = m_device->newLibrary("loaders.metallib"_ns, &error);
+  if (!lib) {
+    std::println(stderr,
+      "GltfLoader: Failed to load shader library: {}",
+      error->localizedDescription()->utf8String()
+    );
+    assert(false);
+  }
+  
+  /*
+   * Build the texture converter pipeline
+   */
+  auto desc = metal_utils::makeComputePipelineDescriptor({
+    .function = metal_utils::getFunction(lib, "convertTexture"),
+    .threadGroupSizeIsMultipleOfExecutionWidth = true,
+  });
+  
+  m_textureConverterPso = m_device->newComputePipelineState(
+    desc,
+    MTL::PipelineOptionNone,
+    nullptr,
+    &error
+  );
+  if (!m_textureConverterPso) {
+    std::println(stderr,
+       "GltfLoader: Failed to create texture converter pipeline: {}",
+       error->localizedDescription()->utf8String()
+     );
+    assert(false);
+  }
+}
+
+std::pair<MTL::PixelFormat, std::vector<uint8_t>> GltfLoader::getAttributesForTexture(TextureType type) {
+  switch (type) {
+    case TextureType::RGBA:
+    case TextureType::RGB:
+      return std::make_pair(MTL::PixelFormatRGBA8Unorm, std::vector<uint8_t>{0, 1, 2, 3});
+
+    case TextureType::Mono:
+      return std::make_pair(MTL::PixelFormatR8Unorm, std::vector<uint8_t>{0});
+  
+    case TextureType::RoughnessMetallic:
+      return std::make_pair(MTL::PixelFormatRG8Unorm, std::vector<uint8_t>{1, 2});
+  }
+}
+
+/*
+ * Load a scene from glTF.
+ */
 void GltfLoader::load(const fs::path& path, int options) {
   auto gltfFile = fastgltf::GltfDataBuffer::FromPath(path);
   if (gltfFile.error() != fastgltf::Error::None) {
@@ -62,6 +124,21 @@ void GltfLoader::load(const fs::path& path, int options) {
   m_materialIds.reserve(m_asset->materials.size());
   for (const auto& material: m_asset->materials)
     loadMaterial(material);
+  
+  m_textureIds.reserve(m_texturesToLoad.size());
+  for (const auto& [idx, type]: m_texturesToLoad) {
+    auto textureId = loadTexture(m_asset->textures[idx], type);
+    
+    // Replace the index with the real ID on any materials using the texture
+    for (auto mid: m_materialIds) {
+      auto* material = m_scene.material(mid);
+      if (material->baseTextureId == idx) material->baseTextureId = textureId;
+      if (material->rmTextureId == idx) material->rmTextureId = textureId;
+      if (material->transmissionTextureId == idx) material->transmissionTextureId = textureId;
+      if (material->emissionTextureId == idx) material->emissionTextureId = textureId;
+      if (material->clearcoatTextureId == idx) material->clearcoatTextureId = textureId;
+    }
+  }
 
   m_meshIds.reserve(m_asset->meshes.size());
   for (const auto& mesh: m_asset->meshes)
@@ -94,6 +171,9 @@ void GltfLoader::load(const fs::path& path, int options) {
   }
 }
 
+/*
+ * Load a glTF mesh.
+ */
 void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
   std::vector<float3> vertexPositions;
   std::vector<VertexData> vertexData;
@@ -205,6 +285,9 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
   m_meshMaterials[id] = materialSlots;
 }
 
+/*
+ * Load a glTF scene node and all its children recursively
+ */
 void GltfLoader::loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent) {
   std::optional<Scene::MeshID> meshId = std::nullopt;
   if (gltfNode.meshIndex) meshId = m_meshIds[gltfNode.meshIndex.value()];
@@ -242,6 +325,13 @@ void GltfLoader::loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent) 
   }
 }
 
+/*
+ * Load a material from glTF, filling in all compatible properties.
+ * When the material has textures, the glTF texture index is placed into the material's texture ID
+ * field as a placeholder and added to a list of textures to be loaded, with some type/usage data.
+ * Textures are later loaded and the indices are replaced with the actual IDs. This lets us avoid
+ * duplicating textures if they are used by multiple materials.
+ */
 void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   Material material;
   
@@ -252,21 +342,47 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   // Set alpha flag if the material has an alpha component
   if (material.baseColor[3] < 1.0f) material.flags |= Material::Material_UseAlpha;
   
+  // Load base color texture
+  if (gltfMat.pbrData.baseColorTexture) {
+    uint16_t id = gltfMat.pbrData.baseColorTexture->textureIndex;
+    material.baseTextureId = id;
+    m_texturesToLoad[id] = TextureType::RGBA;
+  }
+  
   // Assign PBR parameters
   material.roughness = gltfMat.pbrData.roughnessFactor;
   material.metallic = gltfMat.pbrData.metallicFactor;
+  
+  // Load roughness/metallic texture
+  if (gltfMat.pbrData.metallicRoughnessTexture) {
+    uint16_t id = gltfMat.pbrData.metallicRoughnessTexture->textureIndex;
+    material.rmTextureId = id;
+    m_texturesToLoad[id] = TextureType::RoughnessMetallic;
+  }
+  
   if (gltfMat.transmission != nullptr) {
     material.transmission = gltfMat.transmission->transmissionFactor;
+    
+    if (gltfMat.transmission->transmissionTexture) {
+      uint16_t id = gltfMat.transmission->transmissionTexture->textureIndex;
+      material.transmissionTextureId = id;
+      m_texturesToLoad[id] = TextureType::Mono;
+    }
   }
   
   // Assign emission
   material.emissionStrength = gltfMat.emissiveStrength;
-  for (uint32_t i = 0; i < 3; i++) {
-    material.emission[i] = gltfMat.emissiveFactor[i];
-    
-    // Set emissive flag if emission is greater than zero
-    if (material.emission[i] * material.emissionStrength > 0.0f)
-      material.flags |= Material::Material_Emissive;
+  for (uint32_t i = 0; i < 3; i++) material.emission[i] = gltfMat.emissiveFactor[i];
+  
+  // Set emissive flag if emission strength is greater than zero
+  if (length_squared(material.emission) * material.emissionStrength > 0.0f)
+    material.flags |= Material::Material_Emissive;
+  
+  // Load emission texture
+  if (gltfMat.emissiveTexture) {
+    uint16_t id = gltfMat.emissiveTexture->textureIndex;
+    material.emissionTextureId = id;
+    m_texturesToLoad[id] = TextureType::RGB;
   }
   
   // Assign additional parameters
@@ -283,12 +399,123 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   if (gltfMat.clearcoat != nullptr) {
     material.clearcoat = gltfMat.clearcoat->clearcoatFactor;
     material.clearcoatRoughness = gltfMat.clearcoat->clearcoatRoughnessFactor;
+    
+    if (gltfMat.clearcoat->clearcoatTexture) {
+      uint16_t id = gltfMat.clearcoat->clearcoatTexture->textureIndex;
+      material.clearcoatTextureId = id;
+      m_texturesToLoad[id] = TextureType::Mono;
+    }
   }
-  
-  // TODO: load textures
   
   auto id = m_scene.addMaterial(gltfMat.name, material);
   m_materialIds.push_back(id);
+}
+
+/*
+ * Load a texture from the glTF file.
+ */
+Scene::TextureID GltfLoader::loadTexture(const fastgltf::Texture &gltfTex, TextureType type) {
+  // Assume the texture has an image index: we don't support any of the image type extensions for now
+  const auto& image = m_asset->images[gltfTex.imageIndex.value()];
+  
+  // Get through all the levels of indirection to the actual texture bytes
+  const auto* bvi = std::get_if<fastgltf::sources::BufferView>(&image.data);
+  const auto& bv = m_asset->bufferViews[bvi->bufferViewIndex];
+  const auto& buf = m_asset->buffers[bv.bufferIndex];
+
+  // This only supports one type of data source. TODO: support other data source types
+  const auto* bytes = std::get_if<fastgltf::sources::Array>(&buf.data);
+  const uint8_t* data = reinterpret_cast<const uint8_t*>(&bytes->bytes[bv.byteOffset]);
+  int32_t len = int32_t(bv.byteLength);
+  
+  /*
+   * Create a temporary read buffer and decode the image from memory
+   * We set the x-stride to four channels so our buffer can take any type of input image. We are
+   * still making some assumptions: that images are in PNG format (usually the case with glTF), and
+   * that they are SDR with 8 bits per channel.
+   */
+  OIIO::Filesystem::IOMemReader memReader(data, len);
+  const auto in = OIIO::ImageInput::open("a.png", nullptr, &memReader);
+  const auto& spec = in->spec();
+  
+  // We use this later to fill the alpha channel with 1 if it's not present
+  const bool hasAlphaChannel = spec.alpha_channel != -1;
+  
+  auto readBuffer = m_device->newBuffer(
+    sizeof(uchar4) * spec.width * spec.height,
+    MTL::ResourceStorageModeShared
+  );
+  in->read_image(0, 0, 0, -1, spec.format, readBuffer->contents(), sizeof(uchar4));
+  in->close();
+  
+  /*
+   * Create a temporary texture as input to the texture converter shader. We just make this texture
+   * RGBA, since it's only used while loading we don't care about the extra memory use.
+   */
+  auto srcDesc = metal_utils::makeTextureDescriptor({
+    .width = uint32_t(spec.width),
+    .height = uint32_t(spec.height),
+    .format = MTL::PixelFormatRGBA8Unorm,
+  });
+  
+  auto srcTexture = m_device->newTexture(srcDesc);
+  srcTexture->replaceRegion(
+    MTL::Region(0, 0, 0, spec.width, spec.height, 1),
+    0,
+    readBuffer->contents(),
+    sizeof(uchar4) * spec.width
+  );
+  
+  /*
+   * Create the actual texture we're going to store. The pixel format here depends on usage.
+   */
+  auto [texturePixelFormat, textureChannels] = getAttributesForTexture(type);
+  auto desc = metal_utils::makeTextureDescriptor({
+    .width = uint32_t(spec.width),
+    .height = uint32_t(spec.height),
+    .format = texturePixelFormat,
+    .storageMode = MTL::StorageModePrivate,
+    .usage = MTL::TextureUsageShaderRead | MTL::TextureUsageShaderWrite,
+  });
+  auto texture = m_device->newTexture(desc);
+  
+  /*
+   * Run the texture converter shader to store the actual texture
+   */
+  auto threadsPerThreadgroup = MTL::Size(8, 8, 1);
+  auto threadgroups = MTL::Size(
+    (spec.width + threadsPerThreadgroup.width - 1) / threadsPerThreadgroup.width,
+    (spec.height + threadsPerThreadgroup.height - 1) / threadsPerThreadgroup.height,
+    1
+  );
+  
+  auto cmd = m_commandQueue->commandBuffer();
+  auto enc = cmd->computeCommandEncoder();
+  
+  enc->setComputePipelineState(m_textureConverterPso);
+  
+  const uint8_t nChannels = textureChannels.size();
+  enc->setBytes(textureChannels.data(), nChannels * sizeof(uint8_t), 0);
+  enc->setBytes(&nChannels, sizeof(uint8_t), 1);
+  enc->setBytes(&hasAlphaChannel, sizeof(bool), 2);
+  
+  enc->setTexture(srcTexture, 0);
+  enc->setTexture(texture, 1);
+  
+  enc->dispatchThreadgroups(threadgroups, threadsPerThreadgroup);
+  
+  enc->endEncoding();
+  cmd->commit();
+  
+  // Clean up temp resources
+  readBuffer->release();
+  srcTexture->release();
+  
+  /*
+   * Store the actual texture in our scene and return the ID so it can be set on the materials that
+   * use it, replacing the placeholder
+   */
+  return m_scene.addTexture(NS::TransferPtr(texture));
 }
 
 }
