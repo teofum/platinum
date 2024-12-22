@@ -59,6 +59,7 @@ public:
   struct TextureData {
     const MTL::Texture* texture = nullptr;
     TextureID textureId = 0;
+    const std::string& name;
   };
 
   struct InstanceData {
@@ -93,7 +94,7 @@ public:
   
   MaterialID addMaterial(const std::string_view& name, Material material);
   
-  TextureID addTexture(NS::SharedPtr<MTL::Texture> texture);
+  TextureID addTexture(const std::string_view& name, NS::SharedPtr<MTL::Texture> texture);
 
   void removeNode(NodeID id, int flags = 0);
 
@@ -164,6 +165,10 @@ public:
   [[nodiscard]] constexpr uint16_t textureUsers(TextureID id) {
     return m_textureRc.at(id);
   }
+  
+  [[nodiscard]] constexpr std::string& textureName(TextureID id) {
+    return m_textureNames.at(id);
+  }
 
   [[nodiscard]] float4x4 worldTransform(NodeID id) const;
 
@@ -195,7 +200,8 @@ private:
   ankerl::unordered_dense::map<CameraID, uint16_t> m_cameraRc; // Refcount
   
   ankerl::unordered_dense::map<TextureID, NS::SharedPtr<MTL::Texture>> m_textures;
-  ankerl::unordered_dense::map<TextureID, uint16_t> m_textureRc; // Refcount
+  ankerl::unordered_dense::map<TextureID, std::string> m_textureNames;
+  ankerl::unordered_dense::map<TextureID, uint16_t> m_textureRc; // TODO: refcount
 
   void traverseHierarchy(
     const std::function<void(NodeID id, const Node*, const float4x4&)>& cb,

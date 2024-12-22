@@ -202,13 +202,37 @@ void Properties::renderMaterialProperties(Scene::MaterialID id) {
   auto buttonWidth = ImGui::CalcItemWidth();
   ImGui::ColorEdit3("Base color", (float*) &material->baseColor, m_colorFlags, {buttonWidth, 0});
   
-  ImGui::SliderFloat("Roughness", &material->roughness, 0.0f, 1.0f);
-  ImGui::SliderFloat("Metallic", &material->metallic, 0.0f, 1.0f);
-  ImGui::SliderFloat("Transmission", &material->transmission, 0.0f, 1.0f);
-  ImGui::SliderFloat("IOR", &material->ior, 0.1f, 5.0f);
+  auto selectedName = material->baseTextureId == -1 ? "No texture" : m_store.scene().textureName(material->baseTextureId);
+  if (selectedName.empty()) selectedName = std::format("Texture [{}]", material->baseTextureId);
+  if (ImGui::BeginCombo("Base texture", selectedName.c_str())) {
+    if (widgets::comboItem("No texture", false)) {
+      material->baseTextureId = -1;
+    }
+    
+    auto allTextures = m_store.scene().getAllTextures();
+    if (!allTextures.empty()){
+      ImGui::Spacing();
+      ImGui::Separator();
+      ImGui::Spacing();
+    }
+    
+    for (const auto& td: allTextures) {
+      auto isSelected = material->baseTextureId == td.textureId;
+      auto name = td.name.empty() ? std::format("Texture [{}]", td.textureId) : td.name;
+      if (widgets::comboItem(name.c_str(), isSelected))
+        material->baseTextureId = td.textureId;
+    }
+    
+    ImGui::EndCombo();
+  }
+  
+  ImGui::DragFloat("Roughness", &material->roughness, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Metallic", &material->metallic, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Transmission", &material->transmission, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("IOR", &material->ior, 0.01f, 0.1f, 5.0f);
   
   float alpha = material->baseColor[3];
-  if (ImGui::SliderFloat("Alpha", &alpha, 0.0f, 1.0f)) {
+  if (ImGui::DragFloat("Alpha", &alpha, 0.01f, 0.0f, 1.0f)) {
     material->baseColor[3] = alpha;
     if (alpha > 0.0) {
       material->flags |= Material::Material_UseAlpha;
@@ -221,7 +245,7 @@ void Properties::renderMaterialProperties(Scene::MaterialID id) {
   
   auto emissionChanged = false;
   emissionChanged |= ImGui::ColorEdit3("Color", (float*) &material->emission, m_colorFlags, {buttonWidth, 0});
-  emissionChanged |= ImGui::DragFloat("Strength", &material->emissionStrength);
+  emissionChanged |= ImGui::DragFloat("Strength", &material->emissionStrength, 0.1f);
   if (emissionChanged) {
     if (length_squared(material->emission) > 0.0f && material->emissionStrength > 0.0f) {
       material->flags |= Material::Material_Emissive;
@@ -232,19 +256,19 @@ void Properties::renderMaterialProperties(Scene::MaterialID id) {
   
   ImGui::SeparatorText("Clearcoat");
   
-  ImGui::SliderFloat("Value", &material->clearcoat, 0.0f, 1.0f);
-  ImGui::SliderFloat("Roughness##CoatRoughness", &material->clearcoatRoughness, 0.0f, 1.0f);
+  ImGui::DragFloat("Value", &material->clearcoat, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Roughness##CoatRoughness", &material->clearcoatRoughness, 0.01f, 0.0f, 1.0f);
   
   ImGui::SeparatorText("Anisotropy");
   
-  if (ImGui::SliderFloat("Anisotropy", &material->anisotropy, 0.0f, 1.0f)) {
+  if (ImGui::DragFloat("Anisotropy", &material->anisotropy, 0.01f, 0.0f, 1.0f)) {
     if (material->anisotropy > 0.0f) {
       material->flags |= Material::Material_Anisotropic;
     } else {
       material->flags &= ~Material::Material_Anisotropic;
     }
   }
-  ImGui::SliderFloat("Rotation", &material->anisotropyRotation, 0.0f, 1.0f);
+  ImGui::DragFloat("Rotation", &material->anisotropyRotation, 0.01f, 0.0f, 1.0f);
   
   ImGui::SeparatorText("Additional properties");
   

@@ -515,7 +515,7 @@ Scene::TextureID GltfLoader::loadTexture(const fastgltf::Texture &gltfTex, Textu
    * Store the actual texture in our scene and return the ID so it can be set on the materials that
    * use it, replacing the placeholder
    */
-  return m_scene.addTexture(NS::TransferPtr(texture));
+  return m_scene.addTexture(gltfTex.name, NS::TransferPtr(texture));
 }
 
 }

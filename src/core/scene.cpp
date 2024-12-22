@@ -49,9 +49,10 @@ Scene::MaterialID Scene::addMaterial(const std::string_view& name, Material mate
   return id;
 }
 
-Scene::TextureID Scene::addTexture(NS::SharedPtr<MTL::Texture> texture) {
+Scene::TextureID Scene::addTexture(const std::string_view& name, NS::SharedPtr<MTL::Texture> texture) {
   TextureID id = m_nextTextureId++;
   m_textures[id] = texture;
+  m_textureNames[id] = std::string(name);
   while (m_textures.contains(m_nextTextureId)) m_nextTextureId++; // Find next unused ID
 
   return id;
@@ -188,9 +189,8 @@ std::vector<Scene::MaterialData> Scene::getAllMaterials() const {
   std::vector<MaterialData> materials;
   materials.reserve(m_materials.size());
 
-  for (const auto& material: m_materials) {
-    auto id = material.first;
-    materials.emplace_back(&material.second, id, m_materialNames.at(id));
+  for (const auto& [id, material]: m_materials) {
+    materials.emplace_back(&material, id, m_materialNames.at(id));
   }
 
   return materials;
@@ -234,8 +234,8 @@ std::vector<Scene::TextureData> Scene::getAllTextures() const {
   std::vector<TextureData> textures;
   textures.reserve(m_textures.size());
 
-  for (const auto& texture: m_textures) {
-    textures.emplace_back(texture.second.get(), texture.first);
+  for (const auto& [id, texture]: m_textures) {
+    textures.emplace_back(texture.get(), id, m_textureNames.at(id));
   }
 
   return textures;

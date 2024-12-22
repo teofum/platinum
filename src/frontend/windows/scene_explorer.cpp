@@ -287,7 +287,7 @@ void SceneExplorer::renderMeshesList() {
       );
     }
     
-    auto label = std::format("Mesh ({})", md.meshId);
+    auto label = std::format("Mesh [{}]", md.meshId);
     ImGui::TreeNodeEx(label.c_str(), flags);
     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
       m_state.selectMesh(md.meshId);
@@ -311,8 +311,7 @@ void SceneExplorer::renderMaterialsList() {
       );
     }
     
-    auto label = std::format("{}", md.name);
-    ImGui::TreeNodeEx(label.c_str(), flags);
+    ImGui::TreeNodeEx(md.name.c_str(), flags);
     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
       m_state.selectMaterial(md.materialId);
     }
@@ -322,7 +321,7 @@ void SceneExplorer::renderMaterialsList() {
 }
 
 void SceneExplorer::renderTexturesList() {
-  for (const auto& td: m_store.scene().getAllTextures()) {
+  for (const auto& td: m_store.scene().getAllTextures()) { 
     auto flags = m_baseFlags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
     
     bool selected = m_state.selectedTexture() == td.textureId;
@@ -335,8 +334,8 @@ void SceneExplorer::renderTexturesList() {
       );
     }
     
-    auto label = std::format("Texture ({})", td.textureId);
-    ImGui::TreeNodeEx(label.c_str(), flags);
+    auto name = td.name.empty() ? std::format("Texture [{}]", td.textureId) : td.name;
+    ImGui::TreeNodeEx(name.c_str(), flags);
     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
       m_state.selectTexture(td.textureId);
     }
