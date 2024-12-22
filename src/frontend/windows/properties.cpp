@@ -202,35 +202,16 @@ void Properties::renderMaterialProperties(Scene::MaterialID id) {
   auto buttonWidth = ImGui::CalcItemWidth();
   ImGui::ColorEdit3("Base color", (float*) &material->baseColor, m_colorFlags, {buttonWidth, 0});
   
-  auto selectedName = material->baseTextureId == -1 ? "No texture" : m_store.scene().textureName(material->baseTextureId);
-  if (selectedName.empty()) selectedName = std::format("Texture [{}]", material->baseTextureId);
-  if (ImGui::BeginCombo("Base texture", selectedName.c_str())) {
-    if (widgets::comboItem("No texture", false)) {
-      material->baseTextureId = -1;
-    }
-    
-    auto allTextures = m_store.scene().getAllTextures();
-    if (!allTextures.empty()){
-      ImGui::Spacing();
-      ImGui::Separator();
-      ImGui::Spacing();
-    }
-    
-    for (const auto& td: allTextures) {
-      auto isSelected = material->baseTextureId == td.textureId;
-      auto name = td.name.empty() ? std::format("Texture [{}]", td.textureId) : td.name;
-      if (widgets::comboItem(name.c_str(), isSelected))
-        material->baseTextureId = td.textureId;
-    }
-    
-    ImGui::EndCombo();
-  }
+  material->baseTextureId = textureSelect("Base texture", material->baseTextureId);
   
   ImGui::DragFloat("Roughness", &material->roughness, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Metallic", &material->metallic, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Transmission", &material->transmission, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("IOR", &material->ior, 0.01f, 0.1f, 5.0f);
   
+  material->rmTextureId = textureSelect("R/M texture", material->rmTextureId);
+  material->transmissionTextureId = textureSelect("Trm. texture", material->transmissionTextureId);
+    
   float alpha = material->baseColor[3];
   if (ImGui::DragFloat("Alpha", &alpha, 0.01f, 0.0f, 1.0f)) {
     material->baseColor[3] = alpha;
@@ -254,10 +235,14 @@ void Properties::renderMaterialProperties(Scene::MaterialID id) {
     }
   }
   
+  material->emissionTextureId = textureSelect("Texture##EmissionTexture", material->emissionTextureId);
+  
   ImGui::SeparatorText("Clearcoat");
   
   ImGui::DragFloat("Value", &material->clearcoat, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Roughness##CoatRoughness", &material->clearcoatRoughness, 0.01f, 0.0f, 1.0f);
+  
+  material->clearcoatTextureId = textureSelect("Texture##CoatTexture", material->clearcoatTextureId);
   
   ImGui::SeparatorText("Anisotropy");
   
@@ -314,6 +299,35 @@ void Properties::renderTextureProperties(Scene::TextureID id) {
   );
 
   ImGui::EndChild();
+}
+
+Scene::TextureID Properties::textureSelect(const char* label, Scene::TextureID selectedId) {
+  auto newId = selectedId;
+  auto selectedName = selectedId == -1 ? "No texture" : m_store.scene().textureName(selectedId);
+  if (selectedName.empty()) selectedName = std::format("Texture [{}]", selectedId);
+  if (ImGui::BeginCombo(label, selectedName.c_str())) {
+    if (widgets::comboItem("No texture", false)) {
+      newId = -1;
+    }
+    
+    auto allTextures = m_store.scene().getAllTextures();
+    if (!allTextures.empty()){
+      ImGui::Spacing();
+      ImGui::Separator();
+      ImGui::Spacing();
+    }
+    
+    for (const auto& td: allTextures) {
+      auto isSelected = selectedId == td.textureId;
+      auto name = td.name.empty() ? std::format("Texture [{}]", td.textureId) : td.name;
+      if (widgets::comboItem(name.c_str(), isSelected))
+        newId = td.textureId;
+    }
+    
+    ImGui::EndCombo();
+  }
+  
+  return newId;
 }
 
 }

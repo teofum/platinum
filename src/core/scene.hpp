@@ -19,7 +19,7 @@ public:
   using MeshID = uint16_t;
   using CameraID = uint16_t;
   using MaterialID = uint16_t;
-  using TextureID = uint16_t;
+  using TextureID = int32_t;
 
   enum NodeFlags {
     NodeFlags_None = 0,
