@@ -4,14 +4,26 @@
 #ifndef PLATINUM_PT_SHADER_DEFS_HPP
 #define PLATINUM_PT_SHADER_DEFS_HPP
 
+#ifdef __METAL_VERSION__
+#define metal_ptr(T, address_space) address_space T*
+#else
+#define metal_ptr(T, address_space) uint64_t
+#endif
+
 #include <simd/simd.h>
+
+#include "../core/mesh.hpp"
+#include "../core/material.hpp"
 
 using namespace simd;
 
 // Don't nest namespaces here, the MSL compiler complains it's a C++ 17 ext
-namespace pt { // NOLINT(*-concat-nested-namespaces)
+namespace pt {
 namespace shaders_pt {
 
+/*
+ * Argument buffer structs
+ */
 struct PrimitiveData {
   uint32_t indices[3];
 };
@@ -29,7 +41,7 @@ struct LightData {
   float area, power, cumulativePower;
   float3 emission;
   
-#ifdef METAL_SHADER
+#ifdef __METAL_VERSION__
   
   inline float pdf() const {
     return 1.0f / area;
@@ -52,6 +64,47 @@ struct Constants {
   uint2 size;
   CameraData camera;
 };
+
+struct VertexResource {
+  metal_ptr(float3, device) position;
+  metal_ptr(VertexData, device) data;
+};
+
+struct PrimitiveResource {
+  metal_ptr(uint32_t, device) materialSlot;
+};
+
+struct InstanceResource {
+  metal_ptr(Material, device) materials;
+};
+
+#ifndef __METAL_VERSION__
+
+struct Luts {
+  MTL::ResourceID E;
+  MTL::ResourceID Eavg;
+  MTL::ResourceID EMs;
+  MTL::ResourceID EavgMs;
+  MTL::ResourceID ETransIn;
+  MTL::ResourceID ETransOut;
+  MTL::ResourceID EavgTransIn;
+  MTL::ResourceID EavgTransOut;
+};
+
+struct Arguments {
+  Constants constants;
+  uint64_t vertexResources;
+  uint64_t primitiveResources;
+  uint64_t instanceResources;
+  uint64_t instances;
+  MTL::ResourceID accelStruct;
+  uint64_t lights;
+  uint64_t textures;
+  
+  Luts luts;
+};
+
+#endif
 
 }
 }

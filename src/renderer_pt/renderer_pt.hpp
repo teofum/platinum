@@ -105,6 +105,9 @@ private:
   MTL::Buffer* m_instanceResourcesBuffer = nullptr;
   std::vector<MTL::Buffer*> m_instanceMaterialBuffers;
   
+  MTL::Buffer* m_texturesBuffer = nullptr;
+  MTL::Buffer* m_argumentBuffer = nullptr;
+  
   // LUT textures
   struct LUTInfo {
     const char* filename;
@@ -143,6 +146,8 @@ private:
   void rebuildResourceBuffers();
 
   void rebuildAccelerationStructures();
+  
+  void rebuildArgumentBuffer();
 
   void rebuildRenderTargets();
   

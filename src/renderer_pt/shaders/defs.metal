@@ -3,13 +3,10 @@
 
 #include <metal_stdlib>
 
-// Header files use this guard to only include what the shader needs
-#define METAL_SHADER
-
-#include "../../core/material.hpp"
-#include "../pt_shader_defs.hpp"
-
 using namespace metal;
+using namespace raytracing;
+
+#include "../pt_shader_defs.hpp"
 using namespace pt::shaders_pt;
 
 /*
@@ -158,6 +155,23 @@ namespace bsdf {
     Lobe_Transparent,
     Lobe_Clearcoat,
   };
+    
+  struct ShadingContext {
+    float3 albedo;
+    float roughness;
+    float metallic;
+    float transmission;
+    float clearcoat;
+    float clearcoatRoughness;
+    float anisotropy;
+    float ior;
+    int flags;
+    float3 emission;
+    
+    MaterialLobe lobe = Lobe_Invalid;
+    
+    ShadingContext(device const pt::Material& mat);
+  };
       
   struct Sample {
     float3 wi;
@@ -165,7 +179,6 @@ namespace bsdf {
     float3 Le;
     float pdf;
     int flags = 0;
-    MaterialLobe lobe = Lobe_Invalid;
   };
   
   struct Eval {
@@ -173,37 +186,33 @@ namespace bsdf {
     float3 Le;
     float pdf = 1.0f;
   };
+    
+  /*
+   * Duplicate definition because Metal is stupid about textures in argument buffers
+   */
+  struct Luts {
+    texture2d<float> E;
+    texture1d<float> Eavg;
+    texture3d<float> EMs;
+    texture2d<float> EavgMs;
+    texture3d<float> ETransIn;
+    texture3d<float> ETransOut;
+    texture2d<float> EavgTransIn;
+    texture2d<float> EavgTransOut;
+  };
   
   class BSDF {
   public:
-    BSDF(
-      device const pt::Material& material,
-      thread const texture2d<float>& lutE,
-      thread const texture1d<float>& lutEavg,
-      thread const texture3d<float>& lutMsE,
-      thread const texture2d<float>& lutMsEavg,
-      thread const texture3d<float>& lutETransIn,
-      thread const texture3d<float>& lutETransOut,
-      thread const texture2d<float>& lutEavgTransIn,
-      thread const texture2d<float>& lutEavgTransOut,
-      constant const Constants& constants
-    );
+    BSDF(thread ShadingContext& ctx, constant Constants& constants, constant Luts& luts);
     
-    Eval eval(float3 wo, float3 wi, float2 uv, MaterialLobe lobe);
-    Sample sample(float3 wo, float2 uv, float4 r);
+    Eval eval(float3 wo, float3 wi);
+    Sample sample(float3 wo, float4 r);
     
   private:
-    device const pt::Material& m_material;
+    thread ShadingContext& m_ctx;
     GGX m_ggx, m_ggxCoat;
-    thread const texture2d<float>& m_lutE;
-    thread const texture1d<float>& m_lutEavg;
-    thread const texture3d<float>& m_lutMsE;
-    thread const texture2d<float>& m_lutMsEavg;
-    thread const texture3d<float>& m_lutETransIn;
-    thread const texture3d<float>& m_lutETransOut;
-    thread const texture2d<float>& m_lutEavgTransIn;
-    thread const texture2d<float>& m_lutEavgTransOut;
-    constant const Constants& m_constants;
+    constant Constants& m_constants;
+    constant Luts& m_luts;
     constant constexpr static float m_clearcoatIor = 1.5f;
     
     /*
@@ -214,9 +223,9 @@ namespace bsdf {
     __attribute__((always_inline))
     T multiscatter(float3 wo, float3 wi, T F_avg) {
       constexpr sampler s(address::clamp_to_edge, filter::linear);
-      const auto E_wo = m_lutE.sample(s, float2(wo.z, m_material.roughness)).r;
-      const auto E_wi = m_lutE.sample(s, float2(wi.z, m_material.roughness)).r;
-      const auto E_avg = m_lutEavg.sample(s, m_material.roughness).r;
+      const auto E_wo = m_luts.E.sample(s, float2(wo.z, m_ctx.roughness)).r;
+      const auto E_wi = m_luts.E.sample(s, float2(wi.z, m_ctx.roughness)).r;
+      const auto E_avg = m_luts.Eavg.sample(s, m_ctx.roughness).r;
       
       const auto brdf_ms = (1.0f - E_wo) * (1.0f - E_wi) / (M_PI_F * (1.0f - E_avg));
       const auto fresnel_ms = F_avg * F_avg * E_avg / (1.0f - F_avg * (1.0f - E_avg));
