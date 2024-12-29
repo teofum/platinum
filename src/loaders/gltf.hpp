@@ -45,8 +45,9 @@ public:
 
 private:
   enum class TextureType {
-    RGBA,
-    RGB,
+    Albedo,
+    Emission,
+    NormalMap,
     Mono,
     RoughnessMetallic,
   };

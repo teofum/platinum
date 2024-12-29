@@ -65,8 +65,9 @@ GltfLoader::GltfLoader(MTL::Device* device, MTL::CommandQueue* commandQueue, Sce
 
 std::pair<MTL::PixelFormat, std::vector<uint8_t>> GltfLoader::getAttributesForTexture(TextureType type) {
   switch (type) {
-    case TextureType::RGBA:
-    case TextureType::RGB:
+    case TextureType::Albedo:
+    case TextureType::Emission:
+    case TextureType::NormalMap:
       return std::make_pair(MTL::PixelFormatRGBA8Unorm, std::vector<uint8_t>{0, 1, 2, 3});
 
     case TextureType::Mono:
@@ -346,7 +347,7 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   if (gltfMat.pbrData.baseColorTexture) {
     uint16_t id = gltfMat.pbrData.baseColorTexture->textureIndex;
     material.baseTextureId = -2 - id; // Hacky way to encode non-ids, TODO: do something less shit
-    m_texturesToLoad[id] = TextureType::RGBA;
+    m_texturesToLoad[id] = TextureType::Albedo;
   }
   
   // Assign PBR parameters
@@ -382,7 +383,7 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   if (gltfMat.emissiveTexture) {
     uint16_t id = gltfMat.emissiveTexture->textureIndex;
     material.emissionTextureId = -2 - id;
-    m_texturesToLoad[id] = TextureType::RGB;
+    m_texturesToLoad[id] = TextureType::Emission;
   }
   
   // Assign additional parameters
@@ -455,7 +456,7 @@ Scene::TextureID GltfLoader::loadTexture(const fastgltf::Texture &gltfTex, Textu
   auto srcDesc = metal_utils::makeTextureDescriptor({
     .width = uint32_t(spec.width),
     .height = uint32_t(spec.height),
-    .format = MTL::PixelFormatRGBA8Unorm,
+    .format = type == TextureType::Albedo || type == TextureType::Emission ? MTL::PixelFormatRGBA8Unorm_sRGB : MTL::PixelFormatRGBA8Unorm,
   });
   
   auto srcTexture = m_device->newTexture(srcDesc);
