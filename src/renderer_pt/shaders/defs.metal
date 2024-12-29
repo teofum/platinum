@@ -170,7 +170,7 @@ namespace bsdf {
     
     MaterialLobe lobe = Lobe_Invalid;
     
-    ShadingContext(device const pt::Material& mat);
+    ShadingContext(device const pt::Material& mat, float2 uv, constant Texture* textures);
   };
       
   struct Sample {

@@ -432,7 +432,7 @@ void Renderer::rebuildResourceBuffers() {
     m_meshVertexPositionBuffers.push_back(md.mesh->vertexPositions());
     m_meshVertexDataBuffers.push_back(md.mesh->vertexData());
     m_meshMaterialIndexBuffers.push_back(md.mesh->materialIndices());
-    
+  
     idx++;
   }
   
@@ -492,6 +492,7 @@ void Renderer::rebuildResourceBuffers() {
    	sizeof(MTL::ResourceID) * texturePointers.size(),
    	MTL::ResourceStorageModeShared
  	);
+  memcpy(m_texturesBuffer->contents(), texturePointers.data(), sizeof(MTL::ResourceID) * texturePointers.size());
 }
 
 void Renderer::rebuildAccelerationStructures() {

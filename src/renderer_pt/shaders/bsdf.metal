@@ -9,7 +9,7 @@ using namespace metal;
  * Loosely based on Enterprise PBR and Blender's Principled BSDF
  */
 namespace bsdf {
-  ShadingContext::ShadingContext(device const pt::Material& mat) {
+  ShadingContext::ShadingContext(device const pt::Material& mat, float2 uv, constant Texture* textures) {
     albedo = mat.baseColor.rgb;
     emission = mat.emission * mat.emissionStrength;
     roughness = mat.roughness;
@@ -20,6 +20,17 @@ namespace bsdf {
     anisotropy = mat.anisotropy;
     ior = mat.ior;
     flags = mat.flags;
+    
+    constexpr sampler s(address::repeat, filter::linear);
+    if (mat.baseTextureId >= 0) albedo = textures[mat.baseTextureId].tex.sample(s, uv).rgb;
+    if (mat.emissionTextureId >= 0) emission *= textures[mat.emissionTextureId].tex.sample(s, uv).rgb;
+    if (mat.transmissionTextureId >= 0) transmission = textures[mat.transmissionTextureId].tex.sample(s, uv).r;
+    if (mat.clearcoatTextureId >= 0) clearcoat = textures[mat.clearcoatTextureId].tex.sample(s, uv).r;
+    if (mat.rmTextureId >= 0) {
+      float2 rm = textures[mat.rmTextureId].tex.sample(s, uv).rg;
+      roughness *= rm.x;
+      metallic *= rm.y;
+    }
   }
   
   /*

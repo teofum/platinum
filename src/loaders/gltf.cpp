@@ -132,11 +132,11 @@ void GltfLoader::load(const fs::path& path, int options) {
     // Replace the index with the real ID on any materials using the texture
     for (auto mid: m_materialIds) {
       auto* material = m_scene.material(mid);
-      if (material->baseTextureId == idx) material->baseTextureId = textureId;
-      if (material->rmTextureId == idx) material->rmTextureId = textureId;
-      if (material->transmissionTextureId == idx) material->transmissionTextureId = textureId;
-      if (material->emissionTextureId == idx) material->emissionTextureId = textureId;
-      if (material->clearcoatTextureId == idx) material->clearcoatTextureId = textureId;
+      if (material->baseTextureId == -2 - idx) material->baseTextureId = textureId;
+      if (material->rmTextureId == -2 - idx) material->rmTextureId = textureId;
+      if (material->transmissionTextureId == -2 - idx) material->transmissionTextureId = textureId;
+      if (material->emissionTextureId == -2 - idx) material->emissionTextureId = textureId;
+      if (material->clearcoatTextureId == -2 - idx) material->clearcoatTextureId = textureId;
     }
   }
 
@@ -345,7 +345,7 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   // Load base color texture
   if (gltfMat.pbrData.baseColorTexture) {
     uint16_t id = gltfMat.pbrData.baseColorTexture->textureIndex;
-    material.baseTextureId = id;
+    material.baseTextureId = -2 - id; // Hacky way to encode non-ids, TODO: do something less shit
     m_texturesToLoad[id] = TextureType::RGBA;
   }
   
@@ -356,7 +356,7 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   // Load roughness/metallic texture
   if (gltfMat.pbrData.metallicRoughnessTexture) {
     uint16_t id = gltfMat.pbrData.metallicRoughnessTexture->textureIndex;
-    material.rmTextureId = id;
+    material.rmTextureId = -2 - id;
     m_texturesToLoad[id] = TextureType::RoughnessMetallic;
   }
   
@@ -365,7 +365,7 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
     
     if (gltfMat.transmission->transmissionTexture) {
       uint16_t id = gltfMat.transmission->transmissionTexture->textureIndex;
-      material.transmissionTextureId = id;
+      material.transmissionTextureId = -2 - id;
       m_texturesToLoad[id] = TextureType::Mono;
     }
   }
@@ -381,7 +381,7 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   // Load emission texture
   if (gltfMat.emissiveTexture) {
     uint16_t id = gltfMat.emissiveTexture->textureIndex;
-    material.emissionTextureId = id;
+    material.emissionTextureId = -2 - id;
     m_texturesToLoad[id] = TextureType::RGB;
   }
   
@@ -402,7 +402,7 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
     
     if (gltfMat.clearcoat->clearcoatTexture) {
       uint16_t id = gltfMat.clearcoat->clearcoatTexture->textureIndex;
-      material.clearcoatTextureId = id;
+      material.clearcoatTextureId = -2 - id;
       m_texturesToLoad[id] = TextureType::Mono;
     }
   }

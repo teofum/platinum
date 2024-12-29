@@ -65,7 +65,8 @@ struct Hit {
   float3 pos;														// Hit position 						(world space)
   float3 normal;                        // Surface normal           (world space)
   float3 geometricNormal;								// Geometric (face) normal 	(world space)
-  float3 wo;														// Outgoing light direction (tangent space)
+  float2 uv;                            // Surface UVs at hit position
+  float3 wo;                            // Outgoing light direction (tangent space)
   Frame frame;													// Shading coordinate frame, Z-up normal aligned
   device const pt::Material* material;	// Material
 };
@@ -75,10 +76,10 @@ struct Hit {
  * This is essentially a parameter object to keep the getIntersectionData() function call short.
  */
 struct Resources {
-  const constant MTLAccelerationStructureInstanceDescriptor* instances;
-  const device void* vertexResources;
-  const device void* primitiveResources;
-  const device void* instanceResources;
+  constant MTLAccelerationStructureInstanceDescriptor* instances;
+  const device VertexResource* vertexResources;
+  const device PrimitiveResource* primitiveResources;
+  const device InstanceResource* instanceResources;
   
   inline device VertexResource& getVertices(uint32_t instanceIdx) {
     auto geometryIdx = instances[instanceIdx].accelerationStructureIndex;
@@ -106,24 +107,27 @@ struct Resources {
 	  auto instanceIdx = intersection.instance_id;
 	  auto geometryIdx = instances[instanceIdx].accelerationStructureIndex;
 	
-	  device auto& vertexResource = *(device VertexResource*)((device uint64_t*)vertexResources + geometryIdx * 2);
-	  device auto& primitiveResource = *(device PrimitiveResource*)((device uint64_t*)primitiveResources + geometryIdx);
-	  device auto& instanceResource = *(device InstanceResource*)((device uint64_t*)instanceResources + instanceIdx);
+    device auto& vertexResource = vertexResources[geometryIdx];
+	  device auto& primitiveResource = primitiveResources[geometryIdx];
+    device auto& instanceResource = instanceResources[instanceIdx];
+    
 	  device auto& data = *(device PrimitiveData*) intersection.primitive_data;
 	
-	  auto materialSlot = *primitiveResource.materialSlot;
+    auto materialSlot = primitiveResource.materialSlot[intersection.primitive_id];
 	  device const auto& material = instanceResource.materials[materialSlot];
 	
     float3 vertexPositions[3];
-	  float3 vertexNormals[3];
+    float3 vertexNormals[3];
+	  float2 vertexTexCoords[3];
 	  for (int i = 0; i < 3; i++) {
       vertexPositions[i] = vertexResource.position[data.indices[i]];
-	    vertexNormals[i] = vertexResource.data[data.indices[i]].normal;
-	    // TODO: Interpolate UVs
+      vertexNormals[i] = vertexResource.data[data.indices[i]].normal;
+      vertexTexCoords[i] = vertexResource.data[data.indices[i]].texCoords;
 	  }
 	
 	  float2 barycentricCoords = intersection.triangle_barycentric_coord;
-	  float3 surfaceNormal = interpolate(vertexNormals, barycentricCoords);
+    float3 surfaceNormal = interpolate(vertexNormals, barycentricCoords);
+    float2 surfaceUV = interpolate(vertexTexCoords, barycentricCoords);
     float3 geometricNormal = normalize(cross(vertexPositions[1] - vertexPositions[0], vertexPositions[2] - vertexPositions[0]));
 	
     float4x4 objectToWorld = getTransform(instanceIdx);
@@ -139,6 +143,7 @@ struct Resources {
 	    .pos      = wsHitPoint,
 	    .normal   = wsSurfaceNormal,
       .geometricNormal = wsGeometricNormal,
+      .uv				= surfaceUV,
 	    .wo       = wo,
       .frame		= frame,
 	    .material = &material,
@@ -241,7 +246,7 @@ kernel void pathtracingKernel(
                       samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 2),
                       samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 3));
       
-      bsdf::ShadingContext ctx(*hit.material);
+      bsdf::ShadingContext ctx(*hit.material, hit.uv, args.textures);
       auto bsdf = bsdf::BSDF(ctx, args.constants, args.luts);
       auto sample = bsdf.sample(hit.wo, r);
       
@@ -416,7 +421,7 @@ kernel void misKernel(
                       samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 2),
                       samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 3));
       
-      bsdf::ShadingContext ctx(*hit.material);
+      bsdf::ShadingContext ctx(*hit.material, hit.uv, args.textures);
       auto bsdf = bsdf::BSDF(ctx, args.constants, args.luts);
       auto sample = bsdf.sample(hit.wo, r);
       
