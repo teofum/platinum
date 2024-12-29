@@ -5,9 +5,21 @@
 #define PLATINUM_PT_SHADER_DEFS_HPP
 
 #ifdef __METAL_VERSION__
+#define metal_texture(n) texture ## n ## d<float>
+#else
+#define metal_texture(n) MTL::ResourceID
+#endif
+
+#ifdef __METAL_VERSION__
 #define metal_ptr(T, address_space) address_space T*
 #else
 #define metal_ptr(T, address_space) uint64_t
+#endif
+
+#ifdef __METAL_VERSION__
+#define metal_resource(T) T
+#else
+#define metal_resource(T) MTL::ResourceID
 #endif
 
 #include <simd/simd.h>
@@ -78,33 +90,37 @@ struct InstanceResource {
   metal_ptr(Material, device) materials;
 };
 
-#ifndef __METAL_VERSION__
-
 struct Luts {
-  MTL::ResourceID E;
-  MTL::ResourceID Eavg;
-  MTL::ResourceID EMs;
-  MTL::ResourceID EavgMs;
-  MTL::ResourceID ETransIn;
-  MTL::ResourceID ETransOut;
-  MTL::ResourceID EavgTransIn;
-  MTL::ResourceID EavgTransOut;
+  metal_texture(2) E;
+  metal_texture(1) Eavg;
+  metal_texture(3) EMs;
+  metal_texture(2) EavgMs;
+  metal_texture(3) ETransIn;
+  metal_texture(3) ETransOut;
+  metal_texture(2) EavgTransIn;
+  metal_texture(2) EavgTransOut;
 };
 
-struct Arguments {
-  Constants constants;
-  uint64_t vertexResources;
-  uint64_t primitiveResources;
-  uint64_t instanceResources;
-  uint64_t instances;
-  MTL::ResourceID accelStruct;
-  uint64_t lights;
-  uint64_t textures;
-  
-  Luts luts;
+#ifdef __METAL_VERSION__
+
+struct Texture {
+  texture2d<float> tex;
 };
 
 #endif
+
+struct Arguments {
+  Constants constants;
+  metal_ptr(VertexResource, device) vertexResources;
+  metal_ptr(PrimitiveResource, device) primitiveResources;
+  metal_ptr(InstanceResource, device) instanceResources;
+  metal_ptr(MTLAccelerationStructureInstanceDescriptor, constant) instances;
+  metal_resource(metal::raytracing::instance_acceleration_structure) accelStruct;
+  metal_ptr(LightData, constant) lights;
+  metal_ptr(Texture, constant) textures;
+  
+  Luts luts;
+};
 
 }
 }

@@ -5,34 +5,6 @@
 #define MAX_BOUNCES 50
 #define DIMS_PER_BOUNCE 8
 
-struct Luts {
-  texture2d<float> E;
-  texture1d<float> Eavg;
-  texture3d<float> EMs;
-  texture2d<float> EavgMs;
-  texture3d<float> ETransIn;
-  texture3d<float> ETransOut;
-  texture2d<float> EavgTransIn;
-  texture2d<float> EavgTransOut;
-};
-
-struct Texture {
-  texture2d<float> tex;
-};
-
-struct Arguments {
-  Constants constants;
-  device VertexResource* vertexResources;
-  device PrimitiveResource* primitiveResources;
-  device InstanceResource* instanceResources;
-  constant MTLAccelerationStructureInstanceDescriptor* instances;
-  instance_acceleration_structure accelStruct;
-  constant LightData* lights;
-  constant Texture* textures;
-  
-  Luts luts;
-};
-
 /*
  * Type definitions
  */
@@ -270,7 +242,7 @@ kernel void pathtracingKernel(
                       samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 3));
       
       bsdf::ShadingContext ctx(*hit.material);
-      auto bsdf = bsdf::BSDF(ctx, args.constants, (constant bsdf::Luts&) args.luts);
+      auto bsdf = bsdf::BSDF(ctx, args.constants, args.luts);
       auto sample = bsdf.sample(hit.wo, r);
       
       /*
@@ -445,7 +417,7 @@ kernel void misKernel(
                       samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 3));
       
       bsdf::ShadingContext ctx(*hit.material);
-      auto bsdf = bsdf::BSDF(ctx, args.constants, (constant bsdf::Luts&) args.luts);
+      auto bsdf = bsdf::BSDF(ctx, args.constants, args.luts);
       auto sample = bsdf.sample(hit.wo, r);
       
       /*

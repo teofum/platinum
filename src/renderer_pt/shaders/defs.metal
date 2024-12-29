@@ -186,20 +186,6 @@ namespace bsdf {
     float3 Le;
     float pdf = 1.0f;
   };
-    
-  /*
-   * Duplicate definition because Metal is stupid about textures in argument buffers
-   */
-  struct Luts {
-    texture2d<float> E;
-    texture1d<float> Eavg;
-    texture3d<float> EMs;
-    texture2d<float> EavgMs;
-    texture3d<float> ETransIn;
-    texture3d<float> ETransOut;
-    texture2d<float> EavgTransIn;
-    texture2d<float> EavgTransOut;
-  };
   
   class BSDF {
   public:
