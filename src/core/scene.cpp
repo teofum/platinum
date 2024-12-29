@@ -49,6 +49,15 @@ Scene::MaterialID Scene::addMaterial(const std::string_view& name, Material mate
   return id;
 }
 
+Scene::TextureID Scene::addTexture(const std::string_view& name, NS::SharedPtr<MTL::Texture> texture) {
+  TextureID id = m_nextTextureId++;
+  m_textures[id] = texture;
+  m_textureNames[id] = std::string(name);
+  while (m_textures.contains(m_nextTextureId)) m_nextTextureId++; // Find next unused ID
+
+  return id;
+}
+
 void Scene::removeNode(Scene::NodeID id, int flags) {
   if (id == 0) return; // Can't remove the root node
 
@@ -79,14 +88,14 @@ void Scene::removeNode(Scene::NodeID id, int flags) {
   // Decrease refcount of mesh/camera if present and handle orphaned objects
   if (removed->meshId) {
     const auto rc = --m_meshRc[removed->meshId.value()];
-    if (rc == 0 && (flags & RemoveOptions_RemoveOrphanedObjects)) {
+    if (rc == 0 && !(flags & RemoveOptions_KeepOrphanedObjects)) {
       m_meshes.erase(removed->meshId.value());
       m_nextMeshId = removed->meshId.value();
     }
   }
   if (removed->cameraId) {
     const auto rc = --m_cameraRc[removed->cameraId.value()];
-    if (rc == 0 && (flags & RemoveOptions_RemoveOrphanedObjects)) {
+    if (rc == 0 && !(flags & RemoveOptions_KeepOrphanedObjects)) {
       m_cameras.erase(removed->cameraId.value());
       m_nextCameraId = removed->cameraId.value();
     }
@@ -180,9 +189,8 @@ std::vector<Scene::MaterialData> Scene::getAllMaterials() const {
   std::vector<MaterialData> materials;
   materials.reserve(m_materials.size());
 
-  for (const auto& material: m_materials) {
-    auto id = material.first;
-    materials.emplace_back(&material.second, id, m_materialNames.at(id));
+  for (const auto& [id, material]: m_materials) {
+    materials.emplace_back(&material, id, m_materialNames.at(id));
   }
 
   return materials;
@@ -220,6 +228,17 @@ std::vector<Scene::CameraData> Scene::getAllCameras(int filter) const {
   );
 
   return cameras;
+}
+
+std::vector<Scene::TextureData> Scene::getAllTextures() const {
+  std::vector<TextureData> textures;
+  textures.reserve(m_textures.size());
+
+  for (const auto& [id, texture]: m_textures) {
+    textures.emplace_back(texture.get(), id, m_textureNames.at(id));
+  }
+
+  return textures;
 }
 
 void Scene::traverseHierarchy(

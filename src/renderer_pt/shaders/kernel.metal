@@ -1,20 +1,9 @@
 #include <metal_stdlib>
 
-// Header files use this guard to only include what the shader needs
-#define METAL_SHADER
-
-#include "../../core/mesh.hpp"
-#include "../../core/material.hpp"
-#include "../pt_shader_defs.hpp"
-
 #include "defs.metal"
 
 #define MAX_BOUNCES 50
 #define DIMS_PER_BOUNCE 8
-
-using namespace metal;
-using namespace raytracing;
-using namespace pt::shaders_pt;
 
 /*
  * Type definitions
@@ -24,24 +13,7 @@ using triangle_instance_intersection = typename intersector<triangle_data, insta
 /*
  * Constants
  */
-constant uint32_t resourcesStride [[function_constant(0)]];
 constant float3 backgroundColor(0.0);
-
-/*
- * Resource structs
- */
-struct VertexResource {
-  device float3* position;
-  device pt::VertexData* data;
-};
-
-struct PrimitiveResource {
-  device uint32_t* materialSlot;
-};
-
-struct InstanceResource {
-  device pt::Material* materials;
-};
 
 /*
  * Miscellaneous helper functions
@@ -93,7 +65,8 @@ struct Hit {
   float3 pos;														// Hit position 						(world space)
   float3 normal;                        // Surface normal           (world space)
   float3 geometricNormal;								// Geometric (face) normal 	(world space)
-  float3 wo;														// Outgoing light direction (tangent space)
+  float2 uv;                            // Surface UVs at hit position
+  float3 wo;                            // Outgoing light direction (tangent space)
   Frame frame;													// Shading coordinate frame, Z-up normal aligned
   device const pt::Material* material;	// Material
 };
@@ -103,10 +76,10 @@ struct Hit {
  * This is essentially a parameter object to keep the getIntersectionData() function call short.
  */
 struct Resources {
-  const constant MTLAccelerationStructureInstanceDescriptor* instances;
-  const device void* vertexResources;
-  const device void* primitiveResources;
-  const device void* instanceResources;
+  constant MTLAccelerationStructureInstanceDescriptor* instances;
+  const device VertexResource* vertexResources;
+  const device PrimitiveResource* primitiveResources;
+  const device InstanceResource* instanceResources;
   
   inline device VertexResource& getVertices(uint32_t instanceIdx) {
     auto geometryIdx = instances[instanceIdx].accelerationStructureIndex;
@@ -134,24 +107,27 @@ struct Resources {
 	  auto instanceIdx = intersection.instance_id;
 	  auto geometryIdx = instances[instanceIdx].accelerationStructureIndex;
 	
-	  device auto& vertexResource = *(device VertexResource*)((device uint64_t*)vertexResources + geometryIdx * 2);
-	  device auto& primitiveResource = *(device PrimitiveResource*)((device uint64_t*)primitiveResources + geometryIdx);
-	  device auto& instanceResource = *(device InstanceResource*)((device uint64_t*)instanceResources + instanceIdx);
+    device auto& vertexResource = vertexResources[geometryIdx];
+	  device auto& primitiveResource = primitiveResources[geometryIdx];
+    device auto& instanceResource = instanceResources[instanceIdx];
+    
 	  device auto& data = *(device PrimitiveData*) intersection.primitive_data;
 	
-	  auto materialSlot = *primitiveResource.materialSlot;
+    auto materialSlot = primitiveResource.materialSlot[intersection.primitive_id];
 	  device const auto& material = instanceResource.materials[materialSlot];
 	
     float3 vertexPositions[3];
-	  float3 vertexNormals[3];
+    float3 vertexNormals[3];
+	  float2 vertexTexCoords[3];
 	  for (int i = 0; i < 3; i++) {
       vertexPositions[i] = vertexResource.position[data.indices[i]];
-	    vertexNormals[i] = vertexResource.data[data.indices[i]].normal;
-	    // TODO: Interpolate UVs
+      vertexNormals[i] = vertexResource.data[data.indices[i]].normal;
+      vertexTexCoords[i] = vertexResource.data[data.indices[i]].texCoords;
 	  }
 	
 	  float2 barycentricCoords = intersection.triangle_barycentric_coord;
-	  float3 surfaceNormal = interpolate(vertexNormals, barycentricCoords);
+    float3 surfaceNormal = interpolate(vertexNormals, barycentricCoords);
+    float2 surfaceUV = interpolate(vertexTexCoords, barycentricCoords);
     float3 geometricNormal = normalize(cross(vertexPositions[1] - vertexPositions[0], vertexPositions[2] - vertexPositions[0]));
 	
     float4x4 objectToWorld = getTransform(instanceIdx);
@@ -167,6 +143,7 @@ struct Resources {
 	    .pos      = wsHitPoint,
 	    .normal   = wsSurfaceNormal,
       .geometricNormal = wsGeometricNormal,
+      .uv				= surfaceUV,
 	    .wo       = wo,
       .frame		= frame,
 	    .material = &material,
@@ -211,41 +188,29 @@ intersector<triangle_data, instancing> createTriangleIntersector() {
  */
 kernel void pathtracingKernel(
   uint2                                                 tid         				[[thread_position_in_grid]],
-  constant Constants&                                   constants   				[[buffer(0)]],
-  device void*                                          vertexResources     [[buffer(1)]],
-  device void*                                          primitiveResources 	[[buffer(2)]],
-  device void*                                          instanceResources 	[[buffer(3)]],
-  constant MTLAccelerationStructureInstanceDescriptor*  instances   				[[buffer(4)]],
-  instance_acceleration_structure                       accelStruct 				[[buffer(5)]],
+	constant Arguments&                                   args								[[buffer(0)]],
   texture2d<float>                                      src         				[[texture(0)]],
   texture2d<float, access::write>                       dst         				[[texture(1)]],
-  texture2d<uint32_t>                                   randomTex   				[[texture(2)]],
-  texture2d<float>                                      ggxLutE             [[texture(3)]],
-  texture1d<float>                                      ggxLutEavg          [[texture(4)]],
-  texture3d<float>                                      ggxLutMsE           [[texture(5)]],
-  texture2d<float>                                      ggxLutMsEavg        [[texture(6)]],
-  texture3d<float>                                      ggxLutETransIn      [[texture(7)]],
-  texture3d<float>                                      ggxLutETransOut     [[texture(8)]],
-  texture2d<float>                                      ggxLutEavgTransIn   [[texture(9)]],
-  texture2d<float>                                      ggxLutEavgTransOut  [[texture(10)]]
+  texture2d<uint32_t>                                   randomTex   				[[texture(2)]]
 ) {
-  if (tid.x < constants.size.x && tid.y < constants.size.y) {
-    constant CameraData& camera = constants.camera;
+  if (tid.x < args.constants.size.x && tid.y < args.constants.size.y) {
+    constant CameraData& camera = args.constants.camera;
     float2 pixel(tid.x, tid.y);
     uint32_t offset = randomTex.read(tid).x;
     
-    float2 r(samplers::halton(offset + constants.frameIdx, 0),
-             samplers::halton(offset + constants.frameIdx, 1));
+    uint32_t samplerOffset = offset + args.constants.frameIdx;
+    float2 r(samplers::halton(samplerOffset, 0),
+             samplers::halton(samplerOffset, 1));
     pixel += r;
     
     /*
      * Create the resources struct for extracting intersection data
      */
     Resources resources{
-      .instances = instances,
-      .vertexResources = vertexResources,
-      .primitiveResources = primitiveResources,
-      .instanceResources = instanceResources,
+      .instances = args.instances,
+      .vertexResources = args.vertexResources,
+      .primitiveResources = args.primitiveResources,
+      .instanceResources = args.instanceResources,
     };
     
     /*
@@ -261,7 +226,7 @@ kernel void pathtracingKernel(
     float3 attenuation(1.0);
     float3 L(0.0);
     for (int bounce = 0; bounce < MAX_BOUNCES; bounce++) {
-      intersection = i.intersect(ray, accelStruct);
+      intersection = i.intersect(ray, args.accelStruct);
       
       /*
        * Stop on ray miss
@@ -276,13 +241,14 @@ kernel void pathtracingKernel(
       /*
        * Sample the BSDF to get the next ray direction
        */
-      auto r = float4(samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 0),
-                      samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 1),
-                      samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 2),
-                      samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 3));
+      auto r = float4(samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 0),
+                      samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 1),
+                      samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 2),
+                      samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 3));
       
-      auto bsdf = bsdf::BSDF(*hit.material, ggxLutE, ggxLutEavg, ggxLutMsE, ggxLutMsEavg, ggxLutETransIn, ggxLutETransOut, ggxLutEavgTransIn, ggxLutEavgTransOut, constants);
-      auto sample = bsdf.sample(hit.wo, float2(0.0), r);
+      bsdf::ShadingContext ctx(*hit.material, hit.uv, args.textures);
+      auto bsdf = bsdf::BSDF(ctx, args.constants, args.luts);
+      auto sample = bsdf.sample(hit.wo, r);
       
       /*
        * Handle light hit
@@ -303,7 +269,7 @@ kernel void pathtracingKernel(
        */
       if (bounce > 0) {
         float q = max(0.0, 1.0 - max(attenuation.r, max(attenuation.g, attenuation.b)));
-        if (samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 4) < q) break;
+        if (samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 4) < q) break;
         attenuation /= 1.0 - q;
       }
       
@@ -317,11 +283,11 @@ kernel void pathtracingKernel(
     /*
      * Accumulate samples
      */
-    if (constants.frameIdx > 0) {
+    if (args.constants.frameIdx > 0) {
       float3 L_prev = src.read(tid).xyz;
       
-      L += L_prev * constants.frameIdx;
-      L /= (constants.frameIdx + 1);
+      L += L_prev * args.constants.frameIdx;
+      L /= (args.constants.frameIdx + 1);
     }
     
     dst.write(float4(L, 1.0f), tid);
@@ -395,42 +361,29 @@ LightSample sampleAreaLight(thread const Hit& hit, thread Resources& res, consta
  */
 kernel void misKernel(
   uint2                                                 tid                 [[thread_position_in_grid]],
-  constant Constants&                                   constants           [[buffer(0)]],
-  device void*                                          vertexResources     [[buffer(1)]],
-  device void*                                          primitiveResources  [[buffer(2)]],
-  device void*                                          instanceResources   [[buffer(3)]],
-  constant MTLAccelerationStructureInstanceDescriptor*  instances           [[buffer(4)]],
-  instance_acceleration_structure                       accelStruct         [[buffer(5)]],
-  constant LightData*                   								lights              [[buffer(6)]],
+  constant Arguments&                                   args           			[[buffer(0)]],
   texture2d<float>                                      src                 [[texture(0)]],
   texture2d<float, access::write>                       dst                 [[texture(1)]],
-  texture2d<uint32_t>                                   randomTex           [[texture(2)]],
-  texture2d<float>                                      ggxLutE             [[texture(3)]],
-  texture1d<float>																			ggxLutEavg					[[texture(4)]],
-  texture3d<float>                                      ggxLutMsE           [[texture(5)]],
-  texture2d<float>                                      ggxLutMsEavg        [[texture(6)]],
-  texture3d<float>                                      ggxLutETransIn      [[texture(7)]],
-  texture3d<float>                                      ggxLutETransOut     [[texture(8)]],
-  texture2d<float>                                      ggxLutEavgTransIn   [[texture(9)]],
-  texture2d<float>                                      ggxLutEavgTransOut  [[texture(10)]]
+  texture2d<uint32_t>                                   randomTex           [[texture(2)]]
 ) {
-  if (tid.x < constants.size.x && tid.y < constants.size.y) {
-    constant CameraData& camera = constants.camera;
+  if (tid.x < args.constants.size.x && tid.y < args.constants.size.y) {
+    constant CameraData& camera = args.constants.camera;
     float2 pixel(tid.x, tid.y);
     uint32_t offset = randomTex.read(tid).x;
     
-    float2 r(samplers::halton(offset + constants.frameIdx, 0),
-             samplers::halton(offset + constants.frameIdx, 1));
+    uint32_t samplerOffset = offset + args.constants.frameIdx;
+    float2 r(samplers::halton(samplerOffset, 0),
+             samplers::halton(samplerOffset, 1));
     pixel += r;
     
     /*
      * Create the resources struct for extracting intersection data
      */
     Resources resources{
-      .instances = instances,
-      .vertexResources = vertexResources,
-      .primitiveResources = primitiveResources,
-      .instanceResources = instanceResources,
+      .instances = args.instances,
+      .vertexResources = args.vertexResources,
+      .primitiveResources = args.primitiveResources,
+      .instanceResources = args.instanceResources,
     };
     
     /*
@@ -448,7 +401,7 @@ kernel void misKernel(
     Hit lastHit;
     bsdf::Sample lastSample;
     for (int bounce = 0; bounce < MAX_BOUNCES; bounce++) {
-      intersection = i.intersect(ray, accelStruct);
+      intersection = i.intersect(ray, args.accelStruct);
       
       /*
        * Stop on ray miss
@@ -463,13 +416,14 @@ kernel void misKernel(
       /*
        * Sample the BSDF to get the next ray direction
        */
-      auto r = float4(samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 0),
-                      samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 1),
-                      samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 2),
-                      samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 3));
+      auto r = float4(samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 0),
+                      samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 1),
+                      samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 2),
+                      samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 3));
       
-      auto bsdf = bsdf::BSDF(*hit.material, ggxLutE, ggxLutEavg, ggxLutMsE, ggxLutMsEavg, ggxLutETransIn, ggxLutETransOut, ggxLutEavgTransIn, ggxLutEavgTransOut, constants);
-      auto sample = bsdf.sample(hit.wo, float2(0.0), r);
+      bsdf::ShadingContext ctx(*hit.material, hit.uv, args.textures);
+      auto bsdf = bsdf::BSDF(ctx, args.constants, args.luts);
+      auto sample = bsdf.sample(hit.wo, r);
       
       /*
        * Handle light hit
@@ -481,7 +435,7 @@ kernel void misKernel(
           // Calculate light PDF, BSDF weight and do MIS.
           // Sampling pdf is 1 / area, light sample pdf is power / totalPower
           // Because power = Le * pi * area, the areas cancel each other out and we can simplify
-          const float lightPdf = (dot(sample.Le, float3(0, 1, 0)) * M_PI_F / constants.totalLightPower)
+          const float lightPdf = (dot(sample.Le, float3(0, 1, 0)) * M_PI_F / args.constants.totalLightPower)
                                 * length_squared(lastHit.pos - hit.pos)
           											/ abs(dot(ray.direction, hit.geometricNormal));
           const float bsdfWeight = lastSample.pdf / (lastSample.pdf + lightPdf);
@@ -498,23 +452,23 @@ kernel void misKernel(
       /*
        * Calculate direct lighting contribution
        */
-      if (!(sample.flags & (bsdf::Sample_Emitted | bsdf::Sample_Specular)) && constants.lightCount > 0) {
-        auto r = float3(samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 4),
-                        samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 5),
-                        samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 6));
+      if (!(sample.flags & (bsdf::Sample_Emitted | bsdf::Sample_Specular)) && args.constants.lightCount > 0) {
+        auto r = float3(samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 4),
+                        samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 5),
+                        samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 6));
         
-        const constant auto& light = sampleLightPower(lights, constants, r.z);
-        const float pLight = light.power / constants.totalLightPower; // Probability of sampling this light
+        const constant auto& light = sampleLightPower(args.lights, args.constants, r.z);
+        const float pLight = light.power / args.constants.totalLightPower; // Probability of sampling this light
         
         const auto lightSample = sampleAreaLight(hit, resources, light, r.xy);
         const float3 wi = hit.frame.worldToLocal(lightSample.wi);
-        const auto bsdfEval = bsdf.eval(hit.wo, wi, float2(0.0), sample.lobe);
+        const auto bsdfEval = bsdf.eval(hit.wo, wi);
         
         if (length_squared(bsdfEval.f) > 0.0f) {
           ray.direction = lightSample.wi;
           ray.max_distance = length(lightSample.pos - hit.pos) - 1e-3f;
           i.accept_any_intersection(true);
-          intersection = i.intersect(ray, accelStruct);
+          intersection = i.intersect(ray, args.accelStruct);
           auto occluded = intersection.type != intersection_type::none;
           i.accept_any_intersection(false);
           
@@ -542,7 +496,7 @@ kernel void misKernel(
        */
       if (bounce > 0) {
         float q = max(0.0, 1.0 - max(attenuation.r, max(attenuation.g, attenuation.b)));
-        if (samplers::halton(offset + constants.frameIdx, 2 + bounce * DIMS_PER_BOUNCE + 7) < q) break;
+        if (samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 7) < q) break;
         attenuation /= 1.0 - q;
       }
       
@@ -558,11 +512,11 @@ kernel void misKernel(
     /*
      * Accumulate samples
      */
-    if (constants.frameIdx > 0) {
+    if (args.constants.frameIdx > 0) {
       float3 L_prev = src.read(tid).xyz;
       
-      L += L_prev * constants.frameIdx;
-      L /= (constants.frameIdx + 1);
+      L += L_prev * args.constants.frameIdx;
+      L /= (args.constants.frameIdx + 1);
     }
     
     dst.write(float4(L, 1.0f), tid);

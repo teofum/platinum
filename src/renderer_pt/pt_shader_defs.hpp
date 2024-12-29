@@ -4,14 +4,38 @@
 #ifndef PLATINUM_PT_SHADER_DEFS_HPP
 #define PLATINUM_PT_SHADER_DEFS_HPP
 
+#ifdef __METAL_VERSION__
+#define metal_texture(n) texture ## n ## d<float>
+#else
+#define metal_texture(n) MTL::ResourceID
+#endif
+
+#ifdef __METAL_VERSION__
+#define metal_ptr(T, address_space) address_space T*
+#else
+#define metal_ptr(T, address_space) uint64_t
+#endif
+
+#ifdef __METAL_VERSION__
+#define metal_resource(T) T
+#else
+#define metal_resource(T) MTL::ResourceID
+#endif
+
 #include <simd/simd.h>
+
+#include "../core/mesh.hpp"
+#include "../core/material.hpp"
 
 using namespace simd;
 
 // Don't nest namespaces here, the MSL compiler complains it's a C++ 17 ext
-namespace pt { // NOLINT(*-concat-nested-namespaces)
+namespace pt {
 namespace shaders_pt {
 
+/*
+ * Argument buffer structs
+ */
 struct PrimitiveData {
   uint32_t indices[3];
 };
@@ -29,7 +53,7 @@ struct LightData {
   float area, power, cumulativePower;
   float3 emission;
   
-#ifdef METAL_SHADER
+#ifdef __METAL_VERSION__
   
   inline float pdf() const {
     return 1.0f / area;
@@ -51,6 +75,51 @@ struct Constants {
   float totalLightPower;
   uint2 size;
   CameraData camera;
+};
+
+struct VertexResource {
+  metal_ptr(float3, device) position;
+  metal_ptr(VertexData, device) data;
+};
+
+struct PrimitiveResource {
+  metal_ptr(uint32_t, device) materialSlot;
+};
+
+struct InstanceResource {
+  metal_ptr(Material, device) materials;
+};
+
+struct Luts {
+  metal_texture(2) E;
+  metal_texture(1) Eavg;
+  metal_texture(3) EMs;
+  metal_texture(2) EavgMs;
+  metal_texture(3) ETransIn;
+  metal_texture(3) ETransOut;
+  metal_texture(2) EavgTransIn;
+  metal_texture(2) EavgTransOut;
+};
+
+#ifdef __METAL_VERSION__
+
+struct Texture {
+  texture2d<float> tex;
+};
+
+#endif
+
+struct Arguments {
+  Constants constants;
+  metal_ptr(VertexResource, device) vertexResources;
+  metal_ptr(PrimitiveResource, device) primitiveResources;
+  metal_ptr(InstanceResource, device) instanceResources;
+  metal_ptr(MTLAccelerationStructureInstanceDescriptor, constant) instances;
+  metal_resource(metal::raytracing::instance_acceleration_structure) accelStruct;
+  metal_ptr(LightData, constant) lights;
+  metal_ptr(Texture, constant) textures;
+  
+  Luts luts;
 };
 
 }

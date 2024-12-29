@@ -11,12 +11,13 @@ Store::Store() noexcept {
 
 Store::~Store() {
   m_device->release();
+  m_commandQueue->release();
 }
 
 void Store::importGltf() {
   const auto gltfPath = utils::fileOpen("../assets", "gltf,glb");
   if (gltfPath) {
-    loaders::gltf::GltfLoader gltf(m_device, *m_scene);
+    loaders::gltf::GltfLoader gltf(m_device, m_commandQueue, *m_scene);
     gltf.load(gltfPath.value());
   }
 }

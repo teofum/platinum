@@ -1,7 +1,7 @@
 #ifndef PLATINUM_MESH_HPP
 #define PLATINUM_MESH_HPP
 
-#ifndef METAL_SHADER
+#ifndef __METAL_VERSION__
 
 #include <vector>
 #include <Metal/Metal.hpp>
@@ -20,7 +20,7 @@ struct VertexData {
   float2 texCoords;
 };
 
-#ifndef METAL_SHADER
+#ifndef __METAL_VERSION__
 
 class Mesh {
 public:

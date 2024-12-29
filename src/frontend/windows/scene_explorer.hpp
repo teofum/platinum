@@ -21,13 +21,17 @@ public:
 private:
   enum Mode {
     Mode_Hierarchy = 0,
+    Mode_Meshes,
     Mode_Materials,
+    Mode_Textures,
   };
   
-  static constexpr const uint32_t m_modeCount = 2;
+  static constexpr const uint32_t m_modeCount = 4;
   static constexpr const char* m_modeNames[m_modeCount] = {
     "Hierarchy",
+    "Meshes",
     "Materials",
+    "Textures",
   };
   uint32_t m_mode = Mode_Hierarchy;
   
@@ -37,7 +41,11 @@ private:
   
   void renderNode(Scene::NodeID id, uint32_t level = 1);
   
+  void renderMeshesList();
+  
   void renderMaterialsList();
+  
+  void renderTexturesList();
 };
 
 }

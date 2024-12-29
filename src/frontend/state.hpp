@@ -33,6 +33,10 @@ public:
   [[nodiscard]] constexpr std::optional<Scene::MaterialID> selectedMaterial() const {
     return m_selectedMaterialId;
   }
+  
+  [[nodiscard]] constexpr std::optional<Scene::TextureID> selectedTexture() const {
+    return m_selectedTextureId;
+  }
 
   [[nodiscard]] constexpr int* removeOptions() {
     return &m_removeOptions;
@@ -43,6 +47,7 @@ public:
     m_nextMeshId = std::nullopt;
     m_nextCameraId = std::nullopt;
     m_nextMaterialId = std::nullopt;
+    m_nextTextureId = std::nullopt;
   }
 
   constexpr void selectMesh(std::optional<Scene::MeshID> id) {
@@ -50,6 +55,7 @@ public:
     m_nextMeshId = id;
     m_nextCameraId = std::nullopt;
     m_nextMaterialId = std::nullopt;
+    m_nextTextureId = std::nullopt;
   }
 
   constexpr void selectCamera(std::optional<Scene::CameraID> id) {
@@ -57,6 +63,7 @@ public:
     m_nextMeshId = std::nullopt;
     m_nextCameraId = id;
     m_nextMaterialId = std::nullopt;
+    m_nextTextureId = std::nullopt;
   }
   
   constexpr void selectMaterial(std::optional<Scene::MaterialID> id) {
@@ -64,6 +71,15 @@ public:
     m_nextMeshId = std::nullopt;
     m_nextCameraId = std::nullopt;
     m_nextMaterialId = id;
+    m_nextTextureId = std::nullopt;
+  }
+  
+  constexpr void selectTexture(std::optional<Scene::TextureID> id) {
+    m_nextNodeId = std::nullopt;
+    m_nextMeshId = std::nullopt;
+    m_nextCameraId = std::nullopt;
+    m_nextMaterialId = std::nullopt;
+    m_nextTextureId = id;
   }
 
   constexpr void setNodeAction(NodeAction action, Scene::NodeID id) {
@@ -103,6 +119,7 @@ private:
   std::optional<Scene::MeshID> m_selectedMeshId, m_nextMeshId;
   std::optional<Scene::CameraID> m_selectedCameraId, m_nextCameraId;
   std::optional<Scene::MaterialID> m_selectedMaterialId, m_nextMaterialId;
+  std::optional<Scene::TextureID> m_selectedTextureId, m_nextTextureId;
 
   int m_nodeAction = NodeAction_None;
   int m_removeOptions = 0;

@@ -15,17 +15,17 @@ struct Material {
     Material_Anisotropic = 1 << 3,
   };
   
-  float4 baseColor;
+  float4 baseColor = {0.8, 0.8, 0.8, 1.0};
   float3 emission;
   float emissionStrength = 0.0f;
   float roughness = 1.0f, metallic = 0.0f, transmission = 0.0f;
   float ior = 1.5f;
   float anisotropy = 0.0f, anisotropyRotation = 0.0f;
-  float clearcoat = 0.0f, clearcoatRoughness = 0.03f;
+  float clearcoat = 0.0f, clearcoatRoughness = 0.05f;
   
   int flags = 0;
   
-  uint16_t baseTextureId, rmtcTextureId, emissionTextureId;
+  int32_t baseTextureId = -1, rmTextureId = -1, transmissionTextureId = -1, clearcoatTextureId = -1, emissionTextureId = -1;
 };
 
 }

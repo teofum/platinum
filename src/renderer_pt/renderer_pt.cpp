@@ -41,12 +41,10 @@ void Renderer::render() {
   auto cmd = m_commandQueue->commandBuffer();
 
   /*
-   * Update frame index and write constants buffer
+   * Update frame index
    */
-  m_constants.frameIdx = (uint32_t) m_accumulatedFrames;
-  m_constantsOffset = (m_frameIdx % m_maxFramesInFlight) * m_constantsStride;
-  void* bufferWrite = (char*) m_constantsBuffer->contents() + m_constantsOffset;
-  memcpy(bufferWrite, &m_constants, m_constantsSize);
+  auto arguments = static_cast<shaders_pt::Arguments*>(m_argumentBuffer->contents());
+  arguments->constants.frameIdx = (uint32_t) m_accumulatedFrames;
 
   /*
    * If rendering the scene, run the path tracing kernel to accumulate samples
@@ -62,20 +60,26 @@ void Renderer::render() {
 
     auto computeEnc = cmd->computeCommandEncoder();
 
-    computeEnc->setBuffer(m_constantsBuffer, m_constantsOffset, 0);
-    computeEnc->setBuffer(m_vertexResourcesBuffer, 0, 1);
-    computeEnc->setBuffer(m_primitiveResourcesBuffer, 0, 2);
-    computeEnc->setBuffer(m_instanceResourcesBuffer, 0, 3);
-    computeEnc->setBuffer(m_instanceBuffer, 0, 4);
-    computeEnc->setAccelerationStructure(m_instanceAccelStruct, 5);
-    computeEnc->setBuffer(m_lightDataBuffer, 0, 6); 
-
+    computeEnc->setBuffer(m_argumentBuffer, 0, 0);
+    
     computeEnc->setTexture(m_accumulator[0], 0);
     computeEnc->setTexture(m_accumulator[1], 1);
     computeEnc->setTexture(m_randomSource, 2);
     
+    /*
+     * Use resources
+     * TODO: clean this up using residency sets
+     */
+    computeEnc->useResource(m_vertexResourcesBuffer, MTL::ResourceUsageRead);
+    computeEnc->useResource(m_primitiveResourcesBuffer, MTL::ResourceUsageRead);
+    computeEnc->useResource(m_instanceResourcesBuffer, MTL::ResourceUsageRead);
+    computeEnc->useResource(m_instanceBuffer, MTL::ResourceUsageRead);
+    computeEnc->useResource(m_instanceAccelStruct, MTL::ResourceUsageRead);
+    computeEnc->useResource(m_lightDataBuffer, MTL::ResourceUsageRead);
+    computeEnc->useResource(m_texturesBuffer, MTL::ResourceUsageRead);
+    
     for (uint32_t i = 0; i < m_luts.size(); i++) {
-      computeEnc->setTexture(m_luts[i], 3 + i);
+      computeEnc->useResource(m_luts[i], MTL::ResourceUsageRead);
     }
 
     for (uint32_t i = 0; i < m_meshAccelStructs->count(); i++) {
@@ -99,6 +103,10 @@ void Renderer::render() {
     
     for (auto instanceMaterialBuffer: m_instanceMaterialBuffers) {
       computeEnc->useResource(instanceMaterialBuffer, MTL::ResourceUsageRead);
+    }
+    
+    for (const auto& texture: m_store.scene().getAllTextures()) {
+      computeEnc->useResource(texture.texture, MTL::ResourceUsageRead);
     }
 
     computeEnc->setComputePipelineState(m_pathtracingPipelines[m_selectedPipeline]);
@@ -149,6 +157,7 @@ void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint
   rebuildResourceBuffers();
   rebuildAccelerationStructures();
   updateConstants(cameraNodeId, flags);
+  rebuildArgumentBuffer();
 
   m_accumulatedFrames = 0;
   m_accumulationFrames = sampleCount;
@@ -392,6 +401,8 @@ void Renderer::rebuildResourceBuffers() {
   if (m_instanceResourcesBuffer != nullptr) m_instanceResourcesBuffer->release();
   for (MTL::Buffer* buffer: m_instanceMaterialBuffers) buffer->release();
   m_instanceMaterialBuffers.clear();
+  
+  if (m_texturesBuffer != nullptr) m_texturesBuffer->release();
 
   /*
    * Create vertex resources buffer, pointing to each mesh's vertex data buffer
@@ -421,7 +432,7 @@ void Renderer::rebuildResourceBuffers() {
     m_meshVertexPositionBuffers.push_back(md.mesh->vertexPositions());
     m_meshVertexDataBuffers.push_back(md.mesh->vertexData());
     m_meshMaterialIndexBuffers.push_back(md.mesh->materialIndices());
-    
+  
     idx++;
   }
   
@@ -458,6 +469,30 @@ void Renderer::rebuildResourceBuffers() {
     
     m_instanceMaterialBuffers.push_back(materialsBuffer);
   }
+  
+  /*
+   * Create texture resource buffer, pointing to each scene texture. To avoid needing an ID-index
+   * mapping, we simply make the indices in this buffer match the IDs and assume there won't be big
+   * gaps in texture IDs, which because of the way they are assigned should be the case.
+   * Right now we include all textures, even unused ones.
+   * TODO: figure out if there's even any perf benefit to including only textures that are used.
+   */
+  auto textures = m_store.scene().getAllTextures();
+  std::vector<MTL::ResourceID> texturePointers;
+  
+  for (const auto& texture: textures) {
+    if (texturePointers.size() < texture.textureId + 1){
+      texturePointers.resize(texture.textureId + 1, MTL::ResourceID(0ull));
+    }
+    
+    texturePointers[texture.textureId] = texture.texture->gpuResourceID();
+  }
+  
+  m_texturesBuffer = m_device->newBuffer(
+   	sizeof(MTL::ResourceID) * texturePointers.size(),
+   	MTL::ResourceStorageModeShared
+ 	);
+  memcpy(m_texturesBuffer->contents(), texturePointers.data(), sizeof(MTL::ResourceID) * texturePointers.size());
 }
 
 void Renderer::rebuildAccelerationStructures() {
@@ -532,6 +567,41 @@ void Renderer::rebuildAccelerationStructures() {
   instanceAccelDesc->setInstanceDescriptorBuffer(m_instanceBuffer);
 
   m_instanceAccelStruct = makeAccelStruct(instanceAccelDesc);
+}
+
+void Renderer::rebuildArgumentBuffer() {
+  /*
+   * Create the arguments buffer if it doesn't exist
+   */
+  if (m_argumentBuffer == nullptr) {
+    m_argumentBuffer = m_device->newBuffer(
+		  sizeof(shaders_pt::Arguments),
+		  MTL::ResourceStorageModeShared
+		);
+  }
+  
+  /*
+   * Get a handle to the argument buffer as a struct and fill in the args
+   */
+  auto arguments = static_cast<shaders_pt::Arguments*>(m_argumentBuffer->contents());
+  arguments->constants = m_constants;
+  arguments->vertexResources = m_vertexResourcesBuffer->gpuAddress();
+  arguments->primitiveResources = m_primitiveResourcesBuffer->gpuAddress();
+  arguments->instanceResources = m_instanceResourcesBuffer->gpuAddress();
+  arguments->instances = m_instanceBuffer->gpuAddress();
+  arguments->accelStruct = m_instanceAccelStruct->gpuResourceID();
+  arguments->lights = m_lightDataBuffer->gpuAddress();
+  arguments->textures = m_texturesBuffer->gpuAddress();
+  
+  // GGX Multiscatter LUTs
+  arguments->luts.E 						= m_luts[0]->gpuResourceID();
+  arguments->luts.Eavg 					= m_luts[1]->gpuResourceID();
+  arguments->luts.EMs 					= m_luts[2]->gpuResourceID();
+  arguments->luts.EavgMs 				= m_luts[3]->gpuResourceID();
+  arguments->luts.ETransIn 			= m_luts[4]->gpuResourceID();
+  arguments->luts.ETransOut 		= m_luts[5]->gpuResourceID();
+  arguments->luts.EavgTransIn 	= m_luts[6]->gpuResourceID();
+  arguments->luts.EavgTransOut 	= m_luts[7]->gpuResourceID();
 }
 
 void Renderer::rebuildRenderTargets() {
