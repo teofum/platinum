@@ -167,6 +167,7 @@
 				imgui/imgui_widgets.cpp,
 				imgui/imgui.cpp,
 				imgui/misc/cpp/imgui_stdlib.cpp,
+				mikkt/mikktspace.c,
 				nfd/libnfd,
 			);
 			target = AB5133BF2CFB7108005738C1 /* platinum */;

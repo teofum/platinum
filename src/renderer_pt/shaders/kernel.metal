@@ -41,10 +41,19 @@ struct Frame {
   float3 x, y, z;
   
   static Frame fromNormal(float3 n) {
-    const auto a = abs(n.x) > 0.5 ? float3(0, 0, 1) : float3(1, 0, 0);
+    float3 a = abs(n.x) > 0.5 ? float3(0, 0, 1) : float3(1, 0, 0);
     
-    const auto b = normalize(cross(n, a));
-    const auto t = cross(n, b);
+    float3 b = normalize(cross(n, a));
+    float3 t = cross(n, b);
+    
+    return {t, b, n};
+  }
+  
+  static Frame fromNT(float3 n, float3 t, float sign = 1.0) {
+    if (abs(dot(n, t)) > 0.9) return fromNormal(n);
+
+    float3 b = normalize(cross(n, t)) * sign;
+    t = cross(b, n);
     
     return {t, b, n};
   }
@@ -119,15 +128,19 @@ struct Resources {
 	
     float3 vertexPositions[3];
     float3 vertexNormals[3];
+    float3 vertexTangents[3];
 	  float2 vertexTexCoords[3];
-	  for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {
       vertexPositions[i] = vertexResource.position[data.indices[i]];
       vertexNormals[i] = vertexResource.data[data.indices[i]].normal;
+      vertexTangents[i] = vertexResource.data[data.indices[i]].tangent.xyz;
       vertexTexCoords[i] = vertexResource.data[data.indices[i]].texCoords;
-	  }
+    }
+    float tangentSign = vertexResource.data[data.indices[0]].tangent.w;
 	
 	  float2 barycentricCoords = intersection.triangle_barycentric_coord;
     float3 surfaceNormal = interpolate(vertexNormals, barycentricCoords);
+    float3 surfaceTangent = interpolate(vertexTangents, barycentricCoords);
     float2 surfaceUV = interpolate(vertexTexCoords, barycentricCoords);
     float3 geometricNormal = normalize(cross(vertexPositions[1] - vertexPositions[0], vertexPositions[2] - vertexPositions[0]));
 	
@@ -135,13 +148,14 @@ struct Resources {
 	
 	  float3 wsHitPoint = ray.origin + ray.direction * intersection.distance;
     float3 wsSurfaceNormal = normalize(transformVec(surfaceNormal, objectToWorld));
+    float3 wsSurfaceTangent = normalize(transformVec(surfaceTangent, objectToWorld));
     float3 wsGeometricNormal = normalize(transformVec(geometricNormal, objectToWorld));
 	
-	  auto frame = Frame::fromNormal(wsSurfaceNormal);
+    auto frame = Frame::fromNT(wsSurfaceNormal, wsSurfaceTangent, tangentSign);
     
     if (material.normalTextureId >= 0) {
       constexpr sampler s(address::repeat, filter::linear);
-      float3 sampledNormal = textures[material.normalTextureId].tex.sample(s, surfaceUV).rgb;
+      float3 sampledNormal = textures[material.normalTextureId].tex.sample(s, surfaceUV).rgb * 2.0 - 1.0;
       
       wsSurfaceNormal = frame.localToWorld(sampledNormal);
       frame = Frame::fromNormal(wsSurfaceNormal);
