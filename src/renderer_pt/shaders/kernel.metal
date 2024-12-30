@@ -80,6 +80,7 @@ struct Resources {
   const device VertexResource* vertexResources;
   const device PrimitiveResource* primitiveResources;
   const device InstanceResource* instanceResources;
+  constant Texture* textures;
   
   inline device VertexResource& getVertices(uint32_t instanceIdx) {
     auto geometryIdx = instances[instanceIdx].accelerationStructureIndex;
@@ -137,6 +138,15 @@ struct Resources {
     float3 wsGeometricNormal = normalize(transformVec(geometricNormal, objectToWorld));
 	
 	  auto frame = Frame::fromNormal(wsSurfaceNormal);
+    
+    if (material.normalTextureId >= 0) {
+      constexpr sampler s(address::repeat, filter::linear);
+      float3 sampledNormal = textures[material.normalTextureId].tex.sample(s, surfaceUV).rgb;
+      
+      wsSurfaceNormal = frame.localToWorld(sampledNormal);
+      frame = Frame::fromNormal(wsSurfaceNormal);
+    }
+    
 	  auto wo = frame.worldToLocal(-ray.direction);
 	
 	  return {
@@ -211,6 +221,7 @@ kernel void pathtracingKernel(
       .vertexResources = args.vertexResources,
       .primitiveResources = args.primitiveResources,
       .instanceResources = args.instanceResources,
+      .textures = args.textures,
     };
     
     /*
@@ -384,6 +395,7 @@ kernel void misKernel(
       .vertexResources = args.vertexResources,
       .primitiveResources = args.primitiveResources,
       .instanceResources = args.instanceResources,
+      .textures = args.textures,
     };
     
     /*
