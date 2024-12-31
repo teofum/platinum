@@ -187,6 +187,8 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
   std::vector<VertexData> primitiveVertexData;
   std::vector<uint32_t> primitiveIndices;
   std::vector<uint32_t> primitiveMaterialSlotIndices;
+  
+  bool didLoadTangents = false;
 
   uint32_t materialSlotIdx = 0;
   for (const auto& prim: gltfMesh.primitives) {
@@ -252,6 +254,8 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
       size_t i = 0;
       auto tangentIt = fastgltf::iterateAccessor<float4>(*m_asset, tanAccessor);
       for (auto tangent: tangentIt) primitiveVertexData[i++].tangent = tangent;
+      
+      didLoadTangents = true;
     }
     
     /*
@@ -285,6 +289,8 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
   auto id = m_scene.addMesh({m_device, vertexPositions, vertexData, indices, materialSlotIndices});
   m_meshIds.push_back(id);
   m_meshMaterials[id] = materialSlots;
+  
+  if (!didLoadTangents) m_scene.mesh(id)->generateTangents();
 }
 
 /*

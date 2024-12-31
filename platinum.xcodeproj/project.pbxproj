@@ -837,6 +837,7 @@
 					"$(PROJECT_DIR)/deps/imgui",
 					"$(PROJECT_DIR)/deps/sdl2/include",
 					/opt/homebrew/Cellar/openimageio/3.0.1.0/include,
+					"$(PROJECT_DIR)/deps/mikkt",
 				);
 				INSTALL_ROOT = /;
 				LIBRARY_SEARCH_PATHS = (
@@ -922,6 +923,7 @@
 					"$(PROJECT_DIR)/deps/imgui",
 					"$(PROJECT_DIR)/deps/sdl2/include",
 					/opt/homebrew/Cellar/openimageio/3.0.1.0/include,
+					"$(PROJECT_DIR)/deps/mikkt",
 				);
 				INSTALL_ROOT = /;
 				LIBRARY_SEARCH_PATHS = (
