@@ -128,20 +128,6 @@
 			);
 			target = AB5133BF2CFB7108005738C1 /* platinum */;
 		};
-		AB5133DE2CFB7254005738C1 /* Exceptions for "fastgltf" folder in "platinum" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				lib/libfastgltf,
-			);
-			target = AB5133BF2CFB7108005738C1 /* platinum */;
-		};
-		AB5133E02CFB7270005738C1 /* Exceptions for "nfd" folder in "platinum" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				libnfd,
-			);
-			target = AB5133BF2CFB7108005738C1 /* platinum */;
-		};
 		AB51358B2CFB77D2005738C1 /* Exceptions for "src" folder in "renderer_studio" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -169,130 +155,133 @@
 			);
 			target = AB7553D92D15210F0037E10C /* loaders */;
 		};
-		AB8F69EC2CFBA43A00C69CF6 /* Exceptions for "imgui" folder in "platinum" target */ = {
+		ABB417942D2237A900AC86CC /* Exceptions for "deps" folder in "platinum" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				backends/imgui_impl_metal.mm,
-				backends/imgui_impl_sdl2.cpp,
-				imgui_demo.cpp,
-				imgui_draw.cpp,
-				imgui_tables.cpp,
-				imgui_widgets.cpp,
-				imgui.cpp,
-				misc/cpp/imgui_stdlib.cpp,
+				fastgltf/lib/libfastgltf,
+				imgui/backends/imgui_impl_metal.mm,
+				imgui/backends/imgui_impl_sdl2.cpp,
+				imgui/imgui_demo.cpp,
+				imgui/imgui_draw.cpp,
+				imgui/imgui_tables.cpp,
+				imgui/imgui_widgets.cpp,
+				imgui/imgui.cpp,
+				imgui/misc/cpp/imgui_stdlib.cpp,
+				mikkt/mikktspace.c,
+				nfd/libnfd,
 			);
 			target = AB5133BF2CFB7108005738C1 /* platinum */;
 		};
-		ABE00B782CFB895400DA8AED /* Exceptions for "metal-cmake" folder in "metal-cpp" target */ = {
+		ABB417952D2237A900AC86CC /* Exceptions for "deps" folder in "metal-cpp" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				definition.cpp,
-				"metal-cpp-extensions/AppKit/AppKit.hpp",
-				"metal-cpp-extensions/AppKit/AppKitPrivate.hpp",
-				"metal-cpp-extensions/AppKit/NSApplication.hpp",
-				"metal-cpp-extensions/AppKit/NSMenu.hpp",
-				"metal-cpp-extensions/AppKit/NSMenuItem.hpp",
-				"metal-cpp-extensions/AppKit/NSRunningApplication.hpp",
-				"metal-cpp-extensions/AppKit/NSView.hpp",
-				"metal-cpp-extensions/AppKit/NSWindow.hpp",
-				"metal-cpp-extensions/MetalKit/MetalKit.hpp",
-				"metal-cpp-extensions/MetalKit/MetalKitPrivate.hpp",
-				"metal-cpp-extensions/MetalKit/MTKView.hpp",
-				"metal-cpp/Foundation/Foundation.hpp",
-				"metal-cpp/Foundation/NSArray.hpp",
-				"metal-cpp/Foundation/NSAutoreleasePool.hpp",
-				"metal-cpp/Foundation/NSBundle.hpp",
-				"metal-cpp/Foundation/NSData.hpp",
-				"metal-cpp/Foundation/NSDate.hpp",
-				"metal-cpp/Foundation/NSDefines.hpp",
-				"metal-cpp/Foundation/NSDictionary.hpp",
-				"metal-cpp/Foundation/NSEnumerator.hpp",
-				"metal-cpp/Foundation/NSError.hpp",
-				"metal-cpp/Foundation/NSLock.hpp",
-				"metal-cpp/Foundation/NSNotification.hpp",
-				"metal-cpp/Foundation/NSNumber.hpp",
-				"metal-cpp/Foundation/NSObjCRuntime.hpp",
-				"metal-cpp/Foundation/NSObject.hpp",
-				"metal-cpp/Foundation/NSPrivate.hpp",
-				"metal-cpp/Foundation/NSProcessInfo.hpp",
-				"metal-cpp/Foundation/NSRange.hpp",
-				"metal-cpp/Foundation/NSSet.hpp",
-				"metal-cpp/Foundation/NSSharedPtr.hpp",
-				"metal-cpp/Foundation/NSString.hpp",
-				"metal-cpp/Foundation/NSTypes.hpp",
-				"metal-cpp/Foundation/NSURL.hpp",
-				"metal-cpp/Metal/Metal.hpp",
-				"metal-cpp/Metal/MTLAccelerationStructure.hpp",
-				"metal-cpp/Metal/MTLAccelerationStructureCommandEncoder.hpp",
-				"metal-cpp/Metal/MTLAccelerationStructureTypes.hpp",
-				"metal-cpp/Metal/MTLAllocation.hpp",
-				"metal-cpp/Metal/MTLArgument.hpp",
-				"metal-cpp/Metal/MTLArgumentEncoder.hpp",
-				"metal-cpp/Metal/MTLBinaryArchive.hpp",
-				"metal-cpp/Metal/MTLBlitCommandEncoder.hpp",
-				"metal-cpp/Metal/MTLBlitPass.hpp",
-				"metal-cpp/Metal/MTLBuffer.hpp",
-				"metal-cpp/Metal/MTLCaptureManager.hpp",
-				"metal-cpp/Metal/MTLCaptureScope.hpp",
-				"metal-cpp/Metal/MTLCommandBuffer.hpp",
-				"metal-cpp/Metal/MTLCommandEncoder.hpp",
-				"metal-cpp/Metal/MTLCommandQueue.hpp",
-				"metal-cpp/Metal/MTLComputeCommandEncoder.hpp",
-				"metal-cpp/Metal/MTLComputePass.hpp",
-				"metal-cpp/Metal/MTLComputePipeline.hpp",
-				"metal-cpp/Metal/MTLCounters.hpp",
-				"metal-cpp/Metal/MTLDefines.hpp",
-				"metal-cpp/Metal/MTLDepthStencil.hpp",
-				"metal-cpp/Metal/MTLDevice.hpp",
-				"metal-cpp/Metal/MTLDrawable.hpp",
-				"metal-cpp/Metal/MTLDynamicLibrary.hpp",
-				"metal-cpp/Metal/MTLEvent.hpp",
-				"metal-cpp/Metal/MTLFence.hpp",
-				"metal-cpp/Metal/MTLFunctionConstantValues.hpp",
-				"metal-cpp/Metal/MTLFunctionDescriptor.hpp",
-				"metal-cpp/Metal/MTLFunctionHandle.hpp",
-				"metal-cpp/Metal/MTLFunctionLog.hpp",
-				"metal-cpp/Metal/MTLFunctionStitching.hpp",
-				"metal-cpp/Metal/MTLHeaderBridge.hpp",
-				"metal-cpp/Metal/MTLHeap.hpp",
-				"metal-cpp/Metal/MTLIndirectCommandBuffer.hpp",
-				"metal-cpp/Metal/MTLIndirectCommandEncoder.hpp",
-				"metal-cpp/Metal/MTLIntersectionFunctionTable.hpp",
-				"metal-cpp/Metal/MTLIOCommandBuffer.hpp",
-				"metal-cpp/Metal/MTLIOCommandQueue.hpp",
-				"metal-cpp/Metal/MTLIOCompressor.hpp",
-				"metal-cpp/Metal/MTLLibrary.hpp",
-				"metal-cpp/Metal/MTLLinkedFunctions.hpp",
-				"metal-cpp/Metal/MTLLogState.hpp",
-				"metal-cpp/Metal/MTLParallelRenderCommandEncoder.hpp",
-				"metal-cpp/Metal/MTLPipeline.hpp",
-				"metal-cpp/Metal/MTLPixelFormat.hpp",
-				"metal-cpp/Metal/MTLPrivate.hpp",
-				"metal-cpp/Metal/MTLRasterizationRate.hpp",
-				"metal-cpp/Metal/MTLRenderCommandEncoder.hpp",
-				"metal-cpp/Metal/MTLRenderPass.hpp",
-				"metal-cpp/Metal/MTLRenderPipeline.hpp",
-				"metal-cpp/Metal/MTLResidencySet.hpp",
-				"metal-cpp/Metal/MTLResource.hpp",
-				"metal-cpp/Metal/MTLResourceStateCommandEncoder.hpp",
-				"metal-cpp/Metal/MTLResourceStatePass.hpp",
-				"metal-cpp/Metal/MTLSampler.hpp",
-				"metal-cpp/Metal/MTLStageInputOutputDescriptor.hpp",
-				"metal-cpp/Metal/MTLTexture.hpp",
-				"metal-cpp/Metal/MTLTypes.hpp",
-				"metal-cpp/Metal/MTLVersion.hpp",
-				"metal-cpp/Metal/MTLVertexDescriptor.hpp",
-				"metal-cpp/Metal/MTLVisibleFunctionTable.hpp",
-				"metal-cpp/MetalFX/MetalFX.hpp",
-				"metal-cpp/MetalFX/MTLFXDefines.hpp",
-				"metal-cpp/MetalFX/MTLFXPrivate.hpp",
-				"metal-cpp/MetalFX/MTLFXSpatialScaler.hpp",
-				"metal-cpp/MetalFX/MTLFXTemporalScaler.hpp",
-				"metal-cpp/QuartzCore/CADefines.hpp",
-				"metal-cpp/QuartzCore/CAMetalDrawable.hpp",
-				"metal-cpp/QuartzCore/CAMetalLayer.hpp",
-				"metal-cpp/QuartzCore/CAPrivate.hpp",
-				"metal-cpp/QuartzCore/QuartzCore.hpp",
+				"metal-cmake/definition.cpp",
+				"metal-cmake/metal-cpp-extensions/AppKit/AppKit.hpp",
+				"metal-cmake/metal-cpp-extensions/AppKit/AppKitPrivate.hpp",
+				"metal-cmake/metal-cpp-extensions/AppKit/NSApplication.hpp",
+				"metal-cmake/metal-cpp-extensions/AppKit/NSMenu.hpp",
+				"metal-cmake/metal-cpp-extensions/AppKit/NSMenuItem.hpp",
+				"metal-cmake/metal-cpp-extensions/AppKit/NSRunningApplication.hpp",
+				"metal-cmake/metal-cpp-extensions/AppKit/NSView.hpp",
+				"metal-cmake/metal-cpp-extensions/AppKit/NSWindow.hpp",
+				"metal-cmake/metal-cpp-extensions/MetalKit/MetalKit.hpp",
+				"metal-cmake/metal-cpp-extensions/MetalKit/MetalKitPrivate.hpp",
+				"metal-cmake/metal-cpp-extensions/MetalKit/MTKView.hpp",
+				"metal-cmake/metal-cpp/Foundation/Foundation.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSArray.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSAutoreleasePool.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSBundle.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSData.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSDate.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSDefines.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSDictionary.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSEnumerator.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSError.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSLock.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSNotification.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSNumber.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSObjCRuntime.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSObject.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSPrivate.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSProcessInfo.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSRange.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSSet.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSSharedPtr.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSString.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSTypes.hpp",
+				"metal-cmake/metal-cpp/Foundation/NSURL.hpp",
+				"metal-cmake/metal-cpp/Metal/Metal.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLAccelerationStructure.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLAccelerationStructureCommandEncoder.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLAccelerationStructureTypes.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLAllocation.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLArgument.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLArgumentEncoder.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLBinaryArchive.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLBlitCommandEncoder.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLBlitPass.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLBuffer.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLCaptureManager.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLCaptureScope.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLCommandBuffer.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLCommandEncoder.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLCommandQueue.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLComputeCommandEncoder.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLComputePass.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLComputePipeline.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLCounters.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLDefines.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLDepthStencil.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLDevice.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLDrawable.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLDynamicLibrary.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLEvent.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLFence.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLFunctionConstantValues.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLFunctionDescriptor.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLFunctionHandle.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLFunctionLog.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLFunctionStitching.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLHeaderBridge.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLHeap.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLIndirectCommandBuffer.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLIndirectCommandEncoder.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLIntersectionFunctionTable.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLIOCommandBuffer.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLIOCommandQueue.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLIOCompressor.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLLibrary.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLLinkedFunctions.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLLogState.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLParallelRenderCommandEncoder.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLPipeline.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLPixelFormat.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLPrivate.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLRasterizationRate.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLRenderCommandEncoder.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLRenderPass.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLRenderPipeline.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLResidencySet.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLResource.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLResourceStateCommandEncoder.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLResourceStatePass.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLSampler.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLStageInputOutputDescriptor.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLTexture.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLTypes.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLVersion.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLVertexDescriptor.hpp",
+				"metal-cmake/metal-cpp/Metal/MTLVisibleFunctionTable.hpp",
+				"metal-cmake/metal-cpp/MetalFX/MetalFX.hpp",
+				"metal-cmake/metal-cpp/MetalFX/MTLFXDefines.hpp",
+				"metal-cmake/metal-cpp/MetalFX/MTLFXPrivate.hpp",
+				"metal-cmake/metal-cpp/MetalFX/MTLFXSpatialScaler.hpp",
+				"metal-cmake/metal-cpp/MetalFX/MTLFXTemporalScaler.hpp",
+				"metal-cmake/metal-cpp/QuartzCore/CADefines.hpp",
+				"metal-cmake/metal-cpp/QuartzCore/CAMetalDrawable.hpp",
+				"metal-cmake/metal-cpp/QuartzCore/CAMetalLayer.hpp",
+				"metal-cmake/metal-cpp/QuartzCore/CAPrivate.hpp",
+				"metal-cmake/metal-cpp/QuartzCore/QuartzCore.hpp",
 			);
 			target = ABE00B682CFB891B00DA8AED /* metal-cpp */;
 		};
@@ -428,54 +417,21 @@
 			path = src;
 			sourceTree = "<group>";
 		};
-		AB5132F22CFB7091005738C1 /* ankerl */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = ankerl;
-			sourceTree = "<group>";
-		};
-		AB5133032CFB7091005738C1 /* fastgltf */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				AB5133DE2CFB7254005738C1 /* Exceptions for "fastgltf" folder in "platinum" target */,
-			);
-			path = fastgltf;
-			sourceTree = "<group>";
-		};
-		AB51333C2CFB7091005738C1 /* imgui */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				AB8F69EC2CFBA43A00C69CF6 /* Exceptions for "imgui" folder in "platinum" target */,
-			);
-			path = imgui;
-			sourceTree = "<group>";
-		};
-		AB5133B52CFB7091005738C1 /* metal-cmake */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				ABE00B782CFB895400DA8AED /* Exceptions for "metal-cmake" folder in "metal-cpp" target */,
-			);
-			path = "metal-cmake";
-			sourceTree = "<group>";
-		};
-		AB5133B82CFB7091005738C1 /* nfd */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				AB5133E02CFB7270005738C1 /* Exceptions for "nfd" folder in "platinum" target */,
-			);
-			path = nfd;
-			sourceTree = "<group>";
-		};
-		AB5133BB2CFB7091005738C1 /* sdl2 */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = sdl2;
-			sourceTree = "<group>";
-		};
 		AB8598982D060D74000DDA69 /* resource */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				AB8598A12D060DFD000DDA69 /* Exceptions for "resource" folder in "Copy GGX LUT Files" phase from "platinum" target */,
 			);
 			path = resource;
+			sourceTree = "<group>";
+		};
+		ABB415F32D22379F00AC86CC /* deps */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				ABB417942D2237A900AC86CC /* Exceptions for "deps" folder in "platinum" target */,
+				ABB417952D2237A900AC86CC /* Exceptions for "deps" folder in "metal-cpp" target */,
+			);
+			path = deps;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -510,14 +466,9 @@
 		AB5132AE2CFB7024005738C1 = {
 			isa = PBXGroup;
 			children = (
+				ABB415F32D22379F00AC86CC /* deps */,
 				AB8598982D060D74000DDA69 /* resource */,
 				AB5132EF2CFB7042005738C1 /* src */,
-				AB5132F22CFB7091005738C1 /* ankerl */,
-				AB5133032CFB7091005738C1 /* fastgltf */,
-				AB51333C2CFB7091005738C1 /* imgui */,
-				AB5133B52CFB7091005738C1 /* metal-cmake */,
-				AB5133B82CFB7091005738C1 /* nfd */,
-				AB5133BB2CFB7091005738C1 /* sdl2 */,
 				ABECF9092CFEA9B400918BB5 /* .gitignore */,
 				AB5133DC2CFB7253005738C1 /* Frameworks */,
 				AB5133C12CFB7108005738C1 /* Products */,
@@ -878,15 +829,15 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/src",
-					"$(PROJECT_DIR)/ankerl",
-					"$(PROJECT_DIR)/fastgltf/include",
-					"$(PROJECT_DIR)/metal-cmake/metal-cpp",
-					"$(PROJECT_DIR)/metal-cmake/metal-cpp-extensions",
-					"$(PROJECT_DIR)/nfd",
-					"$(PROJECT_DIR)/imgui",
-					"$(PROJECT_DIR)/tracy",
-					"$(PROJECT_DIR)/sdl2/include",
+					"$(PROJECT_DIR)/deps/ankerl",
+					"$(PROJECT_DIR)/deps/fastgltf/include",
+					"$(PROJECT_DIR)/deps/metal-cmake/metal-cpp",
+					"$(PROJECT_DIR)/deps/metal-cmake/metal-cpp-extensions",
+					"$(PROJECT_DIR)/deps/nfd",
+					"$(PROJECT_DIR)/deps/imgui",
+					"$(PROJECT_DIR)/deps/sdl2/include",
 					/opt/homebrew/Cellar/openimageio/3.0.1.0/include,
+					"$(PROJECT_DIR)/deps/mikkt",
 				);
 				INSTALL_ROOT = /;
 				LIBRARY_SEARCH_PATHS = (
@@ -895,6 +846,8 @@
 					"$(PROJECT_DIR)/nfd",
 					"$(PROJECT_DIR)/sdl2/SDL2.framework/Versions/A",
 					/opt/homebrew/Cellar/openimageio/3.0.1.0/lib,
+					"$(PROJECT_DIR)/deps/fastgltf/lib",
+					"$(PROJECT_DIR)/deps/nfd",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.1;
@@ -962,15 +915,15 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/src",
-					"$(PROJECT_DIR)/ankerl",
-					"$(PROJECT_DIR)/fastgltf/include",
-					"$(PROJECT_DIR)/metal-cmake/metal-cpp",
-					"$(PROJECT_DIR)/metal-cmake/metal-cpp-extensions",
-					"$(PROJECT_DIR)/nfd",
-					"$(PROJECT_DIR)/imgui",
-					"$(PROJECT_DIR)/tracy",
-					"$(PROJECT_DIR)/sdl2/include",
+					"$(PROJECT_DIR)/deps/ankerl",
+					"$(PROJECT_DIR)/deps/fastgltf/include",
+					"$(PROJECT_DIR)/deps/metal-cmake/metal-cpp",
+					"$(PROJECT_DIR)/deps/metal-cmake/metal-cpp-extensions",
+					"$(PROJECT_DIR)/deps/nfd",
+					"$(PROJECT_DIR)/deps/imgui",
+					"$(PROJECT_DIR)/deps/sdl2/include",
 					/opt/homebrew/Cellar/openimageio/3.0.1.0/include,
+					"$(PROJECT_DIR)/deps/mikkt",
 				);
 				INSTALL_ROOT = /;
 				LIBRARY_SEARCH_PATHS = (
@@ -979,6 +932,8 @@
 					"$(PROJECT_DIR)/nfd",
 					"$(PROJECT_DIR)/sdl2/SDL2.framework/Versions/A",
 					/opt/homebrew/Cellar/openimageio/3.0.1.0/lib,
+					"$(PROJECT_DIR)/deps/fastgltf/lib",
+					"$(PROJECT_DIR)/deps/nfd",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.1;
@@ -1135,8 +1090,8 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/metal-cmake/metal-cpp",
-					"$(PROJECT_DIR)/metal-cmake/metal-cpp-extensions",
+					"$(PROJECT_DIR)/deps/metal-cmake/metal-cpp",
+					"$(PROJECT_DIR)/deps/metal-cmake/metal-cpp-extensions",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.1;
@@ -1201,8 +1156,8 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/metal-cmake/metal-cpp",
-					"$(PROJECT_DIR)/metal-cmake/metal-cpp-extensions",
+					"$(PROJECT_DIR)/deps/metal-cmake/metal-cpp",
+					"$(PROJECT_DIR)/deps/metal-cmake/metal-cpp-extensions",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.1;

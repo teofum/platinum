@@ -65,6 +65,8 @@ public:
   [[nodiscard]] constexpr size_t vertexCount() const {
     return m_vertexCount;
   }
+  
+  void generateTangents();
 
 private:
   size_t m_indexCount, m_vertexCount;

@@ -138,6 +138,7 @@ void GltfLoader::load(const fs::path& path, int options) {
       if (material->transmissionTextureId == -2 - idx) material->transmissionTextureId = textureId;
       if (material->emissionTextureId == -2 - idx) material->emissionTextureId = textureId;
       if (material->clearcoatTextureId == -2 - idx) material->clearcoatTextureId = textureId;
+      if (material->normalTextureId == -2 - idx) material->normalTextureId = textureId;
     }
   }
 
@@ -186,6 +187,8 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
   std::vector<VertexData> primitiveVertexData;
   std::vector<uint32_t> primitiveIndices;
   std::vector<uint32_t> primitiveMaterialSlotIndices;
+  
+  bool didLoadTangents = false;
 
   uint32_t materialSlotIdx = 0;
   for (const auto& prim: gltfMesh.primitives) {
@@ -251,6 +254,8 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
       size_t i = 0;
       auto tangentIt = fastgltf::iterateAccessor<float4>(*m_asset, tanAccessor);
       for (auto tangent: tangentIt) primitiveVertexData[i++].tangent = tangent;
+      
+      didLoadTangents = true;
     }
     
     /*
@@ -284,6 +289,8 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
   auto id = m_scene.addMesh({m_device, vertexPositions, vertexData, indices, materialSlotIndices});
   m_meshIds.push_back(id);
   m_meshMaterials[id] = materialSlots;
+  
+  if (!didLoadTangents) m_scene.mesh(id)->generateTangents();
 }
 
 /*
@@ -406,6 +413,13 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
       material.clearcoatTextureId = -2 - id;
       m_texturesToLoad[id] = TextureType::Mono;
     }
+  }
+  
+  // Load normal texture
+  if (gltfMat.normalTexture) {
+    uint16_t id = gltfMat.normalTexture->textureIndex;
+    material.normalTextureId = -2 - id;
+    m_texturesToLoad[id] = TextureType::NormalMap;
   }
   
   auto id = m_scene.addMaterial(gltfMat.name, material);
