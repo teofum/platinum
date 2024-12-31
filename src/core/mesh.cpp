@@ -119,6 +119,11 @@ Mesh& Mesh::operator=(Mesh&& m) noexcept {
 }
 
 void Mesh::generateTangents() {
+  /*
+   * TODO: Convert to unindexed vertices before tangent calculation and weld after
+   * We run tangent generation on index vertices for simplicity. This is wrong, and may result in
+   * incorrect tangents for some cases. It mostly works, but we should fix it later.
+   */
   SMikkTSpaceInterface interface {
     .m_getNumFaces = mikkt::getNumFaces,
     .m_getNumVerticesOfFace = mikkt::getNumVerticesOfFace,
