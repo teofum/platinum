@@ -103,6 +103,13 @@ NS::SharedPtr<MTL::RenderPipelineDescriptor> makeRenderPipelineDescriptor(const 
 NS::SharedPtr<MTL::ComputePipelineDescriptor> makeComputePipelineDescriptor(const ComputePipelineParams& params) {
   auto desc = ns_shared<MTL::ComputePipelineDescriptor>();
   desc->setComputeFunction(params.function);
+  
+  auto linkedFunctions = MTL::LinkedFunctions::alloc()->init();
+  linkedFunctions->autorelease();
+  linkedFunctions->setFunctions(
+		NS::Array::array((NS::Object**)params.linkedFunctions.data(), params.linkedFunctions.size())
+	);
+  desc->setLinkedFunctions(linkedFunctions);
 
   desc->setThreadGroupSizeIsMultipleOfThreadExecutionWidth(params.threadGroupSizeIsMultipleOfExecutionWidth);
   return desc;

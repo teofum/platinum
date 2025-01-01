@@ -10,6 +10,24 @@ using namespace raytracing;
 using namespace pt::shaders_pt;
 
 /*
+ * Type definitions
+ */
+using triangle_instance_intersection = typename intersector<triangle_data, instancing>::result_type;
+
+/*
+ * Constants
+ */
+constexpr constant float3 backgroundColor(0.0);
+
+/*
+ * Miscellaneous helper functions
+ */
+template<typename T>
+T interpolate(thread T* att, float2 uv) {
+  return (1.0f - uv.x - uv.y) * att[0] + uv.x * att[1] + uv.y * att[2];
+}
+
+/*
  * Sampling
  */
 namespace samplers {

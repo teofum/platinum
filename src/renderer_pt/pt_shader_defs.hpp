@@ -29,6 +29,13 @@
 
 using namespace simd;
 
+#ifdef __METAL_VERSION__
+using namespace metal;
+using namespace raytracing;
+
+using IntersectionFunctionTable = intersection_function_table<triangle_data, instancing>;
+#endif
+
 // Don't nest namespaces here, the MSL compiler complains it's a C++ 17 ext
 namespace pt {
 namespace shaders_pt {
@@ -115,7 +122,8 @@ struct Arguments {
   metal_ptr(PrimitiveResource, device) primitiveResources;
   metal_ptr(InstanceResource, device) instanceResources;
   metal_ptr(MTLAccelerationStructureInstanceDescriptor, constant) instances;
-  metal_resource(metal::raytracing::instance_acceleration_structure) accelStruct;
+  metal_resource(instance_acceleration_structure) accelStruct;
+  metal_resource(IntersectionFunctionTable) intersectionFunctionTable;
   metal_ptr(LightData, constant) lights;
   metal_ptr(Texture, constant) textures;
   
