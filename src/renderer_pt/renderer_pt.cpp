@@ -29,6 +29,7 @@ Renderer::~Renderer() {
   if (m_accumulator[1] != nullptr) m_accumulator[1]->release();
 
   for (auto pipeline: m_pathtracingPipelines) pipeline->release();
+  for (auto ift: m_intersectionFunctionTables) ift->release();
   if (m_postprocessPipeline != nullptr) m_postprocessPipeline->release();
   if (m_constantsBuffer != nullptr) m_constantsBuffer->release();
   
@@ -75,6 +76,7 @@ void Renderer::render() {
     computeEnc->useResource(m_instanceResourcesBuffer, MTL::ResourceUsageRead);
     computeEnc->useResource(m_instanceBuffer, MTL::ResourceUsageRead);
     computeEnc->useResource(m_instanceAccelStruct, MTL::ResourceUsageRead);
+    computeEnc->useResource(m_intersectionFunctionTables[m_selectedPipeline], MTL::ResourceUsageRead);
     computeEnc->useResource(m_lightDataBuffer, MTL::ResourceUsageRead);
     computeEnc->useResource(m_texturesBuffer, MTL::ResourceUsageRead);
     
@@ -185,7 +187,9 @@ NS::SharedPtr<MTL::AccelerationStructureGeometryDescriptor> Renderer::makeGeomet
   //   (https://developer.apple.com/documentation/metal/mtlaccelerationstructuretrianglegeometrydescriptor)
   // desc->setVertexFormat(MTL::AttributeFormatFloat3);
 
-  // Also not documented, but it seems to hold per-primitive data for use in an intersector
+  /*
+   * Set per-primitive data buffer
+   */
   desc->setPrimitiveDataBuffer(mesh->indices());
   desc->setPrimitiveDataStride(sizeof(shaders_pt::PrimitiveData));
   desc->setPrimitiveDataElementSize(sizeof(shaders_pt::PrimitiveData));
@@ -223,7 +227,7 @@ MTL::AccelerationStructure* Renderer::makeAccelStruct(
   enc->endEncoding();
 
   cmd->commit();
-  cmd->waitUntilCompleted(); 
+  cmd->waitUntilCompleted();
 
   /*
    * Compact the acceleration structure
@@ -264,16 +268,13 @@ void Renderer::buildPipelines() {
   /*
    * Load the PT kernel functions and build the compute pipelines
    */
-  auto stride = static_cast<uint32_t>(m_resourcesStride);
-
+  auto alphaTestIntersectionFunction = metal_utils::getFunction(lib, "alphaTestIntersectionFunction");
+  
   for (const auto& kernelName: m_pathtracingPipelineFunctions) {
     auto desc = metal_utils::makeComputePipelineDescriptor(
      {
-       .function = metal_utils::getFunction(
-            lib, kernelName.c_str(), {
-            .constants = {{.value = &stride, .type = MTL::DataTypeUInt}}
-          }
-        ),
+       .function = metal_utils::getFunction(lib, kernelName.c_str()),
+       .linkedFunctions = { alphaTestIntersectionFunction },
        .threadGroupSizeIsMultipleOfExecutionWidth = true,
      }
    );
@@ -293,7 +294,15 @@ void Renderer::buildPipelines() {
       assert(false);
     }
     
+    auto iftDesc = MTL::IntersectionFunctionTableDescriptor::alloc()->init();
+    iftDesc->setFunctionCount(1);
+    auto intersectionFunctionTable = pipeline->newIntersectionFunctionTable(iftDesc);
+    iftDesc->release();
+    
+    intersectionFunctionTable->setFunction(pipeline->functionHandle(alphaTestIntersectionFunction), 0);
+    
     m_pathtracingPipelines.push_back(pipeline);
+    m_intersectionFunctionTables.push_back(intersectionFunctionTable);
   }
 
   /*
@@ -393,6 +402,7 @@ void Renderer::loadGgxLutTextures() {
 void Renderer::rebuildResourceBuffers() {
   // Clear old buffers if present
   if (m_vertexResourcesBuffer != nullptr) m_vertexResourcesBuffer->release();
+  m_meshVertexPositionBuffers.clear();
   m_meshVertexDataBuffers.clear();
   
   if (m_primitiveResourcesBuffer != nullptr) m_primitiveResourcesBuffer->release();
@@ -420,7 +430,9 @@ void Renderer::rebuildResourceBuffers() {
   );
 
   size_t idx = 0;
+  m_meshVertexPositionBuffers.reserve(meshes.size());
   m_meshVertexDataBuffers.reserve(meshes.size());
+  m_meshMaterialIndexBuffers.reserve(meshes.size());
   for (const auto& md: meshes) {
     auto vertexResourceHandle = (uint64_t*) m_vertexResourcesBuffer->contents() + idx * 2;
     vertexResourceHandle[0] = md.mesh->vertexPositions()->gpuAddress();
@@ -517,7 +529,7 @@ void Renderer::rebuildAccelerationStructures() {
   size_t idx = 0;
   for (const auto& md: meshes) {
     auto geometryDesc = makeGeometryDescriptor(md.mesh);
-    geometryDesc->setIntersectionFunctionTableOffset(idx++);
+    geometryDesc->setIntersectionFunctionTableOffset(0);
 
     auto accelDesc = ns_shared<MTL::PrimitiveAccelerationStructureDescriptor>();
     accelDesc->setGeometryDescriptors(NS::Array::array(geometryDesc));
@@ -553,6 +565,16 @@ void Renderer::rebuildAccelerationStructures() {
     id.accelerationStructureIndex = (uint32_t) meshIdx;
     id.intersectionFunctionTableOffset = 0;
     id.mask = 1;
+    
+    bool anyMaterialHasAlpha = false;
+    for (const auto& mid: instance.materials) {
+      if (m_store.scene().material(mid)->flags & Material::Material_UseAlpha) {
+        anyMaterialHasAlpha = true;
+        break;
+      }
+    }
+    
+    id.options = anyMaterialHasAlpha ? MTL::AccelerationStructureInstanceOptionNonOpaque : MTL::AccelerationStructureInstanceOptionOpaque;
 
     for (int32_t j = 0; j < 4; j++) {
       for (int32_t i = 0; i < 3; i++) {
@@ -590,6 +612,7 @@ void Renderer::rebuildArgumentBuffer() {
   arguments->instanceResources = m_instanceResourcesBuffer->gpuAddress();
   arguments->instances = m_instanceBuffer->gpuAddress();
   arguments->accelStruct = m_instanceAccelStruct->gpuResourceID();
+  arguments->intersectionFunctionTable = m_intersectionFunctionTables[m_selectedPipeline]->gpuResourceID();
   arguments->lights = m_lightDataBuffer->gpuAddress();
   arguments->textures = m_texturesBuffer->gpuAddress();
   
@@ -602,6 +625,11 @@ void Renderer::rebuildArgumentBuffer() {
   arguments->luts.ETransOut 		= m_luts[5]->gpuResourceID();
   arguments->luts.EavgTransIn 	= m_luts[6]->gpuResourceID();
   arguments->luts.EavgTransOut 	= m_luts[7]->gpuResourceID();
+  
+  /*
+   * Bind the argument buffer to the active intersection function table
+   */
+  m_intersectionFunctionTables[m_selectedPipeline]->setBuffer(m_argumentBuffer, 0, 0);
 }
 
 void Renderer::rebuildRenderTargets() {

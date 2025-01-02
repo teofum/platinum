@@ -3,26 +3,11 @@
 #include "defs.metal"
 
 #define MAX_BOUNCES 50
-#define DIMS_PER_BOUNCE 8
-
-/*
- * Type definitions
- */
-using triangle_instance_intersection = typename intersector<triangle_data, instancing>::result_type;
-
-/*
- * Constants
- */
-constant float3 backgroundColor(0.0);
+#define DIMS_PER_BOUNCE 10
 
 /*
  * Miscellaneous helper functions
  */
-template<typename T>
-T interpolate(thread T* att, float2 uv) {
-  return (1.0f - uv.x - uv.y) * att[0] + uv.x * att[1] + uv.y * att[2];
-}
-
 __attribute__((always_inline))
 float3 transformVec(float3 p, float4x4 transform) {
   return (transform * float4(p.x, p.y, p.z, 0.0f)).xyz;
@@ -202,7 +187,6 @@ intersector<triangle_data, instancing> createTriangleIntersector() {
   intersector<triangle_data, instancing> i;
   i.accept_any_intersection(false);
   i.assume_geometry_type(geometry_type::triangle);
-  i.force_opacity(forced_opacity::opaque);
   
   return i;
 }
@@ -251,7 +235,8 @@ kernel void pathtracingKernel(
     float3 attenuation(1.0);
     float3 L(0.0);
     for (int bounce = 0; bounce < MAX_BOUNCES; bounce++) {
-      intersection = i.intersect(ray, args.accelStruct);
+      float ir = samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 0);
+      intersection = i.intersect(ray, args.accelStruct, args.intersectionFunctionTable, ir);
       
       /*
        * Stop on ray miss
@@ -266,10 +251,10 @@ kernel void pathtracingKernel(
       /*
        * Sample the BSDF to get the next ray direction
        */
-      auto r = float4(samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 0),
-                      samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 1),
+      auto r = float4(samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 1),
                       samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 2),
-                      samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 3));
+                      samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 3),
+                      samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 4));
       
       bsdf::ShadingContext ctx(*hit.material, hit.uv, args.textures);
       auto bsdf = bsdf::BSDF(ctx, args.constants, args.luts);
@@ -294,7 +279,7 @@ kernel void pathtracingKernel(
        */
       if (bounce > 0) {
         float q = max(0.0, 1.0 - max(attenuation.r, max(attenuation.g, attenuation.b)));
-        if (samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 4) < q) break;
+        if (samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 5) < q) break;
         attenuation /= 1.0 - q;
       }
       
@@ -427,7 +412,8 @@ kernel void misKernel(
     Hit lastHit;
     bsdf::Sample lastSample;
     for (int bounce = 0; bounce < MAX_BOUNCES; bounce++) {
-      intersection = i.intersect(ray, args.accelStruct);
+      float ir = samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 0);
+      intersection = i.intersect(ray, args.accelStruct, args.intersectionFunctionTable, ir);
       
       /*
        * Stop on ray miss
@@ -442,10 +428,10 @@ kernel void misKernel(
       /*
        * Sample the BSDF to get the next ray direction
        */
-      auto r = float4(samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 0),
-                      samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 1),
+      auto r = float4(samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 1),
                       samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 2),
-                      samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 3));
+                      samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 3),
+                      samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 4));
       
       bsdf::ShadingContext ctx(*hit.material, hit.uv, args.textures);
       auto bsdf = bsdf::BSDF(ctx, args.constants, args.luts);
@@ -479,9 +465,9 @@ kernel void misKernel(
        * Calculate direct lighting contribution
        */
       if (!(sample.flags & (bsdf::Sample_Emitted | bsdf::Sample_Specular)) && args.constants.lightCount > 0) {
-        auto r = float3(samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 4),
-                        samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 5),
-                        samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 6));
+        auto r = float3(samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 5),
+                        samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 6),
+                        samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 7));
         
         const constant auto& light = sampleLightPower(args.lights, args.constants, r.z);
         const float pLight = light.power / args.constants.totalLightPower; // Probability of sampling this light
@@ -494,7 +480,8 @@ kernel void misKernel(
           ray.direction = lightSample.wi;
           ray.max_distance = length(lightSample.pos - hit.pos) - 1e-3f;
           i.accept_any_intersection(true);
-          intersection = i.intersect(ray, args.accelStruct);
+          float ir = samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 8);
+          intersection = i.intersect(ray, args.accelStruct, args.intersectionFunctionTable, ir);
           auto occluded = intersection.type != intersection_type::none;
           i.accept_any_intersection(false);
           
@@ -522,7 +509,7 @@ kernel void misKernel(
        */
       if (bounce > 0) {
         float q = max(0.0, 1.0 - max(attenuation.r, max(attenuation.g, attenuation.b)));
-        if (samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 7) < q) break;
+        if (samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 9) < q) break;
         attenuation /= 1.0 - q;
       }
       

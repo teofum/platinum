@@ -142,6 +142,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				renderer_pt/shaders/bsdf.metal,
+				renderer_pt/shaders/intersections.metal,
 				renderer_pt/shaders/kernel.metal,
 				renderer_pt/shaders/postprocess.metal,
 				renderer_pt/shaders/samplers.metal,

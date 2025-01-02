@@ -69,6 +69,7 @@ NS::SharedPtr<MTL::RenderPipelineDescriptor> makeRenderPipelineDescriptor(const 
 
 struct ComputePipelineParams {
   MTL::Function* function;
+  std::vector<MTL::Function*> linkedFunctions;
   bool threadGroupSizeIsMultipleOfExecutionWidth;
 };
 

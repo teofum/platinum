@@ -71,6 +71,7 @@ private:
   };
   int m_selectedPipeline = Integrator_MIS;
   std::vector<MTL::ComputePipelineState*> m_pathtracingPipelines;
+  std::vector<MTL::IntersectionFunctionTable*> m_intersectionFunctionTables;
   MTL::RenderPipelineState* m_postprocessPipeline = nullptr;
 
   // Render targets

@@ -141,6 +141,10 @@ void GltfLoader::load(const fs::path& path, int options) {
       if (material->normalTextureId == -2 - idx) material->normalTextureId = textureId;
     }
   }
+  
+  for (auto mid: m_materialIds) {
+    m_scene.recalculateMaterialFlags(mid);
+  }
 
   m_meshIds.reserve(m_asset->meshes.size());
   for (const auto& mesh: m_asset->meshes)
@@ -347,9 +351,6 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   for (uint32_t i = 0; i < 4; i++)
     material.baseColor[i] = gltfMat.pbrData.baseColorFactor[i];
   
-  // Set alpha flag if the material has an alpha component
-  if (material.baseColor[3] < 1.0f) material.flags |= Material::Material_UseAlpha;
-  
   // Load base color texture
   if (gltfMat.pbrData.baseColorTexture) {
     uint16_t id = gltfMat.pbrData.baseColorTexture->textureIndex;
@@ -382,10 +383,6 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   material.emissionStrength = gltfMat.emissiveStrength;
   for (uint32_t i = 0; i < 3; i++) material.emission[i] = gltfMat.emissiveFactor[i];
   
-  // Set emissive flag if emission strength is greater than zero
-  if (length_squared(material.emission) * material.emissionStrength > 0.0f)
-    material.flags |= Material::Material_Emissive;
-  
   // Load emission texture
   if (gltfMat.emissiveTexture) {
     uint16_t id = gltfMat.emissiveTexture->textureIndex;
@@ -399,9 +396,6 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   if (gltfMat.anisotropy != nullptr) {
     material.anisotropy = gltfMat.anisotropy->anisotropyStrength;
     material.anisotropyRotation = gltfMat.anisotropy->anisotropyRotation;
-    
-    // Set anisotropic flag if the material has anisotropy
-    if (material.anisotropy != 0.0f) material.flags |= Material::Material_Anisotropic;
   }
   
   if (gltfMat.clearcoat != nullptr) {
@@ -462,6 +456,20 @@ Scene::TextureID GltfLoader::loadTexture(const fastgltf::Texture &gltfTex, Textu
   );
   in->read_image(0, 0, 0, -1, spec.format, readBuffer->contents(), sizeof(uchar4));
   in->close();
+  
+  /*
+   * Check if the texture has any pixels with alpha < 1
+   */
+  bool hasAlpha = false;
+  if (hasAlphaChannel) {
+    auto contents = static_cast<uchar4*>(readBuffer->contents());
+    for (uint32_t i = 0; i < readBuffer->length() / sizeof(uchar4); i++) {
+      if (contents[i].a < 255) {
+        hasAlpha = true;
+        break;
+      }
+    }
+  }
   
   /*
    * Create a temporary texture as input to the texture converter shader. We just make this texture
@@ -530,7 +538,7 @@ Scene::TextureID GltfLoader::loadTexture(const fastgltf::Texture &gltfTex, Textu
    * Store the actual texture in our scene and return the ID so it can be set on the materials that
    * use it, replacing the placeholder
    */
-  return m_scene.addTexture(gltfTex.name, NS::TransferPtr(texture));
+  return m_scene.addTexture(gltfTex.name, NS::TransferPtr(texture), hasAlpha);
 }
 
 }

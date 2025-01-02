@@ -49,10 +49,12 @@ Scene::MaterialID Scene::addMaterial(const std::string_view& name, Material mate
   return id;
 }
 
-Scene::TextureID Scene::addTexture(const std::string_view& name, NS::SharedPtr<MTL::Texture> texture) {
+Scene::TextureID Scene::addTexture(const std::string_view& name, NS::SharedPtr<MTL::Texture> texture, bool hasAlpha) {
   TextureID id = m_nextTextureId++;
   m_textures[id] = texture;
   m_textureNames[id] = std::string(name);
+  m_textureAlpha[id] = hasAlpha;
+  
   while (m_textures.contains(m_nextTextureId)) m_nextTextureId++; // Find next unused ID
 
   return id;
@@ -239,6 +241,23 @@ std::vector<Scene::TextureData> Scene::getAllTextures() const {
   }
 
   return textures;
+}
+
+void Scene::recalculateMaterialFlags(MaterialID id) {
+  auto& material = m_materials[id];
+  
+  material.flags &= Material::Material_ThinDielectric;
+  
+  // Set anisotropic flag if the material has anisotropy
+  if (material.anisotropy != 0.0f) material.flags |= Material::Material_Anisotropic;
+  
+  // Set emissive flag if emission strength is greater than zero
+  if (length_squared(material.emission) * material.emissionStrength > 0.0f)
+    material.flags |= Material::Material_Emissive;
+  
+  // Set alpha flag is material has alpha < 1 OR has a texture with an alpha channel and values < 1
+  if (material.baseColor.a < 1 || (material.baseTextureId >= 0 && m_textureAlpha[material.baseTextureId]))
+    material.flags |= Material::Material_UseAlpha;
 }
 
 void Scene::traverseHierarchy(

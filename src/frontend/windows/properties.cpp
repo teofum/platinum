@@ -191,6 +191,8 @@ void Properties::renderMaterialProperties(Scene::MaterialID id) {
   auto material = m_store.scene().material(id);
   auto& name = m_store.scene().materialName(id);
   
+  bool mustRecalculateFlags = false;
+  
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
   ImGui::InputText("##MaterialNameInput", &name);
   
@@ -215,25 +217,13 @@ void Properties::renderMaterialProperties(Scene::MaterialID id) {
   float alpha = material->baseColor[3];
   if (ImGui::DragFloat("Alpha", &alpha, 0.01f, 0.0f, 1.0f)) {
     material->baseColor[3] = alpha;
-    if (alpha > 0.0) {
-      material->flags |= Material::Material_UseAlpha;
-    } else {
-      material->flags &= ~Material::Material_UseAlpha;
-    }
+    mustRecalculateFlags = true;
   }
   
   ImGui::SeparatorText("Emission");
   
-  auto emissionChanged = false;
-  emissionChanged |= ImGui::ColorEdit3("Color", (float*) &material->emission, m_colorFlags, {buttonWidth, 0});
-  emissionChanged |= ImGui::DragFloat("Strength", &material->emissionStrength, 0.1f);
-  if (emissionChanged) {
-    if (length_squared(material->emission) > 0.0f && material->emissionStrength > 0.0f) {
-      material->flags |= Material::Material_Emissive;
-    } else {
-      material->flags &= ~Material::Material_Emissive;
-    }
-  }
+  mustRecalculateFlags |= ImGui::ColorEdit3("Color", (float*) &material->emission, m_colorFlags, {buttonWidth, 0});
+  mustRecalculateFlags |= ImGui::DragFloat("Strength", &material->emissionStrength, 0.1f);
   
   material->emissionTextureId = textureSelect("Texture##EmissionTexture", material->emissionTextureId);
   
@@ -246,13 +236,7 @@ void Properties::renderMaterialProperties(Scene::MaterialID id) {
   
   ImGui::SeparatorText("Anisotropy");
   
-  if (ImGui::DragFloat("Anisotropy", &material->anisotropy, 0.01f, 0.0f, 1.0f)) {
-    if (material->anisotropy > 0.0f) {
-      material->flags |= Material::Material_Anisotropic;
-    } else {
-      material->flags &= ~Material::Material_Anisotropic;
-    }
-  }
+  mustRecalculateFlags |= ImGui::DragFloat("Anisotropy", &material->anisotropy, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Rotation", &material->anisotropyRotation, 0.01f, 0.0f, 1.0f);
   
   ImGui::SeparatorText("Additional properties");
@@ -267,6 +251,9 @@ void Properties::renderMaterialProperties(Scene::MaterialID id) {
       ImGui::PopTextWrapPos();
       ImGui::EndTooltip();
   }
+  
+  // Recalculate material flags in case properties changed
+  if (mustRecalculateFlags) m_store.scene().recalculateMaterialFlags(id);
 }
 
 void Properties::renderTextureProperties(Scene::TextureID id) {
