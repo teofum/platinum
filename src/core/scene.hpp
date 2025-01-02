@@ -94,7 +94,7 @@ public:
   
   MaterialID addMaterial(const std::string_view& name, Material material);
   
-  TextureID addTexture(const std::string_view& name, NS::SharedPtr<MTL::Texture> texture);
+  TextureID addTexture(const std::string_view& name, NS::SharedPtr<MTL::Texture> texture, bool hasAlpha);
 
   void removeNode(NodeID id, int flags = 0);
 
@@ -181,6 +181,8 @@ public:
   [[nodiscard]] std::vector<MaterialData> getAllMaterials() const;
   
   [[nodiscard]] std::vector<TextureData> getAllTextures() const;
+  
+  void recalculateMaterialFlags(MaterialID id);
 
 private:
   NodeID m_nextNodeId;
@@ -201,6 +203,7 @@ private:
   
   ankerl::unordered_dense::map<TextureID, NS::SharedPtr<MTL::Texture>> m_textures;
   ankerl::unordered_dense::map<TextureID, std::string> m_textureNames;
+  ankerl::unordered_dense::map<TextureID, bool> m_textureAlpha;
   ankerl::unordered_dense::map<TextureID, uint16_t> m_textureRc; // TODO: refcount
 
   void traverseHierarchy(

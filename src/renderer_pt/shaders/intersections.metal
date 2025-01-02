@@ -7,7 +7,7 @@ using namespace raytracing;
 
 [[intersection(triangle, triangle_data, instancing)]]
 bool alphaTestIntersectionFunction(
-	uint32_t geometryIdx 											[[geometry_id]],
+//	uint32_t geometryIdx 											[[geometry_id]],
   uint32_t primitiveIdx 										[[primitive_id]],
 	uint32_t instanceIdx 											[[instance_id]],
 	float2 barycentricCoords 									[[barycentric_coord]],
@@ -15,6 +15,7 @@ bool alphaTestIntersectionFunction(
 	const ray_data float& r 									[[payload]],
 	constant Arguments& args 									[[buffer(0)]]
 ) {
+  auto geometryIdx = args.instances[instanceIdx].accelerationStructureIndex;
   device auto& vertexResource = args.vertexResources[geometryIdx];
   device auto& primitiveResource = args.primitiveResources[geometryIdx];
   device auto& instanceResource = args.instanceResources[instanceIdx];

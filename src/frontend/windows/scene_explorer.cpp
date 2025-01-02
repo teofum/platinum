@@ -311,7 +311,8 @@ void SceneExplorer::renderMaterialsList() {
       );
     }
     
-    ImGui::TreeNodeEx(md.name.c_str(), flags);
+    auto name = std::format("{}{}", md.name, md.material->flags & Material::Material_UseAlpha ? " *" : "");
+    ImGui::TreeNodeEx(name.c_str(), flags);
     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
       m_state.selectMaterial(md.materialId);
     }

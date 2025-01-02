@@ -227,7 +227,7 @@ MTL::AccelerationStructure* Renderer::makeAccelStruct(
   enc->endEncoding();
 
   cmd->commit();
-  cmd->waitUntilCompleted(); 
+  cmd->waitUntilCompleted();
 
   /*
    * Compact the acceleration structure
@@ -402,6 +402,7 @@ void Renderer::loadGgxLutTextures() {
 void Renderer::rebuildResourceBuffers() {
   // Clear old buffers if present
   if (m_vertexResourcesBuffer != nullptr) m_vertexResourcesBuffer->release();
+  m_meshVertexPositionBuffers.clear();
   m_meshVertexDataBuffers.clear();
   
   if (m_primitiveResourcesBuffer != nullptr) m_primitiveResourcesBuffer->release();
@@ -429,7 +430,9 @@ void Renderer::rebuildResourceBuffers() {
   );
 
   size_t idx = 0;
+  m_meshVertexPositionBuffers.reserve(meshes.size());
   m_meshVertexDataBuffers.reserve(meshes.size());
+  m_meshMaterialIndexBuffers.reserve(meshes.size());
   for (const auto& md: meshes) {
     auto vertexResourceHandle = (uint64_t*) m_vertexResourcesBuffer->contents() + idx * 2;
     vertexResourceHandle[0] = md.mesh->vertexPositions()->gpuAddress();
@@ -561,8 +564,17 @@ void Renderer::rebuildAccelerationStructures() {
 
     id.accelerationStructureIndex = (uint32_t) meshIdx;
     id.intersectionFunctionTableOffset = 0;
-    id.options = MTL::AccelerationStructureInstanceOptionNonOpaque;
     id.mask = 1;
+    
+    bool anyMaterialHasAlpha = false;
+    for (const auto& mid: instance.materials) {
+      if (m_store.scene().material(mid)->flags & Material::Material_UseAlpha) {
+        anyMaterialHasAlpha = true;
+        break;
+      }
+    }
+    
+    id.options = anyMaterialHasAlpha ? MTL::AccelerationStructureInstanceOptionNonOpaque : MTL::AccelerationStructureInstanceOptionOpaque;
 
     for (int32_t j = 0; j < 4; j++) {
       for (int32_t i = 0; i < 3; i++) {
