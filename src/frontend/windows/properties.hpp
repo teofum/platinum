@@ -34,9 +34,7 @@ private:
   
   void renderTextureProperties(Scene::TextureID id);
   
-  void renderSceneProperties();
-  
-  std::optional<Scene::TextureID> textureSelect(const char* label, std::optional<Scene::TextureID> selectedId);
+  Scene::TextureID textureSelect(const char* label, Scene::TextureID selectedId);
 };
 
 }

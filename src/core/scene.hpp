@@ -83,9 +83,6 @@ public:
     RemoveOptions_MoveChildrenToRoot = 1 << 1,
     RemoveOptions_MoveChildrenToParent = 1 << 2,
   };
-  
-  std::optional<TextureID> environmentTexture;
-  float environmentRotation = 0.0f;
 
   explicit Scene() noexcept;
 
