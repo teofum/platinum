@@ -17,7 +17,8 @@ void Properties::render() {
   } else if (m_state.selectedTexture()) {
     renderTextureProperties(m_state.selectedTexture().value());
   } else {
-    ImGui::Text("[ Nothing selected ]");
+    ImGui::Text("Scene");
+    renderSceneProperties();
   }
 
   ImGui::End();
@@ -61,6 +62,13 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
   if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
     widgets::transformEditor(node->transform);
     ImGui::Spacing();
+  }
+  
+  if (id == 0) {
+    if (ImGui::CollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen)) {
+      renderSceneProperties();
+      ImGui::Spacing();
+    }
   }
 
   if (node->meshId) {
@@ -204,15 +212,18 @@ void Properties::renderMaterialProperties(Scene::MaterialID id) {
   auto buttonWidth = ImGui::CalcItemWidth();
   ImGui::ColorEdit3("Base color", (float*) &material->baseColor, m_colorFlags, {buttonWidth, 0});
   
-  material->baseTextureId = textureSelect("Base texture", material->baseTextureId);
+  auto baseTexture = textureSelect("Base texture", material->baseTextureId);
+  material->baseTextureId = baseTexture.value_or(-1);
   
   ImGui::DragFloat("Roughness", &material->roughness, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Metallic", &material->metallic, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Transmission", &material->transmission, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("IOR", &material->ior, 0.01f, 0.1f, 5.0f);
   
-  material->rmTextureId = textureSelect("R/M texture", material->rmTextureId);
-  material->transmissionTextureId = textureSelect("Trm. texture", material->transmissionTextureId);
+  auto rmTexture = textureSelect("R/M texture", material->rmTextureId);
+  material->rmTextureId = rmTexture.value_or(-1);
+  auto transmissionTexture = textureSelect("Trm. texture", material->transmissionTextureId);
+  material->transmissionTextureId = transmissionTexture.value_or(-1);
     
   float alpha = material->baseColor[3];
   if (ImGui::DragFloat("Alpha", &alpha, 0.01f, 0.0f, 1.0f)) {
@@ -225,14 +236,16 @@ void Properties::renderMaterialProperties(Scene::MaterialID id) {
   mustRecalculateFlags |= ImGui::ColorEdit3("Color", (float*) &material->emission, m_colorFlags, {buttonWidth, 0});
   mustRecalculateFlags |= ImGui::DragFloat("Strength", &material->emissionStrength, 0.1f);
   
-  material->emissionTextureId = textureSelect("Texture##EmissionTexture", material->emissionTextureId);
+  auto emissionTexture = textureSelect("Texture##EmissionTexture", material->emissionTextureId);
+  material->emissionTextureId = emissionTexture.value_or(-1);
   
   ImGui::SeparatorText("Clearcoat");
   
   ImGui::DragFloat("Value", &material->clearcoat, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Roughness##CoatRoughness", &material->clearcoatRoughness, 0.01f, 0.0f, 1.0f);
   
-  material->clearcoatTextureId = textureSelect("Texture##CoatTexture", material->clearcoatTextureId);
+  auto clearcoatTexture = textureSelect("Texture##CoatTexture", material->clearcoatTextureId);
+  material->clearcoatTextureId = clearcoatTexture.value_or(-1);
   
   ImGui::SeparatorText("Anisotropy");
   
@@ -288,14 +301,30 @@ void Properties::renderTextureProperties(Scene::TextureID id) {
   ImGui::EndChild();
 }
 
-Scene::TextureID Properties::textureSelect(const char* label, Scene::TextureID selectedId) {
+void Properties::renderSceneProperties() {
+  ImGui::SeparatorText("Environment Map");
+  
+  m_store.scene().environmentTexture = textureSelect("Image##EnvmapImage", m_store.scene().environmentTexture);
+  
+  ImGui::DragFloat(
+    "Rotation##EnvmapRotation",
+		&m_store.scene().environmentRotation,
+    0.005f,
+    0.0f,
+    2.0f * std::numbers::pi,
+    "%.3f",
+    ImGuiSliderFlags_WrapAround
+  );
+}
+
+std::optional<Scene::TextureID> Properties::textureSelect(const char* label, std::optional<Scene::TextureID> selectedId) {
   auto newId = selectedId;
-  auto selectedName = selectedId == -1 ? "No texture" : m_store.scene().textureName(selectedId);
-  if (selectedName.empty()) selectedName = std::format("Texture [{}]", selectedId);
+  auto selectedName = selectedId ? m_store.scene().textureName(selectedId.value()) : "No texture";
+  if (selectedName.empty()) selectedName = std::format("Texture [{}]", selectedId.value());
+  
   if (ImGui::BeginCombo(label, selectedName.c_str())) {
-    if (widgets::comboItem("No texture", false)) {
-      newId = -1;
-    }
+    if (widgets::comboItem("No texture", selectedId == std::nullopt))
+      newId = std::nullopt;
     
     auto allTextures = m_store.scene().getAllTextures();
     if (!allTextures.empty()){
