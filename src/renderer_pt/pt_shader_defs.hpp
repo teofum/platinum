@@ -54,19 +54,30 @@ struct CameraData {
   float3 pixelDeltaV;
 };
 
-struct LightData {
+struct AreaLight {
   uint32_t instanceIdx;
   uint32_t indices[3];
   float area, power, cumulativePower;
   float3 emission;
+};
+
+struct Distribution1D {
+  metal_ptr(float, device) f;
+  metal_ptr(float, device) cdf;
+  float min, max, integral;
+  uint32_t size;
+};
+
+struct Distribution2D {
+  float2 min, max;
+  Distribution1D marginal;
+  metal_ptr(Distribution1D, device) conditional;
+  uint32_t size;
+};
+
+struct EnvironmentLight {
+  uint32_t textureId;
   
-#ifdef __METAL_VERSION__
-  
-  inline float pdf() const {
-    return 1.0f / area;
-  }
-  
-#endif
 };
 
 enum RendererFlags {
@@ -124,7 +135,7 @@ struct Arguments {
   metal_ptr(MTLAccelerationStructureInstanceDescriptor, constant) instances;
   metal_resource(instance_acceleration_structure) accelStruct;
   metal_resource(IntersectionFunctionTable) intersectionFunctionTable;
-  metal_ptr(LightData, constant) lights;
+  metal_ptr(AreaLight, constant) lights;
   metal_ptr(Texture, constant) textures;
   
   Luts luts;

@@ -681,7 +681,7 @@ void Renderer::rebuildLightData() {
    * For each instance with emissive materials, iterate its primitives. Any primitives that
    * use an emissive material get added as lights.
    */
-  std::vector<shaders_pt::LightData> lights;
+  std::vector<shaders_pt::AreaLight> lights;
   ankerl::unordered_dense::set<Scene::MaterialID> instanceEmissiveMaterials;
   uint32_t instanceIdx = 0;
   m_lightTotalPower = 0.0f;
@@ -739,10 +739,10 @@ void Renderer::rebuildLightData() {
    * Create and fill the lights buffer
    */
   m_lightDataBuffer = m_device->newBuffer(
-    sizeof(shaders_pt::LightData) * lights.size(),
+    sizeof(shaders_pt::AreaLight) * lights.size(),
     MTL::ResourceStorageModeShared
   );
-  memcpy(m_lightDataBuffer->contents(), lights.data(), sizeof(shaders_pt::LightData) * lights.size());
+  memcpy(m_lightDataBuffer->contents(), lights.data(), sizeof(shaders_pt::AreaLight) * lights.size());
 }
 
 void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {

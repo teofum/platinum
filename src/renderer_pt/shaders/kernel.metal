@@ -308,8 +308,8 @@ kernel void pathtracingKernel(
  * Sample a light from the scene, where the probability of sampling a given light is proportional
  * to its total emitted power. Very simple sampler, but much better than uniform sampling.
  */
-constant LightData& sampleLightPower(
-  constant LightData* lights,
+constant AreaLight& sampleLightPower(
+  constant AreaLight* lights,
   constant Constants& constants,
   float r
 ) {
@@ -339,7 +339,7 @@ struct LightSample {
 /*
  * Sample an area light.
  */
-LightSample sampleAreaLight(thread const Hit& hit, thread Resources& res, constant LightData& light, float2 r) {
+LightSample sampleAreaLight(thread const Hit& hit, thread Resources& res, constant AreaLight& light, float2 r) {
   const device auto& vertices = res.getVertices(light.instanceIdx);
   
   float3 vertexPositions[3];
