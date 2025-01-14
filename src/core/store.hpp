@@ -6,6 +6,8 @@
 #include <print>
 #include <cassert>
 
+#include <loaders/texture.hpp>
+
 namespace pt {
 
 class Store {
@@ -36,6 +38,7 @@ public:
   }
   
   void importGltf();
+  void importTexture(loaders::texture::TextureType type);
 
 private:
   std::unique_ptr<Scene> m_scene;

@@ -112,7 +112,18 @@ void SceneExplorer::render() {
     ImGui::OpenPopup("Import_Popup");
   }
   if (widgets::popup("Import_Popup")) {
-    if (widgets::selectable("glTF", false, 0, {100, 0})) m_store.importGltf();
+    if (widgets::menuItem("glTF")) m_store.importGltf();
+    
+    ImGui::Separator();
+    
+    if (widgets::menu("Texture")) {
+      if (widgets::menuItem("Color")) m_store.importTexture(loaders::texture::TextureType::sRGB);
+      if (widgets::menuItem("Normal map")) m_store.importTexture(loaders::texture::TextureType::LinearRGB);
+      if (widgets::menuItem("HDR/Env map")) m_store.importTexture(loaders::texture::TextureType::HDR);
+      if (widgets::menuItem("Grayscale")) m_store.importTexture(loaders::texture::TextureType::Mono);
+      ImGui::EndMenu();
+    }
+    
     ImGui::EndPopup();
   }
 

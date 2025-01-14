@@ -118,6 +118,7 @@
 				frontend/windows/studio_viewport.cpp,
 				frontend/windows/tools/ms_lut_gen.cpp,
 				loaders/gltf.cpp,
+				loaders/texture.cpp,
 				main.cpp,
 				renderer_pt/renderer_pt.cpp,
 				renderer_studio/renderer_studio.cpp,

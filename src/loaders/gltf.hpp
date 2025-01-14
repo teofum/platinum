@@ -1,5 +1,5 @@
-#ifndef PLATINUM_GLTF_HPP
-#define PLATINUM_GLTF_HPP
+#ifndef PLATINUM_LOADER_GLTF_HPP
+#define PLATINUM_LOADER_GLTF_HPP
 
 #include <unordered_dense.h>
 #include <filesystem>
@@ -8,6 +8,7 @@
 #include <fastgltf/tools.hpp>
 
 #include <core/scene.hpp>
+#include <loaders/texture.hpp>
 
 namespace fs = std::filesystem;
 using namespace simd;
@@ -44,17 +45,9 @@ public:
   void load(const fs::path& path, int options = LoadOptions_Default);
 
 private:
-  enum class TextureType {
-    Albedo,
-    Emission,
-    NormalMap,
-    Mono,
-    RoughnessMetallic,
-  };
-  
   MTL::Device* m_device;
   MTL::CommandQueue* m_commandQueue;
-  MTL::ComputePipelineState* m_textureConverterPso = nullptr;
+  texture::TextureLoader m_textureLoader;
   
   std::unique_ptr<fastgltf::Asset> m_asset;
   std::vector<Scene::MeshID> m_meshIds;
@@ -65,11 +58,9 @@ private:
   std::vector<Scene::MaterialID> m_materialIds;
   std::vector<Scene::TextureID> m_textureIds;
   
-  ankerl::unordered_dense::map<uint32_t, TextureType> m_texturesToLoad;
+  ankerl::unordered_dense::map<uint32_t, texture::TextureType> m_texturesToLoad;
   
   int m_options;
-  
-  static std::pair<MTL::PixelFormat, std::vector<uint8_t>> getAttributesForTexture(TextureType type);
 
   void loadMesh(const fastgltf::Mesh& gltfMesh);
 
@@ -77,7 +68,7 @@ private:
   
   void loadMaterial(const fastgltf::Material& gltfMat);
   
-  [[nodiscard]] Scene::TextureID loadTexture(const fastgltf::Texture& gltfTex, TextureType type);
+  [[nodiscard]] Scene::TextureID loadTexture(const fastgltf::Texture& gltfTex, texture::TextureType type);
 };
 
 

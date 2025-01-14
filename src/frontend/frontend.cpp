@@ -346,6 +346,16 @@ void Frontend::renderMenuBar() {
       if (widgets::menu("Import")) {
         if (widgets::menuItem("glTF", "Cmd + I")) m_store.importGltf();
         
+        ImGui::Separator();
+        
+        if (widgets::menu("Texture")) {
+          if (widgets::menuItem("Color")) m_store.importTexture(loaders::texture::TextureType::sRGB);
+          if (widgets::menuItem("Normal map")) m_store.importTexture(loaders::texture::TextureType::LinearRGB);
+          if (widgets::menuItem("HDR/Env map")) m_store.importTexture(loaders::texture::TextureType::HDR);
+          if (widgets::menuItem("Grayscale")) m_store.importTexture(loaders::texture::TextureType::Mono);
+          ImGui::EndMenu();
+        }
+        
         ImGui::EndMenu();
       }
       
