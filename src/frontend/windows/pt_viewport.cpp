@@ -183,6 +183,12 @@ void RenderViewport::render() {
   
   ImGui::CheckboxFlags("Multiscatter GGX", &m_renderFlags, shaders_pt::RendererFlags_MultiscatterGGX);
   
+  ImGui::SeparatorText("Post Processing");
+  
+  ImGui::Checkbox("Enable Tonemapping", &m_postProcessOptions.enableTonemapping);
+  
+  ImGui::DragFloat("Exposure", &m_postProcessOptions.exposure, 0.1f, -5.0f, 5.0f, "%.1f EV");
+  
   ImGui::End();
 }
 
@@ -193,6 +199,7 @@ void RenderViewport::startRender() {
       m_cameraNodeId.value(),
       m_renderSize,
       (uint32_t) m_nextRenderSampleCount,
+			m_postProcessOptions,
       m_renderFlags
     );
     m_state.setRendering(true);

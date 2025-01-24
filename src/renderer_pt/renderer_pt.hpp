@@ -32,7 +32,13 @@ public:
 
   void render();
 
-  void startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint32_t sampleCount, int flags = 0);
+  void startRender(
+		Scene::NodeID cameraNodeId,
+		float2 viewportSize,
+		uint32_t sampleCount,
+		const shaders_pt::PostProcessOptions& ppOpts,
+		int flags = 0
+  );
   
   [[nodiscard]] constexpr int selectedKernel() const {
     return m_selectedPipeline;
@@ -137,6 +143,9 @@ private:
   size_t m_frameIdx = 0, m_accumulationFrames = 128, m_accumulatedFrames = 0;
   size_t m_timer = 0;
   std::chrono::time_point<std::chrono::high_resolution_clock> m_renderStart;
+  
+  // Postprocess options
+  shaders_pt::PostProcessOptions m_postProcessOptions;
 
   MTL::AccelerationStructure* makeAccelStruct(MTL::AccelerationStructureDescriptor* desc);
 

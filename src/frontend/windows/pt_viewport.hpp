@@ -73,6 +73,7 @@ private:
   int32_t m_nextRenderSampleCount = 128;
   bool m_useViewportSizeForRender = true;
   int m_renderFlags = shaders_pt::RendererFlags_MultiscatterGGX;
+  shaders_pt::PostProcessOptions m_postProcessOptions;
 
   void updateScrollAndZoomState();
 };

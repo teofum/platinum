@@ -58,8 +58,8 @@
             filePath = "src/renderer_pt/renderer_pt.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "777"
-            endingLineNumber = "777"
+            startingLineNumber = "786"
+            endingLineNumber = "786"
             landmarkName = "Renderer::rebuildLightData()"
             landmarkType = "7">
          </BreakpointContent>

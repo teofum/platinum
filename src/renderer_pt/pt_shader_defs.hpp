@@ -144,6 +144,11 @@ struct Arguments {
   Luts luts;
 };
 
+struct PostProcessOptions {
+  float exposure = 0.0f;
+  bool enableTonemapping = true;
+};
+
 }
 }
 

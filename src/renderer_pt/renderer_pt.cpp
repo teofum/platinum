@@ -146,6 +146,7 @@ void Renderer::render() {
 
   postEnc->setRenderPipelineState(m_postprocessPipeline);
   postEnc->setFragmentTexture(m_accumulator[0], 0);
+  postEnc->setFragmentBytes(&m_postProcessOptions, sizeof(shaders_pt::PostProcessOptions), 0);
 
   postEnc->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger) 0, 6);
   postEnc->endEncoding();
@@ -153,11 +154,19 @@ void Renderer::render() {
   cmd->commit();
 }
 
-void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint32_t sampleCount, int flags) {
+void Renderer::startRender(
+  Scene::NodeID cameraNodeId,
+  float2 viewportSize,
+  uint32_t sampleCount,
+  const shaders_pt::PostProcessOptions& ppOpts,
+  int flags
+) {
   if (!equal(viewportSize, m_currentRenderSize)) {
     m_currentRenderSize = viewportSize;
     m_aspect = m_currentRenderSize.x / m_currentRenderSize.y;
   }
+  
+  m_postProcessOptions = ppOpts;
 
   rebuildLightData();
   rebuildRenderTargets();
