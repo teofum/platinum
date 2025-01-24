@@ -134,12 +134,12 @@ struct Arguments {
   metal_ptr(VertexResource, device) vertexResources;
   metal_ptr(PrimitiveResource, device) primitiveResources;
   metal_ptr(InstanceResource, device) instanceResources;
-  metal_ptr(MTLAccelerationStructureInstanceDescriptor, constant) instances;
+  metal_ptr(MTLAccelerationStructureInstanceDescriptor, device) instances;
   metal_resource(instance_acceleration_structure) accelStruct;
   metal_resource(IntersectionFunctionTable) intersectionFunctionTable;
-  metal_ptr(AreaLight, constant) lights;
-  metal_ptr(EnvironmentLight, constant) envLights;
-  metal_ptr(Texture, constant) textures;
+  metal_ptr(AreaLight, device) lights;
+  metal_ptr(EnvironmentLight, device) envLights;
+  metal_ptr(Texture, device) textures;
   
   Luts luts;
 };

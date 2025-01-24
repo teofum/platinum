@@ -78,6 +78,7 @@ void Renderer::render() {
     computeEnc->useResource(m_instanceAccelStruct, MTL::ResourceUsageRead);
     computeEnc->useResource(m_intersectionFunctionTables[m_selectedPipeline], MTL::ResourceUsageRead);
     computeEnc->useResource(m_lightDataBuffer, MTL::ResourceUsageRead);
+    computeEnc->useResource(m_envLightDataBuffer, MTL::ResourceUsageRead);
     computeEnc->useResource(m_texturesBuffer, MTL::ResourceUsageRead);
     
     for (uint32_t i = 0; i < m_luts.size(); i++) {
@@ -618,6 +619,7 @@ void Renderer::rebuildArgumentBuffer() {
   arguments->accelStruct = m_instanceAccelStruct->gpuResourceID();
   arguments->intersectionFunctionTable = m_intersectionFunctionTables[m_selectedPipeline]->gpuResourceID();
   arguments->lights = m_lightDataBuffer->gpuAddress();
+  arguments->envLights = m_envLightDataBuffer->gpuAddress();
   arguments->textures = m_texturesBuffer->gpuAddress();
   
   // GGX Multiscatter LUTs

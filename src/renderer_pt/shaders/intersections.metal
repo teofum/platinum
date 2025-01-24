@@ -7,7 +7,6 @@ using namespace raytracing;
 
 [[intersection(triangle, triangle_data, instancing)]]
 bool alphaTestIntersectionFunction(
-//	uint32_t geometryIdx 											[[geometry_id]],
   uint32_t primitiveIdx 										[[primitive_id]],
 	uint32_t instanceIdx 											[[instance_id]],
 	float2 barycentricCoords 									[[barycentric_coord]],
@@ -35,6 +34,6 @@ bool alphaTestIntersectionFunction(
     alpha *= args.textures[material.baseTextureId].tex.sample(s, surfaceUV).a;
   }
   
-  // TODO: pass random sample for stochastic alpha testing
+//  return true;
   return alpha > r;
 }

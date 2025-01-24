@@ -88,11 +88,11 @@ struct Hit {
  * This is essentially a parameter object to keep the getIntersectionData() function call short.
  */
 struct Resources {
-  constant MTLAccelerationStructureInstanceDescriptor* instances;
+  device MTLAccelerationStructureInstanceDescriptor* instances;
   const device VertexResource* vertexResources;
   const device PrimitiveResource* primitiveResources;
   const device InstanceResource* instanceResources;
-  constant Texture* textures;
+  device Texture* textures;
   
   inline device VertexResource& getVertices(uint32_t instanceIdx) {
     auto geometryIdx = instances[instanceIdx].accelerationStructureIndex;
@@ -261,8 +261,8 @@ kernel void pathtracingKernel(
        */
       if (intersection.type == intersection_type::none) {
         for (uint32_t i = 0; i < args.constants.envLightCount; i++) {
-          constant auto& envLight = args.envLights[i];
-          constant auto& texture = args.textures[envLight.textureId];
+          device auto& envLight = args.envLights[i];
+          device auto& texture = args.textures[envLight.textureId];
           
           constexpr sampler s(address::repeat, filter::linear);
           L += attenuation * texture.tex.sample(s, rayDirToUv(ray.direction)).rgb;
@@ -334,8 +334,8 @@ kernel void pathtracingKernel(
  * Sample a light from the scene, where the probability of sampling a given light is proportional
  * to its total emitted power. Very simple sampler, but much better than uniform sampling.
  */
-constant AreaLight& sampleLightPower(
-  constant AreaLight* lights,
+device AreaLight& sampleLightPower(
+  device AreaLight* lights,
   constant Constants& constants,
   float r
 ) {
@@ -365,7 +365,7 @@ struct LightSample {
 /*
  * Sample an area light.
  */
-LightSample sampleAreaLight(thread const Hit& hit, thread Resources& res, constant AreaLight& light, float2 r) {
+LightSample sampleAreaLight(thread const Hit& hit, thread Resources& res, device AreaLight& light, float2 r) {
   const device auto& vertices = res.getVertices(light.instanceIdx);
   
   float3 vertexPositions[3];
@@ -394,7 +394,7 @@ LightSample sampleAreaLight(thread const Hit& hit, thread Resources& res, consta
 /*
  * Sample an environment light
  */
-LightSample sampleEnvironmentLight(thread const Hit& hit, const constant Texture* textures, constant EnvironmentLight& light, float2 r) {
+LightSample sampleEnvironmentLight(thread const Hit& hit, const device Texture* textures, device EnvironmentLight& light, float2 r) {
   // Sample the alias table
   auto texture = textures[light.textureId].tex;
   uint64_t w = texture.get_width(), h = texture.get_height();
@@ -475,18 +475,18 @@ kernel void misKernel(
        */
       if (intersection.type == intersection_type::none) {
         for (uint32_t i = 0; i < args.constants.envLightCount; i++) {
-          constant auto& envLight = args.envLights[i];
-          constant auto& texture = args.textures[envLight.textureId];
+          device auto& envLight = args.envLights[i];
+          device auto& texture = args.textures[envLight.textureId].tex;
           
           constexpr sampler s(address::repeat, filter::linear);
           float2 uv = rayDirToUv(ray.direction);
-          const float3 Le = texture.tex.sample(s, uv).rgb;
+          const float3 Le = texture.sample(s, uv).rgb;
           
           if (bounce == 0 || lastSample.flags & bsdf::Sample_Specular) {
             L += attenuation * Le;
           } else {
-            uint32_t w = texture.tex.get_width();
-            uint32_t h = texture.tex.get_height();
+            uint32_t w = texture.get_width();
+            uint32_t h = texture.get_height();
             uint32_t x = w * uv.x;
             uint32_t y = h * uv.y;
             
@@ -542,7 +542,7 @@ kernel void misKernel(
       /*
        * Calculate direct lighting contribution
        */
-      if (!(sample.flags & (bsdf::Sample_Emitted | bsdf::Sample_Specular)) && args.constants.lightCount > 0) {
+      if (!(sample.flags & (bsdf::Sample_Emitted | bsdf::Sample_Specular))) {
         auto r = float3(samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 5),
                         samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 6),
                         samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 7));
@@ -562,7 +562,7 @@ kernel void misKernel(
         } else {
           // Sample an area light
           r.z = (r.z - pInfinite) / (1.0f - pInfinite);
-          const constant auto& light = sampleLightPower(args.lights, args.constants, r.z);
+          device auto& light = sampleLightPower(args.lights, args.constants, r.z);
           pLight = (1.0 - pInfinite) * light.power / args.constants.totalLightPower; // Probability of sampling this light
           lightSample = sampleAreaLight(hit, resources, light, r.xy);
         }
