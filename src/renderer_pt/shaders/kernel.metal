@@ -18,6 +18,14 @@ float3 transformPoint(float3 p, float4x4 transform) {
   return (transform * float4(p.x, p.y, p.z, 1.0f)).xyz;
 }
 
+__attribute__((always_inline))
+float2 rayDirToUV(float3 dir) {
+  float phi = atan2(-dir.z, -dir.x);
+  
+  float theta = acos(dir.y);
+  return float2(phi / (2.0 * M_PI_F), theta / M_PI_F);
+}
+
 /*
  * Coordinate frame, we use this over a 4x4 matrix because it allows easy conversion both ways
  * without having to calculate the inverse.
@@ -242,6 +250,14 @@ kernel void pathtracingKernel(
        * Stop on ray miss
        */
       if (intersection.type == intersection_type::none) {
+        for (uint32_t i = 0; i < args.constants.envLightCount; i++) {
+          constant auto& envLight = args.envLights[i];
+          constant auto& texture = args.textures[envLight.textureId];
+          
+          constexpr sampler s(address::repeat, filter::linear);
+          L += attenuation * texture.tex.sample(s, rayDirToUV(ray.direction)).rgb;
+        }
+        
         L += attenuation * backgroundColor;
         break;
       }

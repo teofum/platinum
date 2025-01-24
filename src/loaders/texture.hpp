@@ -36,7 +36,7 @@ private:
   
   Scene& m_scene;
   
-  static std::pair<MTL::PixelFormat, std::vector<uint8_t>> getAttributesForTexture(TextureType type);
+  static std::tuple<MTL::PixelFormat, MTL::PixelFormat, std::vector<uint8_t>> getAttributesForTexture(TextureType type);
   
   Scene::TextureID load(const std::unique_ptr<OIIO::ImageInput>& in, std::string_view name, TextureType type);
 };

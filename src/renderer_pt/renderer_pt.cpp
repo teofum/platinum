@@ -110,6 +110,10 @@ void Renderer::render() {
     for (const auto& texture: m_store.scene().getAllTextures()) {
       computeEnc->useResource(texture.texture, MTL::ResourceUsageRead);
     }
+    
+    for (const auto& aliasTable: m_envLightAliasTables) {
+      computeEnc->useResource(aliasTable, MTL::ResourceUsageRead);
+    }
 
     computeEnc->setComputePipelineState(m_pathtracingPipelines[m_selectedPipeline]);
     computeEnc->dispatchThreadgroups(threadgroups, threadsPerThreadgroup);
@@ -416,7 +420,7 @@ void Renderer::rebuildResourceBuffers() {
 
   /*
    * Create vertex resources buffer, pointing to each mesh's vertex data buffer
-   *    and primitive resources buffer, pointing to each mesh's material slot index buffer
+   * and primitive resources buffer, pointing to each mesh's material slot index buffer
    */
   auto meshes = m_store.scene().getAllMeshes();
   
@@ -674,7 +678,11 @@ void Renderer::rebuildRenderTargets() {
 }
 
 void Renderer::rebuildLightData() {
+  /*
+   * Release light data buffers, if they exist
+   */
   if (m_lightDataBuffer != nullptr) m_lightDataBuffer->release();
+  if (m_envLightDataBuffer != nullptr) m_envLightDataBuffer->release();
   
   /*
    * Iterate all instances, finding the ones with emissive materials.
@@ -738,11 +746,34 @@ void Renderer::rebuildLightData() {
   /*
    * Create and fill the lights buffer
    */
-  m_lightDataBuffer = m_device->newBuffer(
-    sizeof(shaders_pt::AreaLight) * lights.size(),
-    MTL::ResourceStorageModeShared
-  );
-  memcpy(m_lightDataBuffer->contents(), lights.data(), sizeof(shaders_pt::AreaLight) * lights.size());
+  size_t lightBufSize = sizeof(shaders_pt::AreaLight) * lights.size();
+  m_lightDataBuffer = m_device->newBuffer(lightBufSize, MTL::ResourceStorageModeShared);
+  memcpy(m_lightDataBuffer->contents(), lights.data(), lightBufSize);
+  
+  /*
+   * Load environment lights into the argument buffer.
+   * TODO: Right now the scene only supports one environment light, but we build this to support more
+   */
+  std::vector<shaders_pt::EnvironmentLight> envLights;
+  m_envLightAliasTables.clear();
+  
+  const auto& envmap = m_store.scene().envmap();
+  if (envmap.textureId()) {
+    envLights.push_back({
+      .textureId = uint32_t(envmap.textureId().value()),
+      .alias = envmap.aliasTable()->gpuAddress(),
+    });
+    m_envLightAliasTables.push_back(envmap.aliasTable());
+  }
+  
+  m_envLightCount = (uint32_t) envLights.size();
+  
+  /*
+   * Create and fill the lights buffer
+   */
+  size_t envLightBufSize = sizeof(shaders_pt::EnvironmentLight) * envLights.size();
+  m_envLightDataBuffer = m_device->newBuffer(envLightBufSize, MTL::ResourceStorageModeShared);
+  memcpy(m_envLightDataBuffer->contents(), envLights.data(), envLightBufSize);
 }
 
 void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
@@ -784,6 +815,7 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
       .pixelDeltaV = vv / m_currentRenderSize.y,
     },
     .lightCount = m_lightCount,
+    .envLightCount = m_envLightCount,
     .totalLightPower = m_lightTotalPower,
     .lutSizeE = m_lutSizes[0],
     .lutSizeEavg = m_lutSizes[1],

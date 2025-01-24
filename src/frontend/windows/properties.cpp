@@ -4,6 +4,23 @@
 
 namespace pt::frontend::windows {
 
+static const char* getTextureFormatName(MTL::Texture* texture) {
+  switch (texture->pixelFormat()) {
+    case MTL::PixelFormatRGBA8Unorm:
+      return "Linear RGBA 8bpc";
+    case MTL::PixelFormatRGBA8Unorm_sRGB:
+      return "sRGB RGBA 8bpc";
+    case MTL::PixelFormatRG8Unorm:
+      return "Roughness/Metallic (RG 8bpc)";
+    case MTL::PixelFormatR8Unorm:
+      return "Single channel";
+    case MTL::PixelFormatRGBA32Float:
+      return "HDR (RGBA 32bpc)";
+    default:
+      return "Unknown format";
+  }
+}
+
 void Properties::render() {
   ImGui::Begin("Properties");
   if (m_state.selectedNode()) {
@@ -61,6 +78,25 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
   if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
     widgets::transformEditor(node->transform);
     ImGui::Spacing();
+  }
+  
+  if (id == 0) {
+    if (ImGui::CollapsingHeader("Scene")) {
+      auto currentValue = m_store.scene().envmap().textureId().value_or(-1);
+      auto selection = textureSelect(
+				"Environment",
+				currentValue
+			);
+      if (selection != currentValue && selection != -1) {
+        m_store.scene().envmap().setTexture(
+					selection,
+					m_store.device(),
+					m_store.scene().texture(selection)
+        );
+      }
+      
+      ImGui::Spacing();
+    }
   }
 
   if (node->meshId) {
@@ -264,6 +300,8 @@ void Properties::renderTextureProperties(Scene::TextureID id) {
   
   ImGui::Spacing();
 
+  ImGui::Text("%s", getTextureFormatName(texture));
+  ImGui::SameLine(ImGui::GetContentRegionAvail().x - 80.0);
   ImGui::Text("%lux%lu", texture->width(), texture->height());
   
   ImGui::Separator();

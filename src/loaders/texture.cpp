@@ -6,20 +6,18 @@ namespace pt::loaders::texture {
 using metal_utils::ns_shared;
 using metal_utils::operator ""_ns;
 
-std::pair<MTL::PixelFormat, std::vector<uint8_t>> TextureLoader::getAttributesForTexture(TextureType type) {
+std::tuple<MTL::PixelFormat, MTL::PixelFormat, std::vector<uint8_t>> TextureLoader::getAttributesForTexture(TextureType type) {
   switch (type) {
     case TextureType::sRGB:
+      return std::make_tuple(MTL::PixelFormatRGBA8Unorm_sRGB, MTL::PixelFormatRGBA8Unorm, std::vector<uint8_t>{0, 1, 2, 3});
     case TextureType::LinearRGB:
-      return std::make_pair(MTL::PixelFormatRGBA8Unorm, std::vector<uint8_t>{0, 1, 2, 3});
-
+      return std::make_tuple(MTL::PixelFormatRGBA8Unorm, MTL::PixelFormatRGBA8Unorm, std::vector<uint8_t>{0, 1, 2, 3});
     case TextureType::Mono:
-      return std::make_pair(MTL::PixelFormatR8Unorm, std::vector<uint8_t>{0});
-  
+      return std::make_tuple(MTL::PixelFormatRGBA8Unorm, MTL::PixelFormatR8Unorm, std::vector<uint8_t>{0});
     case TextureType::RoughnessMetallic:
-      return std::make_pair(MTL::PixelFormatRG8Unorm, std::vector<uint8_t>{1, 2});
-      
+      return std::make_tuple(MTL::PixelFormatRGBA8Unorm, MTL::PixelFormatRG8Unorm, std::vector<uint8_t>{1, 2});
     case TextureType::HDR:
-      return std::make_pair(MTL::PixelFormatRGBA32Float, std::vector<uint8_t>{0, 1, 2, 3});
+      return std::make_tuple(MTL::PixelFormatRGBA32Float, MTL::PixelFormatRGBA32Float, std::vector<uint8_t>{0, 1, 2, 3});
   }
 }
 
@@ -113,10 +111,11 @@ Scene::TextureID TextureLoader::load(const std::unique_ptr<OIIO::ImageInput>& in
    * Create a temporary texture as input to the texture converter shader. We just make this texture
    * RGBA, since it's only used while loading we don't care about the extra memory use.
    */
+  auto [srcPixelFormat, texturePixelFormat, textureChannels] = getAttributesForTexture(type);
   auto srcDesc = metal_utils::makeTextureDescriptor({
     .width = uint32_t(spec.width),
     .height = uint32_t(spec.height),
-    .format = type == TextureType::sRGB ? MTL::PixelFormatRGBA8Unorm_sRGB : MTL::PixelFormatRGBA8Unorm,
+    .format = srcPixelFormat,
   });
   
   auto srcTexture = m_device->newTexture(srcDesc);
@@ -130,12 +129,11 @@ Scene::TextureID TextureLoader::load(const std::unique_ptr<OIIO::ImageInput>& in
   /*
    * Create the actual texture we're going to store. The pixel format here depends on usage.
    */
-  auto [texturePixelFormat, textureChannels] = getAttributesForTexture(type);
   auto desc = metal_utils::makeTextureDescriptor({
     .width = uint32_t(spec.width),
     .height = uint32_t(spec.height),
     .format = texturePixelFormat,
-    .storageMode = MTL::StorageModePrivate,
+    .storageMode = MTL::StorageModeShared,
     .usage = MTL::TextureUsageShaderRead | MTL::TextureUsageShaderWrite,
   });
   auto texture = m_device->newTexture(desc);

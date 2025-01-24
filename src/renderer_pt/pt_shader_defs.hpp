@@ -26,6 +26,7 @@
 
 #include "../core/mesh.hpp"
 #include "../core/material.hpp"
+#include "../core/environment.hpp"
 
 using namespace simd;
 
@@ -77,7 +78,7 @@ struct Distribution2D {
 
 struct EnvironmentLight {
   uint32_t textureId;
-  
+  metal_ptr(AliasEntry, device) alias;
 };
 
 enum RendererFlags {
@@ -88,6 +89,7 @@ enum RendererFlags {
 struct Constants {
   uint32_t frameIdx;
   uint32_t lightCount;
+  uint32_t envLightCount;
   uint32_t lutSizeE, lutSizeEavg;
   int flags;
   float totalLightPower;
@@ -136,6 +138,7 @@ struct Arguments {
   metal_resource(instance_acceleration_structure) accelStruct;
   metal_resource(IntersectionFunctionTable) intersectionFunctionTable;
   metal_ptr(AreaLight, constant) lights;
+  metal_ptr(EnvironmentLight, constant) envLights;
   metal_ptr(Texture, constant) textures;
   
   Luts luts;

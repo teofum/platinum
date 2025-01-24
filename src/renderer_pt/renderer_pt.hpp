@@ -88,6 +88,10 @@ private:
   uint32_t m_lightCount = 0;
   float m_lightTotalPower = 0.0f;
   MTL::Buffer* m_lightDataBuffer = nullptr;
+  
+  uint32_t m_envLightCount = 0;
+  MTL::Buffer* m_envLightDataBuffer = nullptr;
+  std::vector<const MTL::Buffer*> m_envLightAliasTables;
 
   // Constants and resources
   shaders_pt::Constants m_constants = {};
