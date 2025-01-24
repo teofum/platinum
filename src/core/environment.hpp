@@ -13,6 +13,7 @@ using namespace simd;
 namespace pt {
 
 struct AliasEntry {
+  float pdf;
   float p;
   uint32_t aliasIdx;
 };

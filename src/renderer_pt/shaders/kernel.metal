@@ -19,11 +19,21 @@ float3 transformPoint(float3 p, float4x4 transform) {
 }
 
 __attribute__((always_inline))
-float2 rayDirToUV(float3 dir) {
+float2 rayDirToUv(float3 dir) {
   float phi = atan2(-dir.z, -dir.x);
   
   float theta = acos(dir.y);
   return float2(phi / (2.0 * M_PI_F), theta / M_PI_F);
+}
+
+__attribute__((always_inline))
+float3 uvToRayDir(float2 uv) {
+  float y;
+  float r = sincos(uv.y * M_PI_F, y);
+  float cosPhi;
+  float sinPhi = sincos(uv.x * 2.0f * M_PI_F, cosPhi);
+  
+  return float3(-cosPhi * r, y, -sinPhi * r);
 }
 
 /*
@@ -255,7 +265,7 @@ kernel void pathtracingKernel(
           constant auto& texture = args.textures[envLight.textureId];
           
           constexpr sampler s(address::repeat, filter::linear);
-          L += attenuation * texture.tex.sample(s, rayDirToUV(ray.direction)).rgb;
+          L += attenuation * texture.tex.sample(s, rayDirToUv(ray.direction)).rgb;
         }
         
         L += attenuation * backgroundColor;
@@ -382,6 +392,35 @@ LightSample sampleAreaLight(thread const Hit& hit, thread Resources& res, consta
 }
 
 /*
+ * Sample an environment light
+ */
+LightSample sampleEnvironmentLight(thread const Hit& hit, const constant Texture* textures, constant EnvironmentLight& light, float2 r) {
+  // Sample the alias table
+  auto texture = textures[light.textureId].tex;
+  uint64_t w = texture.get_width(), h = texture.get_height();
+  uint64_t n = w * h;
+  uint64_t i = min(n - 1, size_t(r.x * n));
+  
+  if (r.y >= light.alias[i].p) i = light.alias[i].aliasIdx;
+  
+  uint64_t x = i % w, y = i / w;
+  float2 uv(float(x) / float(w), float(y) / float(h));
+  
+  constexpr sampler s(address::repeat, filter::linear);
+  const float3 Le = texture.sample(s, uv).rgb;
+  
+  float3 wi = uvToRayDir(uv);
+  
+  return {
+    .Li = Le,
+    .pos = wi * 1000.0,
+    .normal = -wi,
+    .wi = wi,
+    .pdf = light.alias[i].pdf * 0.25 * M_1_PI_F,
+  };
+}
+
+/*
  * A better path tracing kernel using multiple importance sampling to combine NEE with
  * BSDF importance sampling.
  */
@@ -435,6 +474,29 @@ kernel void misKernel(
        * Stop on ray miss
        */
       if (intersection.type == intersection_type::none) {
+        for (uint32_t i = 0; i < args.constants.envLightCount; i++) {
+          constant auto& envLight = args.envLights[i];
+          constant auto& texture = args.textures[envLight.textureId];
+          
+          constexpr sampler s(address::repeat, filter::linear);
+          float2 uv = rayDirToUv(ray.direction);
+          const float3 Le = texture.tex.sample(s, uv).rgb;
+          
+          if (bounce == 0 || lastSample.flags & bsdf::Sample_Specular) {
+            L += attenuation * Le;
+          } else {
+            uint32_t w = texture.tex.get_width();
+            uint32_t h = texture.tex.get_height();
+            uint32_t x = w * uv.x;
+            uint32_t y = h * uv.y;
+            
+            float lightPdf = envLight.alias[y * w + x].pdf * 0.25 * M_1_PI_F;
+            float bsdfWeight = lastSample.pdf / (lastSample.pdf + lightPdf);
+            
+            L += attenuation * bsdfWeight * Le;
+          }
+        }
+        
         L += attenuation * backgroundColor;
         break;
       }
@@ -485,10 +547,26 @@ kernel void misKernel(
                         samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 6),
                         samplers::halton(samplerOffset, 2 + bounce * DIMS_PER_BOUNCE + 7));
         
-        const constant auto& light = sampleLightPower(args.lights, args.constants, r.z);
-        const float pLight = light.power / args.constants.totalLightPower; // Probability of sampling this light
+        LightSample lightSample;
+        float pLight = 0;
         
-        const auto lightSample = sampleAreaLight(hit, resources, light, r.xy);
+        size_t envCount = args.constants.envLightCount;
+        float pInfinite = args.constants.lightCount == 0 ? 1.0 : float(envCount) / float(envCount + 1);
+        
+        if (r.z < pInfinite) {
+          // Sample an infinite (environment) light
+          r.z /= pInfinite;
+          size_t idx = min(size_t(envCount - 1), size_t(r.z * envCount));
+          pLight = pInfinite / float(envCount); // Probability of sampling this environment light
+          lightSample = sampleEnvironmentLight(hit, args.textures, args.envLights[idx], r.xy);
+        } else {
+          // Sample an area light
+          r.z = (r.z - pInfinite) / (1.0f - pInfinite);
+          const constant auto& light = sampleLightPower(args.lights, args.constants, r.z);
+          pLight = (1.0 - pInfinite) * light.power / args.constants.totalLightPower; // Probability of sampling this light
+          lightSample = sampleAreaLight(hit, resources, light, r.xy);
+        }
+        
         const float3 wi = hit.frame.worldToLocal(lightSample.wi);
         const auto bsdfEval = bsdf.eval(hit.wo, wi);
         
