@@ -33,7 +33,7 @@ float3 uvToRayDir(float2 uv) {
   float cosPhi;
   float sinPhi = sincos(uv.x * 2.0f * M_PI_F, cosPhi);
   
-  return float3(-cosPhi * r, y, -sinPhi * r);
+  return normalize(float3(-cosPhi * r, y, -sinPhi * r));
 }
 
 /*
@@ -413,10 +413,10 @@ LightSample sampleEnvironmentLight(thread const Hit& hit, const device Texture* 
   
   return {
     .Li = Le,
-    .pos = wi * 1000.0,
+    .pos = wi * 100.0,
     .normal = -wi,
     .wi = wi,
-    .pdf = light.alias[i].pdf * 0.25 * M_1_PI_F,
+    .pdf = light.alias[i].pdf / (4.0 * M_PI_F),
   };
 }
 

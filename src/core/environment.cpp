@@ -40,8 +40,8 @@ void Environment::rebuildAliasTable(MTL::Device* device, MTL::Texture* texture) 
   
   float scale = float(n) / totalImportance;
   for (uint64_t i = 0; i < n; i++) {
-    aliasTableHandle[i].pdf = importance[i] / totalImportance;
     importance[i] *= scale;
+    aliasTableHandle[i].pdf = importance[i];
   }
   
   /*
