@@ -78,6 +78,7 @@ void Renderer::render() {
     computeEnc->useResource(m_instanceAccelStruct, MTL::ResourceUsageRead);
     computeEnc->useResource(m_intersectionFunctionTables[m_selectedPipeline], MTL::ResourceUsageRead);
     computeEnc->useResource(m_lightDataBuffer, MTL::ResourceUsageRead);
+    computeEnc->useResource(m_envLightDataBuffer, MTL::ResourceUsageRead);
     computeEnc->useResource(m_texturesBuffer, MTL::ResourceUsageRead);
     
     for (uint32_t i = 0; i < m_luts.size(); i++) {
@@ -110,6 +111,10 @@ void Renderer::render() {
     for (const auto& texture: m_store.scene().getAllTextures()) {
       computeEnc->useResource(texture.texture, MTL::ResourceUsageRead);
     }
+    
+    for (const auto& aliasTable: m_envLightAliasTables) {
+      computeEnc->useResource(aliasTable, MTL::ResourceUsageRead);
+    }
 
     computeEnc->setComputePipelineState(m_pathtracingPipelines[m_selectedPipeline]);
     computeEnc->dispatchThreadgroups(threadgroups, threadsPerThreadgroup);
@@ -141,6 +146,7 @@ void Renderer::render() {
 
   postEnc->setRenderPipelineState(m_postprocessPipeline);
   postEnc->setFragmentTexture(m_accumulator[0], 0);
+  postEnc->setFragmentBytes(&m_postProcessOptions, sizeof(shaders_pt::PostProcessOptions), 0);
 
   postEnc->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger) 0, 6);
   postEnc->endEncoding();
@@ -148,11 +154,19 @@ void Renderer::render() {
   cmd->commit();
 }
 
-void Renderer::startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint32_t sampleCount, int flags) {
+void Renderer::startRender(
+  Scene::NodeID cameraNodeId,
+  float2 viewportSize,
+  uint32_t sampleCount,
+  const shaders_pt::PostProcessOptions& ppOpts,
+  int flags
+) {
   if (!equal(viewportSize, m_currentRenderSize)) {
     m_currentRenderSize = viewportSize;
     m_aspect = m_currentRenderSize.x / m_currentRenderSize.y;
   }
+  
+  m_postProcessOptions = ppOpts;
 
   rebuildLightData();
   rebuildRenderTargets();
@@ -416,7 +430,7 @@ void Renderer::rebuildResourceBuffers() {
 
   /*
    * Create vertex resources buffer, pointing to each mesh's vertex data buffer
-   *    and primitive resources buffer, pointing to each mesh's material slot index buffer
+   * and primitive resources buffer, pointing to each mesh's material slot index buffer
    */
   auto meshes = m_store.scene().getAllMeshes();
   
@@ -614,6 +628,7 @@ void Renderer::rebuildArgumentBuffer() {
   arguments->accelStruct = m_instanceAccelStruct->gpuResourceID();
   arguments->intersectionFunctionTable = m_intersectionFunctionTables[m_selectedPipeline]->gpuResourceID();
   arguments->lights = m_lightDataBuffer->gpuAddress();
+  arguments->envLights = m_envLightDataBuffer->gpuAddress();
   arguments->textures = m_texturesBuffer->gpuAddress();
   
   // GGX Multiscatter LUTs
@@ -674,14 +689,18 @@ void Renderer::rebuildRenderTargets() {
 }
 
 void Renderer::rebuildLightData() {
+  /*
+   * Release light data buffers, if they exist
+   */
   if (m_lightDataBuffer != nullptr) m_lightDataBuffer->release();
+  if (m_envLightDataBuffer != nullptr) m_envLightDataBuffer->release();
   
   /*
    * Iterate all instances, finding the ones with emissive materials.
    * For each instance with emissive materials, iterate its primitives. Any primitives that
    * use an emissive material get added as lights.
    */
-  std::vector<shaders_pt::LightData> lights;
+  std::vector<shaders_pt::AreaLight> lights;
   ankerl::unordered_dense::set<Scene::MaterialID> instanceEmissiveMaterials;
   uint32_t instanceIdx = 0;
   m_lightTotalPower = 0.0f;
@@ -738,11 +757,34 @@ void Renderer::rebuildLightData() {
   /*
    * Create and fill the lights buffer
    */
-  m_lightDataBuffer = m_device->newBuffer(
-    sizeof(shaders_pt::LightData) * lights.size(),
-    MTL::ResourceStorageModeShared
-  );
-  memcpy(m_lightDataBuffer->contents(), lights.data(), sizeof(shaders_pt::LightData) * lights.size());
+  size_t lightBufSize = sizeof(shaders_pt::AreaLight) * lights.size();
+  m_lightDataBuffer = m_device->newBuffer(lightBufSize, MTL::ResourceStorageModeShared);
+  memcpy(m_lightDataBuffer->contents(), lights.data(), lightBufSize);
+  
+  /*
+   * Load environment lights into the argument buffer.
+   * TODO: Right now the scene only supports one environment light, but we build this to support more
+   */
+  std::vector<shaders_pt::EnvironmentLight> envLights;
+  m_envLightAliasTables.clear();
+  
+  const auto& envmap = m_store.scene().envmap();
+  if (envmap.textureId()) {
+    envLights.push_back({
+      .textureId = uint32_t(envmap.textureId().value()),
+      .alias = envmap.aliasTable()->gpuAddress(),
+    });
+    m_envLightAliasTables.push_back(envmap.aliasTable());
+  }
+  
+  m_envLightCount = (uint32_t) envLights.size();
+  
+  /*
+   * Create and fill the lights buffer
+   */
+  size_t envLightBufSize = sizeof(shaders_pt::EnvironmentLight) * envLights.size();
+  m_envLightDataBuffer = m_device->newBuffer(envLightBufSize, MTL::ResourceStorageModeShared);
+  memcpy(m_envLightDataBuffer->contents(), envLights.data(), envLightBufSize);
 }
 
 void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
@@ -784,6 +826,7 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
       .pixelDeltaV = vv / m_currentRenderSize.y,
     },
     .lightCount = m_lightCount,
+    .envLightCount = m_envLightCount,
     .totalLightPower = m_lightTotalPower,
     .lutSizeE = m_lutSizes[0],
     .lutSizeEavg = m_lutSizes[1],

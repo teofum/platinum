@@ -15,10 +15,19 @@ Store::~Store() {
 }
 
 void Store::importGltf() {
-  const auto gltfPath = utils::fileOpen("../assets", "gltf,glb");
+  const auto gltfPath = utils::fileOpen("/", "gltf,glb");
   if (gltfPath) {
     loaders::gltf::GltfLoader gltf(m_device, m_commandQueue, *m_scene);
     gltf.load(gltfPath.value());
+  }
+}
+
+void Store::importTexture(loaders::texture::TextureType type) {
+  const auto extensions = type == loaders::texture::TextureType::HDR ? "hdr,exr" : "png,jpg,jpeg";
+  const auto texturePath = utils::fileOpen("/", extensions);
+  if (texturePath) {
+    loaders::texture::TextureLoader loader(m_device, m_commandQueue, *m_scene);
+    loader.loadFromFile(texturePath.value(), texturePath->stem().string(), type);
   }
 }
 

@@ -104,6 +104,7 @@
 		AB5133DB2CFB71A4005738C1 /* Exceptions for "src" folder in "platinum" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				core/environment.cpp,
 				core/mesh.cpp,
 				core/primitives.cpp,
 				core/scene.cpp,
@@ -118,6 +119,7 @@
 				frontend/windows/studio_viewport.cpp,
 				frontend/windows/tools/ms_lut_gen.cpp,
 				loaders/gltf.cpp,
+				loaders/texture.cpp,
 				main.cpp,
 				renderer_pt/renderer_pt.cpp,
 				renderer_studio/renderer_studio.cpp,

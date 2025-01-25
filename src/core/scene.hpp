@@ -10,6 +10,7 @@
 #include "material.hpp"
 #include "mesh.hpp"
 #include "transform.hpp"
+#include "environment.hpp"
 
 namespace pt {
 
@@ -169,6 +170,10 @@ public:
   [[nodiscard]] constexpr std::string& textureName(TextureID id) {
     return m_textureNames.at(id);
   }
+  
+  [[nodiscard]] constexpr Environment& envmap() {
+    return m_envmap;
+  }
 
   [[nodiscard]] float4x4 worldTransform(NodeID id) const;
 
@@ -205,6 +210,8 @@ private:
   ankerl::unordered_dense::map<TextureID, std::string> m_textureNames;
   ankerl::unordered_dense::map<TextureID, bool> m_textureAlpha;
   ankerl::unordered_dense::map<TextureID, uint16_t> m_textureRc; // TODO: refcount
+  
+  Environment m_envmap;
 
   void traverseHierarchy(
     const std::function<void(NodeID id, const Node*, const float4x4&)>& cb,

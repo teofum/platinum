@@ -9,7 +9,7 @@ using namespace metal;
  * Loosely based on Enterprise PBR and Blender's Principled BSDF
  */
 namespace bsdf {
-  ShadingContext::ShadingContext(device const pt::Material& mat, float2 uv, constant Texture* textures) {
+  ShadingContext::ShadingContext(device const pt::Material& mat, float2 uv, device Texture* textures) {
     albedo = mat.baseColor.rgb;
     emission = mat.emission * mat.emissionStrength;
     roughness = mat.roughness;

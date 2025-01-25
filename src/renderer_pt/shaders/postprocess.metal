@@ -80,11 +80,15 @@ vertex VertexOut postprocessVertex(unsigned short vid [[vertex_id]]) {
 // Simple fragment shader that copies a texture
 fragment float4 postprocessFragment(
   VertexOut in [[stage_in]],
-  texture2d<float> src
+  texture2d<float> src,
+  constant PostProcessOptions& options [[buffer(0)]]
 ) {
   constexpr sampler sampler(min_filter::nearest, mag_filter::nearest, mip_filter::none);
   
   float3 color = src.sample(sampler, in.uv).xyz;
-  color = agx::apply(color);
+  
+  color *= exp2(options.exposure);
+  if (options.enableTonemapping) color = agx::apply(color);
+  
   return float4(color, 1.0f);
 }

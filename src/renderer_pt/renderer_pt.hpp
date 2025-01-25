@@ -32,7 +32,13 @@ public:
 
   void render();
 
-  void startRender(Scene::NodeID cameraNodeId, float2 viewportSize, uint32_t sampleCount, int flags = 0);
+  void startRender(
+		Scene::NodeID cameraNodeId,
+		float2 viewportSize,
+		uint32_t sampleCount,
+		const shaders_pt::PostProcessOptions& ppOpts,
+		int flags = 0
+  );
   
   [[nodiscard]] constexpr int selectedKernel() const {
     return m_selectedPipeline;
@@ -88,6 +94,10 @@ private:
   uint32_t m_lightCount = 0;
   float m_lightTotalPower = 0.0f;
   MTL::Buffer* m_lightDataBuffer = nullptr;
+  
+  uint32_t m_envLightCount = 0;
+  MTL::Buffer* m_envLightDataBuffer = nullptr;
+  std::vector<const MTL::Buffer*> m_envLightAliasTables;
 
   // Constants and resources
   shaders_pt::Constants m_constants = {};
@@ -133,6 +143,9 @@ private:
   size_t m_frameIdx = 0, m_accumulationFrames = 128, m_accumulatedFrames = 0;
   size_t m_timer = 0;
   std::chrono::time_point<std::chrono::high_resolution_clock> m_renderStart;
+  
+  // Postprocess options
+  shaders_pt::PostProcessOptions m_postProcessOptions;
 
   MTL::AccelerationStructure* makeAccelStruct(MTL::AccelerationStructureDescriptor* desc);
 

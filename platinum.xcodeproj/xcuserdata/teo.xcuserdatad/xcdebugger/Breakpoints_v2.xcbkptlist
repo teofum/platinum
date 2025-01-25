@@ -19,32 +19,48 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "BB246DF3-309A-4EC2-BDD3-177883892FDA"
+            uuid = "E8BDF35D-9B00-4014-87A3-1C963E4D6FAA"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "src/loaders/gltf.cpp"
+            filePath = "src/frontend/windows/properties.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "466"
-            endingLineNumber = "466"
-            landmarkName = "GltfLoader::loadTexture(gltfTex, type)"
+            startingLineNumber = "91"
+            endingLineNumber = "91"
+            landmarkName = "Properties::renderNodeProperties(id)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "779A9A42-E9A6-45B8-AB2B-06FDE874C6F2"
+            uuid = "4F914264-CD55-43C4-9893-EB01B062A98A"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "src/loaders/gltf.cpp"
+            filePath = "src/frontend/windows/properties.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "541"
-            endingLineNumber = "541"
-            landmarkName = "GltfLoader::loadTexture(gltfTex, type)"
+            startingLineNumber = "92"
+            endingLineNumber = "92"
+            landmarkName = "Properties::renderNodeProperties(id)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "C004D3D5-EDCC-48DA-A57A-60789B7CD228"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "src/renderer_pt/renderer_pt.cpp"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "786"
+            endingLineNumber = "786"
+            landmarkName = "Renderer::rebuildLightData()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

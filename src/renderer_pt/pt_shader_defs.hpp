@@ -26,6 +26,7 @@
 
 #include "../core/mesh.hpp"
 #include "../core/material.hpp"
+#include "../core/environment.hpp"
 
 using namespace simd;
 
@@ -54,19 +55,30 @@ struct CameraData {
   float3 pixelDeltaV;
 };
 
-struct LightData {
+struct AreaLight {
   uint32_t instanceIdx;
   uint32_t indices[3];
   float area, power, cumulativePower;
   float3 emission;
-  
-#ifdef __METAL_VERSION__
-  
-  inline float pdf() const {
-    return 1.0f / area;
-  }
-  
-#endif
+};
+
+struct Distribution1D {
+  metal_ptr(float, device) f;
+  metal_ptr(float, device) cdf;
+  float min, max, integral;
+  uint32_t size;
+};
+
+struct Distribution2D {
+  float2 min, max;
+  Distribution1D marginal;
+  metal_ptr(Distribution1D, device) conditional;
+  uint32_t size;
+};
+
+struct EnvironmentLight {
+  uint32_t textureId;
+  metal_ptr(AliasEntry, device) alias;
 };
 
 enum RendererFlags {
@@ -77,6 +89,7 @@ enum RendererFlags {
 struct Constants {
   uint32_t frameIdx;
   uint32_t lightCount;
+  uint32_t envLightCount;
   uint32_t lutSizeE, lutSizeEavg;
   int flags;
   float totalLightPower;
@@ -121,13 +134,19 @@ struct Arguments {
   metal_ptr(VertexResource, device) vertexResources;
   metal_ptr(PrimitiveResource, device) primitiveResources;
   metal_ptr(InstanceResource, device) instanceResources;
-  metal_ptr(MTLAccelerationStructureInstanceDescriptor, constant) instances;
+  metal_ptr(MTLAccelerationStructureInstanceDescriptor, device) instances;
   metal_resource(instance_acceleration_structure) accelStruct;
   metal_resource(IntersectionFunctionTable) intersectionFunctionTable;
-  metal_ptr(LightData, constant) lights;
-  metal_ptr(Texture, constant) textures;
+  metal_ptr(AreaLight, device) lights;
+  metal_ptr(EnvironmentLight, device) envLights;
+  metal_ptr(Texture, device) textures;
   
   Luts luts;
+};
+
+struct PostProcessOptions {
+  float exposure = 0.0f;
+  bool enableTonemapping = true;
 };
 
 }
