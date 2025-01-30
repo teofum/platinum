@@ -47,9 +47,9 @@ void apply(ImGuiStyle& style, const Theme& theme) {
   colors[ImGuiCol_ButtonHovered]          = imguiRGBA(mix(theme.bgObject, theme.primary, float3(0.2)));
   colors[ImGuiCol_ButtonActive]           = imguiRGBA(mix(theme.bgObject, theme.primary, float3(0.25)));
   
-  colors[ImGuiCol_Header]                 = imguiRGBA(theme.primary, 0.30f);
-  colors[ImGuiCol_HeaderHovered]          = imguiRGBA(theme.primary, 0.50f);
-  colors[ImGuiCol_HeaderActive]           = imguiRGBA(theme.primary, 0.60f);
+  colors[ImGuiCol_Header]                 = imguiRGBA(theme.objectLowContrast, 0.72f);
+  colors[ImGuiCol_HeaderHovered]          = imguiRGBA(theme.objectLowContrast, 0.80f);
+  colors[ImGuiCol_HeaderActive]           = imguiRGBA(theme.objectLowContrast, 0.80f);
   
   colors[ImGuiCol_Separator]              = imguiRGBA(theme.objectLowContrast, 0.62f);
   colors[ImGuiCol_SeparatorHovered]       = imguiRGBA(theme.primary, 0.67f);
@@ -99,6 +99,7 @@ Theme platinumDark = {
   .objectLowContrast = {0.30, 0.30, 0.30},
   .objectMediumContrast = {0.38, 0.38, 0.38},
   .primary    = {0.05, 1.00, 0.75},
+  .danger    	= {0.96, 0.24, 0.30},
   .viewportBackground = {0.08, 0.08, 0.08},
   .viewportGrid       = {0.02, 0.02, 0.02},
   .viewportAxisX 			= {0.96, 0.00, 0.08},
@@ -111,11 +112,12 @@ Theme platinumLight = {
   .text       = {0.00, 0.00, 0.00},
   .bgWindow   = {0.95, 0.95, 0.95},
   .bgObject   = {1.00, 1.00, 1.00},
-  .bgMenuBar   = {0.92, 0.92, 0.92},
+  .bgMenuBar  = {0.92, 0.92, 0.92},
   .border     = {0.00, 0.00, 0.00},
   .objectLowContrast = {0.82, 0.82, 0.82},
   .objectMediumContrast = {0.74, 0.74, 0.74},
   .primary    = {0.04, 0.80, 0.60},
+  .danger     = {0.83, 0.07, 0.13},
   .viewportBackground = {0.80, 0.80, 0.80},
   .viewportGrid       = {0.30, 0.30, 0.30},
   .viewportAxisX      = {0.40, 0.05, 0.08},
