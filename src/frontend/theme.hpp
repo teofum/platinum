@@ -27,6 +27,14 @@ struct Theme {
   float3 warning;
   float3 danger;
   float3 success;
+  
+  float3 viewportBackground;
+  float3 viewportGrid;
+  float3 viewportAxisX;
+  float3 viewportAxisY;
+  float3 viewportAxisZ;
+  float3 viewportModel;
+  float3 viewportOutline;
 };
 
 extern Theme platinumDark;

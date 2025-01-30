@@ -43,7 +43,14 @@ private:
   Camera m_camera;
   float2 m_viewportSize = {1, 1};
   float m_aspect = 1.0;
-  float m_clearColor[4] = {0.8f, 0.8f, 0.8f, 1.0f};
+  float4 m_clearColor = {0.8f, 0.8f, 0.8f, 1.0f};
+  
+  // Shader colors
+  float3 m_objectColor = {0.50, 0.50, 0.50};
+  shaders_studio::EdgeConstants m_edgeConstants = {
+    .outlineColor = {0.15, 0.15, 0.15},
+    .selectionColor = {0.50, 0.50, 0.50},
+  };
 
   // Metal
   MTL::Device* m_device = nullptr;
@@ -77,7 +84,7 @@ private:
   // Grid pass pipeline state
   MTL::RenderPipelineState* m_gridPassPso = nullptr;
   MTL::DepthStencilState* m_gridPassDsso = nullptr;
-  static constexpr const shaders_studio::GridProperties m_gridProperties = {
+  shaders_studio::GridProperties m_gridProperties = {
     .size = 10000.0f,
     .spacing = 0.1f,
     .lineWidth = 1.0f,
@@ -111,6 +118,8 @@ private:
   void rebuildRenderTargets();
 
   void updateConstants();
+  
+  void updateTheme();
 };
 
 }

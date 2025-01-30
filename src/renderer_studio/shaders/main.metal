@@ -18,7 +18,6 @@ struct FragmentOut {
     uint32_t stencil [[stencil]];
 };
 
-constant float3 objectColor(0.5, 0.5, 0.5);
 constant float3 vsLightDirection(0.2, -0.2, -1.0);
 constant float ambientLight = 0.5;
 
@@ -38,12 +37,13 @@ vertex VertexOut vertexShader(
 
 fragment FragmentOut fragmentShader(
     VertexOut in [[stage_in]],
-    constant float3& cameraPosition [[buffer(0)]]
+    constant float3& cameraPosition [[buffer(0)]],
+    constant Constants &c [[buffer(1)]]
 ) {
     float shading = mix(abs(dot(vsLightDirection, in.vsNormal)), 1.0, ambientLight);
 
     FragmentOut out;
-    out.color = float4(objectColor * shading, 1.0);
+    out.color = float4(c.objectColor * shading, 1.0);
     out.objectId = in.objectId;
 
     // Stencil buffer trick to eliminate grid z-fighting

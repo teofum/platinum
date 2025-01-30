@@ -99,6 +99,12 @@ Theme platinumDark = {
   .objectLowContrast = {0.30, 0.30, 0.30},
   .objectMediumContrast = {0.38, 0.38, 0.38},
   .primary    = {0.05, 1.00, 0.75},
+  .viewportBackground = {0.08, 0.08, 0.08},
+  .viewportGrid       = {0.02, 0.02, 0.02},
+  .viewportAxisX 			= {0.96, 0.00, 0.08},
+  .viewportAxisZ      = {0.00, 0.23, 0.96},
+  .viewportModel      = {0.23, 0.23, 0.23},
+  .viewportOutline    = {0.04, 0.04, 0.04},
 };
 
 Theme platinumLight = {
@@ -110,6 +116,12 @@ Theme platinumLight = {
   .objectLowContrast = {0.82, 0.82, 0.82},
   .objectMediumContrast = {0.74, 0.74, 0.74},
   .primary    = {0.04, 0.80, 0.60},
+  .viewportBackground = {0.80, 0.80, 0.80},
+  .viewportGrid       = {0.30, 0.30, 0.30},
+  .viewportAxisX      = {0.40, 0.05, 0.08},
+  .viewportAxisZ      = {0.05, 0.08, 0.40},
+  .viewportModel      = {0.50, 0.50, 0.50},
+  .viewportOutline 		= {0.15, 0.15, 0.15},
 };
 
 }
