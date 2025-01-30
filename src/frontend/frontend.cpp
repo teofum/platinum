@@ -59,7 +59,7 @@ Frontend::InitResult Frontend::init() {
   style.GrabMinSize = 0.0f;
   style.WindowMenuButtonPosition = ImGuiDir_None;
   
-  theme::apply(style, theme::platinumDark);
+  theme::apply(style, isSystemDarkModeEnabled() ? theme::platinumDark : theme::platinumLight);
 
   SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
   SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
@@ -166,15 +166,12 @@ void Frontend::start() {
       ImGui_ImplSDL2_ProcessEvent(&event);
       if (isExitEvent(event, SDL_GetWindowID(m_sdlWindow))) {
         exit = true;
+      } else if (event.type == SDL_WINDOWEVENT) {
+        setupWindowStyle(m_sdlWindow);
       } else {
         handleInput(event);
       }
     }
-
-    // Handle resize
-    int width, height;
-    SDL_GetRendererOutputSize(m_sdlRenderer, &width, &height);
-    metal_utils::setDrawableSize(m_layer, width, height);
 
     // Rendering
     auto drawable = metal_utils::nextDrawable(m_layer);
@@ -352,7 +349,10 @@ void Frontend::renderMenuBar() {
   bool menubar = ImGui::BeginMenuBar();
   ImGui::PopStyleVar();
   if (menubar) {
-    ImGui::SetCursorPosX(80.0f);
+    if (!isFullscreenEnabled(m_sdlWindow)) {
+      ImGui::SetCursorPosX(80.0f);
+    }
+    
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8, 6});
     
     ImGui::SetNextWindowSize({160, 0});

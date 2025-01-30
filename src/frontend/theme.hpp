@@ -30,6 +30,7 @@ struct Theme {
 };
 
 extern Theme platinumDark;
+extern Theme platinumLight;
 
 ImVec4 imguiRGBA(float3 rgb, float a = 1.0f);
 

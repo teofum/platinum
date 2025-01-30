@@ -101,4 +101,15 @@ Theme platinumDark = {
   .primary    = {0.05, 1.00, 0.75},
 };
 
+Theme platinumLight = {
+  .text       = {0.00, 0.00, 0.00},
+  .bgWindow   = {0.95, 0.95, 0.95},
+  .bgObject   = {1.00, 1.00, 1.00},
+  .bgMenuBar   = {0.92, 0.92, 0.92},
+  .border     = {0.00, 0.00, 0.00},
+  .objectLowContrast = {0.82, 0.82, 0.82},
+  .objectMediumContrast = {0.74, 0.74, 0.74},
+  .primary    = {0.04, 0.80, 0.60},
+};
+
 }

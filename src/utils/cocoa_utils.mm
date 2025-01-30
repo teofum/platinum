@@ -16,3 +16,18 @@ void setupWindowStyle(SDL_Window* sdlWindow) {
   window.titlebarAppearsTransparent = YES;
   window.styleMask |= NSWindowStyleMaskFullSizeContentView;
 }
+
+bool isFullscreenEnabled(SDL_Window* sdlWindow) {
+  NSWindow* window = getCocoaWindow(sdlWindow);
+  return (window.styleMask & NSWindowStyleMaskFullScreen) == NSWindowStyleMaskFullScreen;
+}
+
+bool isSystemDarkModeEnabled() {
+  NSString* appleInterfaceStyle = [[NSUserDefaults standardUserDefaults] stringForKey:@"AppleInterfaceStyle"];
+  
+  if (appleInterfaceStyle && [appleInterfaceStyle length] > 0) {
+    return [[appleInterfaceStyle lowercaseString] containsString:@"dark"];
+  } else {
+    return false;
+  }
+}
