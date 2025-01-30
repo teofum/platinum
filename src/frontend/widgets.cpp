@@ -1,4 +1,5 @@
 #include "widgets.hpp"
+#include "theme.hpp"
 
 namespace pt::frontend::widgets {
 
@@ -105,6 +106,13 @@ bool buttonDanger(const char* label, const ImVec2& size) {
   );
   const bool clicked = ImGui::Button(label, size);
   ImGui::PopStyleColor(4);
+  return clicked;
+}
+
+bool button(const char* label, const ImVec2& size) {
+  ImGui::PushStyleColor(ImGuiCol_Border, theme::imguiRGBA(theme::Theme::currentTheme->primary));
+  const bool clicked = ImGui::Button(label, size);
+  ImGui::PopStyleColor();
   return clicked;
 }
 

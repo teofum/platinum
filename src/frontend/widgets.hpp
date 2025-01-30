@@ -15,6 +15,8 @@ void transformEditor(Transform& transform);
 
 bool buttonDanger(const char* label, const ImVec2& size);
 
+bool button(const char* label, const ImVec2& size);
+
 bool selectableDanger(
   const char* label,
   bool selected = false,

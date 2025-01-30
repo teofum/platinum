@@ -62,7 +62,7 @@ void SceneExplorer::render() {
    * Create/import options
    */
   auto buttonWidth = widgets::getWidthForItems(2);
-  if (ImGui::Button("Add...", {buttonWidth, 0})) {
+  if (widgets::button("Add...", {buttonWidth, 0})) {
     ImGui::OpenPopup("Add_Popup");
   }
   if (widgets::popup("Add_Popup")) {
@@ -108,7 +108,7 @@ void SceneExplorer::render() {
   }
 
   ImGui::SameLine();
-  if (ImGui::Button("Import...", {buttonWidth, 0})) {
+  if (widgets::button("Import...", {buttonWidth, 0})) {
     ImGui::OpenPopup("Import_Popup");
   }
   if (widgets::popup("Import_Popup")) {
@@ -223,7 +223,7 @@ void SceneExplorer::renderNode(Scene::NodeID id, uint32_t level) {
   auto inlineButtonWidth = ImGui::GetFrameHeight();
   auto offset = ImGui::GetStyle().IndentSpacing * static_cast<float>(isOpen ? level + 1 : level);
   ImGui::SameLine(ImGui::GetContentRegionAvail().x + offset - inlineButtonWidth);
-  if (ImGui::Button(visibleLabel.c_str(), {inlineButtonWidth, 0})) {
+  if (widgets::button(visibleLabel.c_str(), {inlineButtonWidth, 0})) {
     node->flags ^= Scene::NodeFlags_Visible;
   }
 

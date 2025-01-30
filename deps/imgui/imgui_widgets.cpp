@@ -739,9 +739,11 @@ bool ImGui::ButtonEx(const char* label, const ImVec2& size_arg, ImGuiButtonFlags
     bool pressed = ButtonBehavior(bb, id, &hovered, &held, flags);
 
     // Render
+    if (hovered) PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1);
     const ImU32 col = GetColorU32((held && hovered) ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
     RenderNavCursor(bb, id);
     RenderFrame(bb.Min, bb.Max, col, true, style.FrameRounding);
+    if (hovered) PopStyleVar();
 
     if (g.LogEnabled)
         LogSetNextTextDecoration("[", "]");
