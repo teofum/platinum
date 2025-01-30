@@ -377,6 +377,22 @@ void Frontend::renderMenuBar() {
     }
     
     ImGui::SetNextWindowSize({160, 0});
+    if (widgets::menu("View")) {
+      if (widgets::menu("Theme")) {
+        if (widgets::menuItem("Light", NULL, theme::Theme::currentTheme == &theme::platinumLight)) {
+          theme::apply(ImGui::GetStyle(), theme::platinumLight);
+        }
+        if (widgets::menuItem("Dark", NULL, theme::Theme::currentTheme == &theme::platinumDark)) {
+          theme::apply(ImGui::GetStyle(), theme::platinumDark);
+        }
+        
+        ImGui::EndMenu();
+      }
+      
+      ImGui::EndMenu();
+    }
+    
+    ImGui::SetNextWindowSize({160, 0});
     if (widgets::menu("Render")) {
       ImGui::BeginDisabled(!m_renderViewport.canRender());
       if (widgets::menuItem("Render", "Space")) m_renderViewport.startRender();

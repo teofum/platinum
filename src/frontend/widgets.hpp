@@ -41,6 +41,8 @@ bool menu(const char* label);
 
 bool menuItem(const char* label, const char* shortcut = nullptr, bool* selected = nullptr);
 
+bool menuItem(const char* label, const char* shortcut, bool selected);
+
 }
 
 #endif //PLATINUM_WIDGETS_HPP

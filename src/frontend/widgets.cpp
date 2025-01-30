@@ -175,4 +175,11 @@ bool menuItem(const char* label, const char* shortcut, bool* selected) {
   return open;
 }
 
+bool menuItem(const char* label, const char* shortcut, bool selected) {
+  ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
+  bool open = ImGui::MenuItem(label, shortcut, selected);
+  ImGui::PopStyleVar();
+  return open;
+}
+
 }
