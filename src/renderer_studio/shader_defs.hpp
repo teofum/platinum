@@ -30,6 +30,12 @@ struct NodeData {
 struct Constants {
   float4x4 projection;
   float4x4 view;
+  float3 objectColor;
+};
+
+struct EdgeConstants {
+  float3 outlineColor;
+  float3 selectionColor;
 };
 
 struct GridProperties {

@@ -15,6 +15,8 @@ void transformEditor(Transform& transform);
 
 bool buttonDanger(const char* label, const ImVec2& size);
 
+bool button(const char* label, const ImVec2& size);
+
 bool selectableDanger(
   const char* label,
   bool selected = false,
@@ -38,6 +40,8 @@ bool context(const char* str_id = nullptr, ImGuiPopupFlags flags = 1);
 bool menu(const char* label);
 
 bool menuItem(const char* label, const char* shortcut = nullptr, bool* selected = nullptr);
+
+bool menuItem(const char* label, const char* shortcut, bool selected);
 
 }
 

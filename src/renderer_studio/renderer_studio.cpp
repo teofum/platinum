@@ -5,6 +5,7 @@
 #include <utils/metal_utils.hpp>
 #include <utils/matrices.hpp>
 #include <utils/utils.hpp>
+#include <frontend/theme.hpp>
 
 namespace pt::renderer_studio {
 using metal_utils::operator ""_ns;
@@ -166,6 +167,7 @@ void Renderer::render(Scene::NodeID selectedNodeId) {
   NS::AutoreleasePool* autoreleasePool = NS::AutoreleasePool::alloc()->init();
 
   rebuildDataBuffers();
+  updateTheme();
   updateConstants();
 
   auto cmd = m_commandQueue->commandBuffer();
@@ -215,6 +217,7 @@ void Renderer::render(Scene::NodeID selectedNodeId) {
   enc->setViewport(viewport);
   enc->setVertexBuffer(m_constantsBuffer, m_constantsOffset, 3);
   enc->setFragmentBytes(&m_camera.position, sizeof(m_camera.position), 0);
+  enc->setFragmentBuffer(m_constantsBuffer, m_constantsOffset, 1);
 
   size_t dataOffset = 0;
   for (const auto& md: m_meshData) {
@@ -262,6 +265,7 @@ void Renderer::render(Scene::NodeID selectedNodeId) {
   enc->setVertexBuffer(m_cameraVertexBuffer, 0, 0);
   enc->setVertexBuffer(m_constantsBuffer, m_constantsOffset, 2);
   enc->setFragmentBytes(&selectedNodeId, sizeof(selectedNodeId), 0);
+  enc->setFragmentBytes(&m_edgeConstants, sizeof(m_edgeConstants), 1);
 
   // TODO this can use instanced rendering
   // probably no big deal because we won't ever have more than a few cameras
@@ -334,6 +338,7 @@ void Renderer::render(Scene::NodeID selectedNodeId) {
   enc->setVertexBuffer(m_simpleQuadVertexBuffer, 0, 0);
   enc->setFragmentBytes(&m_viewportSize, sizeof(m_viewportSize), 0);
   enc->setFragmentBytes(&selectedNodeId, sizeof(selectedNodeId), 1);
+  enc->setFragmentBytes(&m_edgeConstants, sizeof(m_edgeConstants), 2);
   enc->drawIndexedPrimitives(
     MTL::PrimitiveTypeTriangle,
     6,
@@ -669,13 +674,26 @@ void Renderer::rebuildRenderTargets() {
 
 void Renderer::updateConstants() {
   shaders_studio::Constants constants = {
-    m_camera.projection(m_aspect),
-    m_camera.view(),
+    .projection = m_camera.projection(m_aspect),
+    .view = m_camera.view(),
+    .objectColor = m_objectColor,
   };
 
   m_constantsOffset = (m_frameIdx % m_maxFramesInFlight) * m_constantsStride;
   void* bufferWrite = (char*) m_constantsBuffer->contents() + m_constantsOffset;
   memcpy(bufferWrite, &constants, m_constantsSize);
+}
+
+void Renderer::updateTheme() {
+  m_clearColor.xyz = frontend::theme::Theme::currentTheme->viewportBackground;
+  m_objectColor = frontend::theme::Theme::currentTheme->viewportModel;
+  
+  m_gridProperties.lineColor = frontend::theme::Theme::currentTheme->viewportGrid;
+  m_gridProperties.xAxisColor = frontend::theme::Theme::currentTheme->viewportAxisX;
+  m_gridProperties.zAxisColor = frontend::theme::Theme::currentTheme->viewportAxisZ;
+  
+  m_edgeConstants.selectionColor = frontend::theme::Theme::currentTheme->primary;
+  m_edgeConstants.outlineColor = frontend::theme::Theme::currentTheme->viewportOutline;
 }
 
 }

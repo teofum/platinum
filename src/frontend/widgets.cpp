@@ -1,4 +1,5 @@
 #include "widgets.hpp"
+#include "theme.hpp"
 
 namespace pt::frontend::widgets {
 
@@ -87,24 +88,32 @@ void transformEditor(Transform& transform) {
 }
 
 bool buttonDanger(const char* label, const ImVec2& size) {
+  auto* theme = theme::Theme::currentTheme;
+  
+  theme::imguiRGBA(theme->bgObject);
+  
   ImGui::PushStyleColor(
     ImGuiCol_Button,
-    (ImVec4) ImColor::HSV(0.0f, 0.6f, 0.9f)
+		theme::imguiRGBA(mix(theme->bgObject, theme->danger, float3(0.10)))
   );
   ImGui::PushStyleColor(
     ImGuiCol_ButtonHovered,
-    (ImVec4) ImColor::HSV(0.0f, 0.7f, 0.8f)
+		theme::imguiRGBA(mix(theme->bgObject, theme->danger, float3(0.20)))
   );
   ImGui::PushStyleColor(
     ImGuiCol_ButtonActive,
-    (ImVec4) ImColor::HSV(0.0f, 0.8f, 0.7f)
+		theme::imguiRGBA(mix(theme->bgObject, theme->danger, float3(0.25)))
   );
-  ImGui::PushStyleColor(
-    ImGuiCol_Text,
-    (ImVec4) ImColor::HSV(0.0f, 0.0f, 1.0f)
-  );
+  ImGui::PushStyleColor(ImGuiCol_Border, theme::imguiRGBA(theme::Theme::currentTheme->danger));
   const bool clicked = ImGui::Button(label, size);
   ImGui::PopStyleColor(4);
+  return clicked;
+}
+
+bool button(const char* label, const ImVec2& size) {
+  ImGui::PushStyleColor(ImGuiCol_Border, theme::imguiRGBA(theme::Theme::currentTheme->primary));
+  const bool clicked = ImGui::Button(label, size);
+  ImGui::PopStyleColor();
   return clicked;
 }
 
@@ -160,6 +169,13 @@ bool menu(const char* label) {
 }
 
 bool menuItem(const char* label, const char* shortcut, bool* selected) {
+  ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
+  bool open = ImGui::MenuItem(label, shortcut, selected);
+  ImGui::PopStyleVar();
+  return open;
+}
+
+bool menuItem(const char* label, const char* shortcut, bool selected) {
   ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
   bool open = ImGui::MenuItem(label, shortcut, selected);
   ImGui::PopStyleVar();

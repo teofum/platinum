@@ -7,6 +7,9 @@
 #include <backends/imgui_impl_metal.h>
 
 #include <utils/metal_utils.hpp>
+#include <utils/cocoa_utils.h>
+
+#include "theme.hpp"
 
 namespace pt::frontend {
 using metal_utils::operator ""_ns;
@@ -54,6 +57,9 @@ Frontend::InitResult Frontend::init() {
   style.SeparatorTextBorderSize = 1.0f;
   style.GrabRounding = 4.0f;
   style.GrabMinSize = 0.0f;
+  style.WindowMenuButtonPosition = ImGuiDir_None;
+  
+  theme::apply(style, isSystemDarkModeEnabled() ? theme::platinumDark : theme::platinumLight);
 
   SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
   SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
@@ -82,6 +88,8 @@ Frontend::InitResult Frontend::init() {
     std::println(stderr, "SDL create window failed: {}", SDL_GetError());
     return Frontend::InitResult_SDLCreateWindowFailed;
   }
+  
+  setupWindowStyle(m_sdlWindow);
 
   m_sdlRenderer = SDL_CreateRenderer(
     m_sdlWindow,
@@ -158,15 +166,12 @@ void Frontend::start() {
       ImGui_ImplSDL2_ProcessEvent(&event);
       if (isExitEvent(event, SDL_GetWindowID(m_sdlWindow))) {
         exit = true;
+      } else if (event.type == SDL_WINDOWEVENT) {
+        setupWindowStyle(m_sdlWindow);
       } else {
         handleInput(event);
       }
     }
-
-    // Handle resize
-    int width, height;
-    SDL_GetRendererOutputSize(m_sdlRenderer, &width, &height);
-    metal_utils::setDrawableSize(m_layer, width, height);
 
     // Rendering
     auto drawable = metal_utils::nextDrawable(m_layer);
@@ -266,8 +271,9 @@ void Frontend::mainDockSpace() {
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 7.0f));
   ImGui::Begin("DockSpace", nullptr, windowFlags);
-  ImGui::PopStyleVar(3);
+  ImGui::PopStyleVar(4);
 
   renderMenuBar();
 
@@ -339,9 +345,17 @@ void Frontend::renderMenuBar() {
   /*
    * Render menu bar
    */
-  if (ImGui::BeginMenuBar()) {
-    ImGui::SetNextWindowSize({160, 0});
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 7.0f));
+  bool menubar = ImGui::BeginMenuBar();
+  ImGui::PopStyleVar();
+  if (menubar) {
+    if (!isFullscreenEnabled(m_sdlWindow)) {
+      ImGui::SetCursorPosX(80.0f);
+    }
+    
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8, 6});
+    
+    ImGui::SetNextWindowSize({160, 0});
     if (widgets::menu("File")) {
       if (widgets::menu("Import")) {
         if (widgets::menuItem("glTF", "Cmd + I")) m_store.importGltf();
@@ -354,6 +368,22 @@ void Frontend::renderMenuBar() {
           if (widgets::menuItem("HDR/Env map")) m_store.importTexture(loaders::texture::TextureType::HDR);
           if (widgets::menuItem("Grayscale")) m_store.importTexture(loaders::texture::TextureType::Mono);
           ImGui::EndMenu();
+        }
+        
+        ImGui::EndMenu();
+      }
+      
+      ImGui::EndMenu();
+    }
+    
+    ImGui::SetNextWindowSize({160, 0});
+    if (widgets::menu("View")) {
+      if (widgets::menu("Theme")) {
+        if (widgets::menuItem("Light", NULL, theme::Theme::currentTheme == &theme::platinumLight)) {
+          theme::apply(ImGui::GetStyle(), theme::platinumLight);
+        }
+        if (widgets::menuItem("Dark", NULL, theme::Theme::currentTheme == &theme::platinumDark)) {
+          theme::apply(ImGui::GetStyle(), theme::platinumDark);
         }
         
         ImGui::EndMenu();

@@ -125,14 +125,14 @@ void MultiscatterLutGenerator::render() {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
     ImGui::BeginDisabled(working);
-    if (ImGui::Button("Generate", {ImGui::GetContentRegionAvail().x, 0})) {
+    if (widgets::button("Generate", {ImGui::GetContentRegionAvail().x, 0})) {
       m_shouldStartNextFrame = true;
     }
     ImGui::EndDisabled();
     
     ImGui::TableNextColumn();
     ImGui::BeginDisabled(!done);
-    if (ImGui::Button("Export", {ImGui::GetContentRegionAvail().x, 0})) {
+    if (widgets::button("Export", {ImGui::GetContentRegionAvail().x, 0})) {
       exportToFile();
     }
     ImGui::EndDisabled();

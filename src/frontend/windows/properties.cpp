@@ -215,11 +215,11 @@ void Properties::renderCameraProperties(Scene::CameraID id) {
 
   ImGui::SeparatorText("Presets");
   auto buttonWidth = widgets::getWidthForItems(3);
-  if (ImGui::Button("Micro 4/3", {buttonWidth, 0})) camera->sensorSize = float2{18.0f, 13.5f};
+  if (widgets::button("Micro 4/3", {buttonWidth, 0})) camera->sensorSize = float2{18.0f, 13.5f};
   ImGui::SameLine();
-  if (ImGui::Button("APS-C", {buttonWidth, 0})) camera->sensorSize = float2{23.5f, 15.6f};
+  if (widgets::button("APS-C", {buttonWidth, 0})) camera->sensorSize = float2{23.5f, 15.6f};
   ImGui::SameLine();
-  if (ImGui::Button("35mm FF", {buttonWidth, 0})) camera->sensorSize = float2{36.0f, 24.0f};
+  if (widgets::button("35mm FF", {buttonWidth, 0})) camera->sensorSize = float2{36.0f, 24.0f};
   ImGui::SameLine();
 }
 
