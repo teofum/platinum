@@ -38,10 +38,10 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
   if (id != m_lastNodeId) m_selectedMaterialIdx = 0;
   m_lastNodeId = id;
 
-//  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-//  ImGui::BeginDisabled(node.isRoot());
-//  ImGui::InputText("##NameInput", &node.name());
-//  ImGui::EndDisabled();
+  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+  ImGui::BeginDisabled(node.isRoot());
+  ImGui::InputText("##NameInput", &node.name());
+  ImGui::EndDisabled();
 
   ImGui::AlignTextToFramePadding();
   ImGui::Text("Node [id: %u]", id);
@@ -66,24 +66,24 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
 //    ImGui::CheckboxFlags("Visible", &node->flags, Scene::NodeFlags_Visible);
 //    ImGui::Spacing();
 //  }
-//
-//  if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
-//    widgets::transformEditor(node->transform);
-//    ImGui::Spacing();
-//  }
+
+  if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
+    widgets::transformEditor(node.transform());
+    ImGui::Spacing();
+  }
   
-//  if (id == 0) {
+//  if (node.isRoot()) {
 //    if (ImGui::CollapsingHeader("Scene")) {
 //      auto currentValue = m_store.scene().envmap().textureId().value_or(-1);
 //      auto selection = textureSelect(
-//				"Environment",
-//				currentValue
-//			);
+//        "Environment",
+//        currentValue
+//      );
 //      if (selection != currentValue && selection != -1) {
 //        m_store.scene().envmap().setTexture(
-//					selection,
-//					m_store.device(),
-//					m_store.scene().texture(selection)
+//          selection,
+//          m_store.device(),
+//          m_store.scene().texture(selection)
 //        );
 //      }
 //      
@@ -91,13 +91,13 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
 //    }
 //  }
 
-//  if (node->meshId) {
-//    if (ImGui::CollapsingHeader("Mesh")) {
-//      renderMeshProperties(node->meshId.value());
-//      ImGui::Spacing();
-//    }
-//  }
-//
+  if (node.mesh()) {
+    if (ImGui::CollapsingHeader("Mesh")) {
+      renderMeshProperties(node.mesh().value());
+      ImGui::Spacing();
+    }
+  }
+
 //  if (node->cameraId) {
 //    if (ImGui::CollapsingHeader("Camera")) {
 //      renderCameraProperties(node->cameraId.value());
@@ -165,24 +165,22 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
 //  }
 }
 
-//void Properties::renderMeshProperties(Scene::MeshID id) {
-//  Mesh* mesh = m_store.scene().mesh(id);
-//
-//  ImGui::AlignTextToFramePadding();
-//  ImGui::Text("Mesh [id: %u]", id);
-//
-//  auto users = std::format("{} users", m_store.scene().meshUsers(id));
-//  auto availableWidth = ImGui::GetContentRegionAvail().x;
-//  ImGui::SameLine(availableWidth - ImGui::CalcTextSize(users.c_str()).x);
-//  ImGui::AlignTextToFramePadding();
-//  ImGui::Text("%s", users.c_str());
-//
-//  ImGui::Spacing();
-//
-//  ImGui::Text("%lu vertices", mesh->vertexCount());
-//  ImGui::Text("%lu triangles", mesh->indexCount() / 3);
-//}
-//
+void Properties::renderMeshProperties(const Scene::AssetData<Mesh>& mesh) {
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("Mesh [id: %llu]", mesh.id);
+
+  auto users = std::format("{} users", m_store.scene().getAssetRc(mesh.id));
+  auto availableWidth = ImGui::GetContentRegionAvail().x;
+  ImGui::SameLine(availableWidth - ImGui::CalcTextSize(users.c_str()).x);
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("%s", users.c_str());
+
+  ImGui::Spacing();
+
+  ImGui::Text("%lu vertices", mesh.asset->vertexCount());
+  ImGui::Text("%lu triangles", mesh.asset->indexCount() / 3);
+}
+
 //void Properties::renderCameraProperties(Scene::CameraID id) {
 //  Camera* camera = m_store.scene().camera(id);
 //

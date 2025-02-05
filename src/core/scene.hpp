@@ -49,7 +49,7 @@ public:
     std::optional<AssetData<Material>> material(size_t idx) const;
     void setMaterial(size_t idx, std::optional<AssetID> id);
     
-    std::string_view name() const;
+    std::string& name() const;
     Transform& transform() const;
     
     std::optional<Node> parent() const;
@@ -125,6 +125,8 @@ public:
   }
   
   void removeAsset(AssetID id);
+  
+  uint32_t getAssetRc(AssetID id);
 
 private:
   /*

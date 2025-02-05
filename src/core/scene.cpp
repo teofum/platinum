@@ -18,6 +18,10 @@ void Scene::removeAsset(AssetID id) {
   removeAssetImpl(id);
 }
 
+uint32_t Scene::getAssetRc(AssetID id) {
+  return m_assetRc[id];
+}
+
 /*
  * Asset management (internal)
  */
@@ -138,7 +142,7 @@ void Scene::Node::setMaterial(size_t idx, std::optional<AssetID> id) {
   mesh.materials[idx] = id;
 }
 
-std::string_view Scene::Node::name() const {
+std::string& Scene::Node::name() const {
   return m_scene.m_registry.get<Hierarchy>(m_entity).name;
 }
 
