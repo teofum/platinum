@@ -54,9 +54,9 @@ private:
   ankerl::unordered_dense::map<Scene::AssetID, std::vector<Scene::AssetID>> m_meshMaterials;
   
   Scene& m_scene;
-//  std::vector<Scene::CameraID> m_cameraIds;
   std::vector<Scene::AssetID> m_materialIds;
   std::vector<Scene::AssetID> m_textureIds;
+  std::vector<Camera> m_cameras;
   
   ankerl::unordered_dense::map<uint32_t, texture::TextureType> m_texturesToLoad;
   

@@ -92,24 +92,19 @@ void GltfLoader::load(const fs::path& path, int options) {
       if (material->normalTextureId == -2 - idx) material->normalTextureId = textureId;
     }
   }
-  
-//  for (auto mid: m_materialIds) {
-//    m_scene.recalculateMaterialFlags(mid);
-//  }
 
   m_meshIds.reserve(m_asset->meshes.size());
   for (const auto& mesh: m_asset->meshes)
     loadMesh(mesh);
 
-//  m_cameraIds.reserve(m_asset->cameras.size());
-//  for (const auto& camera: m_asset->cameras) {
-//    auto perspective = std::get_if<fastgltf::Camera::Perspective>(&camera.camera);
-//    if (perspective) {
-//      float2 size{24.0f * perspective->aspectRatio.value_or(1.5f), 24.0f};
-//      auto id = m_scene.addCamera(Camera::withFov(perspective->yfov, size));
-//      m_cameraIds.push_back(id);
-//    }
-//  }
+  m_cameras.reserve(m_asset->cameras.size());
+  for (const auto& camera: m_asset->cameras) {
+    auto perspective = std::get_if<fastgltf::Camera::Perspective>(&camera.camera);
+    if (perspective) {
+      float2 size{24.0f * perspective->aspectRatio.value_or(1.5f), 24.0f};
+      m_cameras.push_back(Camera::withFov(perspective->yfov, size));
+    }
+  }
 
   Scene::NodeID localRoot = m_scene.root().id();
   auto filename = path.stem().string();
@@ -256,17 +251,14 @@ void GltfLoader::loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parentId
   std::optional<Scene::AssetID> meshId = std::nullopt;
   if (gltfNode.meshIndex) meshId = m_meshIds[gltfNode.meshIndex.value()];
 
-//  std::optional<Scene::CameraID> cameraId = std::nullopt;
-//  if (gltfNode.cameraIndex) cameraId = m_cameraIds[gltfNode.cameraIndex.value()];
-
   // Skip adding empty nodes
-  if ((m_options & LoadOptions_SkipEmptyNodes) && !meshId && gltfNode.children.empty()) {
+  if ((m_options & LoadOptions_SkipEmptyNodes) && !meshId && !gltfNode.cameraIndex && gltfNode.children.empty()) {
     return;
   }
 
   // Create node
   auto node = m_scene.createNode(gltfNode.name, parentId);
-//  node.cameraId = cameraId;
+  if (gltfNode.cameraIndex) node.set(m_cameras[gltfNode.cameraIndex.value()]);
 
   // Node transform
   auto trs = std::get_if<fastgltf::TRS>(&gltfNode.transform);

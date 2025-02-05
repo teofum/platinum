@@ -16,7 +16,13 @@
 
 namespace pt {
 
+template <typename T, typename ... U>
+concept is_not = (!std::same_as<T, U>, ...);
+
 class Scene {
+  struct MeshComponent;
+  struct Hierarchy;
+  
 public:
   using NodeID = entt::entity;
   static constexpr NodeID null = entt::null;
@@ -59,6 +65,19 @@ public:
     
     Node createChild(std::string_view name);
     
+    template <typename T> requires is_not<T, MeshComponent, Hierarchy, Transform>
+    std::optional<T*> get() {
+      bool exists = m_scene->m_registry.all_of<T>(m_entity);
+      if (!exists) return std::nullopt;
+      return &m_scene->m_registry.get<T>(m_entity);
+    }
+    
+    template <typename T> requires is_not<T, MeshComponent, Hierarchy, Transform>
+    void set(T&& component) {
+      using ValueType = std::remove_reference_t<T>;
+      m_scene->m_registry.emplace_or_replace<ValueType>(m_entity, std::forward<ValueType>(component));
+    }
+    
   private:
     explicit Node(entt::entity entity, Scene* scene) noexcept;
     
@@ -71,6 +90,12 @@ public:
   struct Instance {
     Node node;
     AssetData<Mesh> mesh;
+    float4x4 transformMatrix;
+  };
+  
+  struct CameraInstance {
+    Node node;
+    Camera& camera;
     float4x4 transformMatrix;
   };
 
@@ -103,7 +128,8 @@ public:
   [[nodiscard]] std::vector<Instance> getInstances(const std::function<bool(const Node&)>& filter);
   [[nodiscard]] std::vector<Instance> getInstances();
 
-//  [[nodiscard]] std::vector<CameraData> getAllCameras(int filter = 0) const;
+  [[nodiscard]] std::vector<CameraInstance> getCameras(const std::function<bool(const Node&)>& filter);
+  [[nodiscard]] std::vector<CameraInstance> getCameras();
   
   template <typename T>
   T* getAsset(AssetID id) {

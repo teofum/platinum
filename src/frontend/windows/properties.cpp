@@ -96,12 +96,13 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
     }
   }
 
-//  if (node->cameraId) {
-//    if (ImGui::CollapsingHeader("Camera")) {
-//      renderCameraProperties(node->cameraId.value());
-//      ImGui::Spacing();
-//    }
-//  }
+  auto camera = node.get<Camera>();
+  if (camera) {
+    if (ImGui::CollapsingHeader("Camera")) {
+      renderCameraProperties(camera.value());
+      ImGui::Spacing();
+    }
+  }
   
   auto materialIds = node.materialIds();
   if (materialIds && !materialIds.value()->empty()) {
@@ -190,37 +191,21 @@ void Properties::renderMeshProperties(const Scene::AssetData<Mesh>& mesh) {
   ImGui::Text("%lu triangles", mesh.asset->indexCount() / 3);
 }
 
-//void Properties::renderCameraProperties(Scene::CameraID id) {
-//  Camera* camera = m_store.scene().camera(id);
-//
-//  ImGui::AlignTextToFramePadding();
-//  ImGui::Text("Camera [id: %u]", id);
-//
-//  auto users = std::format(
-//    "{} users",
-//    m_store.scene().cameraUsers(id)
-//  );
-//  auto availableWidth = ImGui::GetContentRegionAvail().x;
-//  ImGui::SameLine(availableWidth - ImGui::CalcTextSize(users.c_str()).x);
-//  ImGui::AlignTextToFramePadding();
-//  ImGui::Text("%s", users.c_str());
-//
-//  ImGui::Spacing();
-//
-//  ImGui::DragFloat("Focal length", &camera->focalLength, 1.0f, 5.0f, 1200.0f, "%.1fmm");
-//  ImGui::DragFloat2("Sensor size", (float*) &camera->sensorSize, 1.0f, 0.0f, 100.0f, "%.1fmm");
-//  ImGui::DragFloat("Aperture", &camera->aperture, 0.1f, 0.0f, 32.0f, "f/%.1f");
-//  ImGui::Spacing();
-//
-//  ImGui::SeparatorText("Presets");
-//  auto buttonWidth = widgets::getWidthForItems(3);
-//  if (widgets::button("Micro 4/3", {buttonWidth, 0})) camera->sensorSize = float2{18.0f, 13.5f};
-//  ImGui::SameLine();
-//  if (widgets::button("APS-C", {buttonWidth, 0})) camera->sensorSize = float2{23.5f, 15.6f};
-//  ImGui::SameLine();
-//  if (widgets::button("35mm FF", {buttonWidth, 0})) camera->sensorSize = float2{36.0f, 24.0f};
-//  ImGui::SameLine();
-//}
+void Properties::renderCameraProperties(Camera* camera) {
+  ImGui::DragFloat("Focal length", &camera->focalLength, 1.0f, 5.0f, 1200.0f, "%.1fmm");
+  ImGui::DragFloat2("Sensor size", (float*) &camera->sensorSize, 1.0f, 0.0f, 100.0f, "%.1fmm");
+  ImGui::DragFloat("Aperture", &camera->aperture, 0.1f, 0.0f, 32.0f, "f/%.1f");
+  ImGui::Spacing();
+
+  ImGui::SeparatorText("Presets");
+  auto buttonWidth = widgets::getWidthForItems(3);
+  if (widgets::button("Micro 4/3", {buttonWidth, 0})) camera->sensorSize = float2{18.0f, 13.5f};
+  ImGui::SameLine();
+  if (widgets::button("APS-C", {buttonWidth, 0})) camera->sensorSize = float2{23.5f, 15.6f};
+  ImGui::SameLine();
+  if (widgets::button("35mm FF", {buttonWidth, 0})) camera->sensorSize = float2{36.0f, 24.0f};
+  ImGui::SameLine();
+}
 
 void Properties::renderMaterialProperties(Material* material, std::optional<Scene::AssetID> id) {
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);

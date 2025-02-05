@@ -27,9 +27,9 @@ private:
   void renderNodeProperties(Scene::NodeID id);
 
   void renderMeshProperties(const Scene::AssetData<Mesh>& mesh);
-//
-//  void renderCameraProperties(Scene::CameraID id);
-//  
+
+  void renderCameraProperties(Camera* camera);
+
   void renderMaterialProperties(Material* material, std::optional<Scene::AssetID> id);
 //
 //  void renderTextureProperties(Scene::TextureID id);

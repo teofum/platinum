@@ -182,7 +182,6 @@ Scene::Node Scene::Node::createChild(std::string_view name) {
   return m_scene->createNode(name, m_entity);
 }
 
-
 /*
  * Node API
  */
@@ -321,39 +320,23 @@ std::vector<Scene::Instance> Scene::getInstances() {
   return getInstances([](const Node& node){ return node.visible(); });
 }
 
-//std::vector<Scene::CameraData> Scene::getAllCameras(int filter) const {
-//  std::vector<Scene::CameraData> cameras;
-//  cameras.reserve(m_cameras.size());
-//
-//  traverseHierarchy(
-//    [&](NodeID id, const Node* node, const float4x4& transform) {
-//      if (node->cameraId) {
-//        const auto& camera = m_cameras.at(*node->cameraId);
-//        cameras.emplace_back(&camera, transform, id);
-//      }
-//    },
-//    filter
-//  );
-//
-//  return cameras;
-//}
+std::vector<Scene::CameraInstance> Scene::getCameras(const std::function<bool(const Scene::Node&)>& filter) {
+  std::vector<Scene::CameraInstance> cameras;
 
-//void Scene::recalculateMaterialFlags(MaterialID id) {
-//  auto& material = m_materials[id];
-//  
-//  material.flags &= Material::Material_ThinDielectric;
-//  
-//  // Set anisotropic flag if the material has anisotropy
-//  if (material.anisotropy != 0.0f) material.flags |= Material::Material_Anisotropic;
-//  
-//  // Set emissive flag if emission strength is greater than zero
-//  if (length_squared(material.emission) * material.emissionStrength > 0.0f)
-//    material.flags |= Material::Material_Emissive;
-//  
-//  // Set alpha flag is material has alpha < 1 OR has a texture with an alpha channel and values < 1
-//  if (material.baseColor.a < 1 || (material.baseTextureId >= 0 && m_textureAlpha[material.baseTextureId]))
-//    material.flags |= Material::Material_UseAlpha;
-//}
+  traverseHierarchy(
+    [&](Node node, const float4x4& transformMatrix) {
+      auto camera = node.get<Camera>();
+      if (camera) cameras.emplace_back(node, *camera.value(), transformMatrix);
+    },
+    filter
+  );
+
+  return cameras;
+}
+
+std::vector<Scene::CameraInstance> Scene::getCameras() {
+  return getCameras([](const Node& node){ return node.visible(); });
+}
 
 void Scene::traverseHierarchy(
   const std::function<void(Node, const float4x4&)>& cb,
