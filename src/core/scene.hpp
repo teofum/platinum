@@ -50,6 +50,7 @@ public:
     void setMaterial(size_t idx, std::optional<AssetID> id);
     
     std::string& name() const;
+    bool& visible() const;
     Transform& transform() const;
     
     std::optional<Node> parent() const;
@@ -59,12 +60,18 @@ public:
     Node createChild(std::string_view name);
     
   private:
-    explicit Node(entt::entity entity, Scene& scene) noexcept;
+    explicit Node(entt::entity entity, Scene* scene) noexcept;
     
     entt::entity m_entity;
-    Scene& m_scene;
+    Scene* m_scene;
     
     friend class Scene;
+  };
+  
+  struct Instance {
+    Node node;
+    AssetData<Mesh> mesh;
+    float4x4 transformMatrix;
   };
 
   explicit Scene() noexcept;
@@ -91,13 +98,12 @@ public:
     return m_defaultMaterial;
   }
 
-//  [[nodiscard]] float4x4 worldTransform(NodeID id) const;
+  [[nodiscard]] float4x4 worldTransform(NodeID id);
 
-//  [[nodiscard]] std::vector<InstanceData> getAllInstances(int filter = 0) const;
+  [[nodiscard]] std::vector<Instance> getInstances(const std::function<bool(const Node&)>& filter);
+  [[nodiscard]] std::vector<Instance> getInstances();
 
 //  [[nodiscard]] std::vector<CameraData> getAllCameras(int filter = 0) const;
-  
-//  void recalculateMaterialFlags(AssetID id);
   
   template <typename T>
   T* getAsset(AssetID id) {
@@ -147,6 +153,8 @@ private:
   // Hierarchy component. Encapsulates parent/child relation data.
   struct Hierarchy {
     std::string name;
+    bool visible = true;
+    
     std::vector<NodeID> children;
     NodeID parent;
     
@@ -186,10 +194,10 @@ private:
   Material m_defaultMaterial;
   Environment m_envmap;
 
-//  void traverseHierarchy(
-//    const std::function<void(NodeID id, const Node*, const float4x4&)>& cb,
-//    int filter = 0
-//  ) const;
+  void traverseHierarchy(
+    const std::function<void(Node, const float4x4&)>& cb,
+    const std::function<bool(const Node&)>& filter
+  );
 };
 
 }

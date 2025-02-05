@@ -14,13 +14,7 @@ int main() {
   auto res = fe.init();
   if (res != pt::frontend::Frontend::InitResult_Ok) return res;
 
-  pt::Scene& scene = store.scene();
-  
-  // Default material
-//  pt::BSDF material{
-//    .baseColor = {0.8, 0.8, 0.8, 1.0},
-//  };
-//  auto materialId = scene.addMaterial("Default material", material);
+//  pt::Scene& scene = store.scene();
 
 //  // Default sphere
 //  auto sphere = pt::primitives::sphere(store.device(), 1.0f, 48, 64);

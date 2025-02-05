@@ -61,14 +61,14 @@ void Scene::removeAssetImpl(AssetID id) {
 /*
  * Node interface
  */
-Scene::Node::Node(entt::entity entity, Scene &scene) noexcept: m_entity(entity), m_scene(scene) {}
+Scene::Node::Node(entt::entity entity, Scene* scene) noexcept: m_entity(entity), m_scene(scene) {}
 
 std::optional<Scene::AssetData<Mesh>> Scene::Node::mesh() const {
-  bool exists = m_scene.m_registry.all_of<MeshComponent>(m_entity);
+  bool exists = m_scene->m_registry.all_of<MeshComponent>(m_entity);
   if (!exists) return std::nullopt;
   
-  auto& mesh = m_scene.m_registry.get<MeshComponent>(m_entity);
-  auto* asset = std::get_if<std::unique_ptr<Mesh>>(&m_scene.m_assets[mesh.id].asset);
+  auto& mesh = m_scene->m_registry.get<MeshComponent>(m_entity);
+  auto* asset = std::get_if<std::unique_ptr<Mesh>>(&m_scene->m_assets[mesh.id].asset);
   if (!asset) return std::nullopt;
   
   AssetData<Mesh> data {
@@ -80,46 +80,46 @@ std::optional<Scene::AssetData<Mesh>> Scene::Node::mesh() const {
 
 void Scene::Node::setMesh(std::optional<AssetID> id) {
   // Check if there is an existing mesh and release it
-  bool exists = m_scene.m_registry.all_of<MeshComponent>(m_entity);
+  bool exists = m_scene->m_registry.all_of<MeshComponent>(m_entity);
   if (exists) {
-    auto mesh = m_scene.m_registry.get<MeshComponent>(m_entity);
+    auto mesh = m_scene->m_registry.get<MeshComponent>(m_entity);
     
     for (auto materialId: mesh.materials) {
-      if (materialId) m_scene.releaseAsset(materialId.value());
+      if (materialId) m_scene->releaseAsset(materialId.value());
     }
     
-    m_scene.releaseAsset(mesh.id);
-    m_scene.m_registry.erase<MeshComponent>(m_entity);
+    m_scene->releaseAsset(mesh.id);
+    m_scene->m_registry.erase<MeshComponent>(m_entity);
   }
   
   // Retain a reference to the new mesh (if present) and set it
   // We lose any material references, but this makes ref counting simpler and any materials are
   // unlikely to work with the previous mesh anyway
   if (id) {
-    auto* asset = m_scene.getAsset<Mesh>(id.value());
+    auto* asset = m_scene->getAsset<Mesh>(id.value());
     
-    m_scene.retainAsset(id.value());
-    m_scene.m_registry.emplace<MeshComponent>(m_entity, id.value(), asset->materialCount());
+    m_scene->retainAsset(id.value());
+    m_scene->m_registry.emplace<MeshComponent>(m_entity, id.value(), asset->materialCount());
   }
 }
 
 std::optional<std::vector<std::optional<Scene::AssetID>>*> Scene::Node::materialIds() const {
-  bool hasMesh = m_scene.m_registry.all_of<MeshComponent>(m_entity);
+  bool hasMesh = m_scene->m_registry.all_of<MeshComponent>(m_entity);
   if (!hasMesh) return std::nullopt;
   
-  auto& mesh = m_scene.m_registry.get<MeshComponent>(m_entity);
+  auto& mesh = m_scene->m_registry.get<MeshComponent>(m_entity);
   return &mesh.materials;
 }
 
 std::optional<Scene::AssetData<Material>> Scene::Node::material(size_t idx) const {
-  bool hasMesh = m_scene.m_registry.all_of<MeshComponent>(m_entity);
+  bool hasMesh = m_scene->m_registry.all_of<MeshComponent>(m_entity);
   if (!hasMesh) return std::nullopt;
   
-  auto& mesh = m_scene.m_registry.get<MeshComponent>(m_entity);
+  auto& mesh = m_scene->m_registry.get<MeshComponent>(m_entity);
   auto materialId = mesh.materials[idx];
   if (!materialId) return std::nullopt;
   
-  auto* asset = std::get_if<std::unique_ptr<Material>>(&m_scene.m_assets[materialId.value()].asset);
+  auto* asset = std::get_if<std::unique_ptr<Material>>(&m_scene->m_assets[materialId.value()].asset);
   if (!asset) return std::nullopt;
   
   AssetData<Material> data {
@@ -130,52 +130,56 @@ std::optional<Scene::AssetData<Material>> Scene::Node::material(size_t idx) cons
 }
 
 void Scene::Node::setMaterial(size_t idx, std::optional<AssetID> id) {
-  bool hasMesh = m_scene.m_registry.all_of<MeshComponent>(m_entity);
+  bool hasMesh = m_scene->m_registry.all_of<MeshComponent>(m_entity);
   if (!hasMesh) return;
   
-  auto& mesh = m_scene.m_registry.get<MeshComponent>(m_entity);
+  auto& mesh = m_scene->m_registry.get<MeshComponent>(m_entity);
   auto currentId = mesh.materials[idx];
   
-  if (currentId) m_scene.releaseAsset(id.value());
-  if (id) m_scene.retainAsset(id.value());
+  if (currentId) m_scene->releaseAsset(id.value());
+  if (id) m_scene->retainAsset(id.value());
   
   mesh.materials[idx] = id;
 }
 
 std::string& Scene::Node::name() const {
-  return m_scene.m_registry.get<Hierarchy>(m_entity).name;
+  return m_scene->m_registry.get<Hierarchy>(m_entity).name;
+}
+
+bool& Scene::Node::visible() const {
+  return m_scene->m_registry.get<Hierarchy>(m_entity).visible;
 }
 
 Transform& Scene::Node::transform() const {
-  return m_scene.m_registry.get<Transform>(m_entity);
+  return m_scene->m_registry.get<Transform>(m_entity);
 }
 
 std::optional<Scene::Node> Scene::Node::parent() const {
-  auto& hierarchy = m_scene.m_registry.get<Hierarchy>(m_entity);
+  auto& hierarchy = m_scene->m_registry.get<Hierarchy>(m_entity);
   
   if (hierarchy.parent == entt::null) return std::nullopt;
-  return m_scene.node(hierarchy.parent);
+  return m_scene->node(hierarchy.parent);
 }
 
 std::vector<Scene::Node> Scene::Node::children() const {
   std::vector<Scene::Node> children;
   
-  auto& hierarchy = m_scene.m_registry.get<Hierarchy>(m_entity);
+  auto& hierarchy = m_scene->m_registry.get<Hierarchy>(m_entity);
   children.reserve(hierarchy.children.size());
 
   for (auto child: hierarchy.children) {
-    children.push_back(m_scene.node(child));
+    children.push_back(m_scene->node(child));
   }
   
   return children;
 }
 
 bool Scene::Node::isRoot() const {
-  return m_entity == m_scene.m_root;
+  return m_entity == m_scene->m_root;
 }
 
 Scene::Node Scene::Node::createChild(std::string_view name) {
-  return m_scene.createNode(name, m_entity);
+  return m_scene->createNode(name, m_entity);
 }
 
 
@@ -277,42 +281,45 @@ bool Scene::hasNode(NodeID id) const {
 }
 
 Scene::Node Scene::node(NodeID id) {
-  return Node(id, *this);
+  return Node(id, this);
 }
 
 Scene::Node Scene::root() {
   return node(m_root);
 }
 
-//float4x4 Scene::worldTransform(Scene::NodeID id) const {
-//  const auto* node = m_nodes.at(id).get();
-//  auto transform = node->transform.matrix();
-//
-//  while (id != 0) {
-//    id = node->parent;
-//    node = m_nodes.at(id).get();
-//    transform = node->transform.matrix() * transform;
-//  }
-//
-//  return transform;
-//}
+/*
+ * Other scene functions
+ */
+float4x4 Scene::worldTransform(Scene::NodeID id) {
+  auto node = this->node(id);
+  auto transform = node.transform().matrix();
 
-//std::vector<Scene::InstanceData> Scene::getAllInstances(int filter) const {
-//  std::vector<Scene::InstanceData> meshes;
-//  meshes.reserve(m_meshes.size());
-//
-//  traverseHierarchy(
-//    [&](NodeID id, const Node* node, const float4x4& transform) {
-//      if (node->meshId) {
-//        const auto& mesh = m_meshes.at(*node->meshId);
-//        meshes.emplace_back(mesh.get(), id, node->meshId.value(), node->materials, transform);
-//      }
-//    },
-//    filter
-//  );
-//
-//  return meshes;
-//}
+  while (!node.isRoot()) {
+    node = node.parent().value();
+    transform = node.transform().matrix() * transform;
+  }
+
+  return transform;
+}
+
+std::vector<Scene::Instance> Scene::getInstances(const std::function<bool(const Scene::Node&)>& filter) {
+  std::vector<Scene::Instance> instances;
+
+  traverseHierarchy(
+    [&](Node node, const float4x4& transformMatrix) {
+      auto mesh = node.mesh();
+      if (mesh) instances.emplace_back(node, mesh.value(), transformMatrix);
+    },
+    filter
+  );
+
+  return instances;
+}
+
+std::vector<Scene::Instance> Scene::getInstances() {
+  return getInstances([](const Node& node){ return node.visible(); });
+}
 
 //std::vector<Scene::CameraData> Scene::getAllCameras(int filter) const {
 //  std::vector<Scene::CameraData> cameras;
@@ -348,28 +355,25 @@ Scene::Node Scene::root() {
 //    material.flags |= Material::Material_UseAlpha;
 //}
 
-//void Scene::traverseHierarchy(
-//  const std::function<void(NodeID id, const Node*, const float4x4&)>& cb,
-//  int filter
-//) const {
-//  std::vector<std::pair<NodeID, float4x4>> stack = {
-//    {0, mat::identity()}
-//  };
-//
-//  while (!stack.empty()) {
-//    const auto& [currentId, parentMatrix] = stack.back();
-//    stack.pop_back();
-//
-//    const auto& current = m_nodes.at(currentId);
-//    if (filter && !(current->flags & filter)) continue;
-//
-//    const float4x4 transformMatrix = parentMatrix * current->transform.matrix();
-//    cb(currentId, current.get(), transformMatrix);
-//
-//    for (auto childIdx: current->children) {
-//      stack.emplace_back(childIdx, transformMatrix);
-//    }
-//  }
-//}
+void Scene::traverseHierarchy(
+  const std::function<void(Node, const float4x4&)>& cb,
+  const std::function<bool(const Node&)>& filter
+) {
+  std::vector<std::pair<Node, float4x4>> stack = {{root(), mat::identity()}};
+
+  while (!stack.empty()) {
+    auto& [current, parentMatrix] = stack.back();
+    stack.pop_back();
+
+    if (!filter(current)) continue;
+
+    const float4x4 transformMatrix = parentMatrix * current.transform().matrix();
+    cb(current, transformMatrix);
+
+    for (auto child: current.children()) {
+      stack.emplace_back(child, transformMatrix);
+    }
+  }
+}
 
 }

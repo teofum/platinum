@@ -17,9 +17,9 @@ void StudioViewport::render() {
   updateScrollAndZoomState();
 
   auto [action, nodeId] = m_state.getNodeAction();
-//  if (action == State::NodeAction_CenterCamera) {
-//    m_renderer->cameraTo(m_store.scene().worldTransform(nodeId).columns[3].xyz);
-//  }
+  if (action == State::NodeAction_CenterCamera) {
+    m_renderer->cameraTo(m_store.scene().worldTransform(nodeId).columns[3].xyz);
+  }
 
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 1.0f));
   auto open = ImGui::Begin("Viewport");

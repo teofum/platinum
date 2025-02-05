@@ -62,10 +62,10 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
 
   ImGui::Spacing();
 
-//  if (ImGui::CollapsingHeader("View properties", ImGuiTreeNodeFlags_DefaultOpen)) {
-//    ImGui::CheckboxFlags("Visible", &node->flags, Scene::NodeFlags_Visible);
-//    ImGui::Spacing();
-//  }
+  if (ImGui::CollapsingHeader("View properties", ImGuiTreeNodeFlags_DefaultOpen)) {
+    ImGui::Checkbox("Visible", &node.visible());
+    ImGui::Spacing();
+  }
 
   if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
     widgets::transformEditor(node.transform());

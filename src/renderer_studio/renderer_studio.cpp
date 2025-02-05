@@ -16,8 +16,8 @@ Renderer::Renderer(
   MTL::CommandQueue* commandQueue,
   Store& store
 ) noexcept
-  : m_store(store), m_camera(float3{2, 3, 5}),
-    m_device(device), m_commandQueue(commandQueue) {
+: m_store(store), m_camera(float3{2, 3, 5}),
+m_device(device), m_commandQueue(commandQueue) {
   /*
    * Build the constants buffer
    */
@@ -220,20 +220,20 @@ void Renderer::render(Scene::NodeID selectedNodeId) {
   enc->setFragmentBuffer(m_constantsBuffer, m_constantsOffset, 1);
 
   size_t dataOffset = 0;
-//  for (const auto& md: m_meshData) {
-//    enc->setVertexBuffer(md.mesh->vertexPositions(), 0, 0);
-//    enc->setVertexBuffer(md.mesh->vertexData(), 0, 1);
-//    enc->setVertexBuffer(m_dataBuffer, dataOffset, 2);
-//    enc->drawIndexedPrimitives(
-//      MTL::PrimitiveTypeTriangle,
-//      md.mesh->indexCount(),
-//      MTL::IndexTypeUInt32,
-//      md.mesh->indices(),
-//      0
-//    );
-//
-//    dataOffset += sizeof(shaders_studio::NodeData);
-//  }
+  for (const auto& md: m_instances) {
+    enc->setVertexBuffer(md.mesh.asset->vertexPositions(), 0, 0);
+    enc->setVertexBuffer(md.mesh.asset->vertexData(), 0, 1);
+    enc->setVertexBuffer(m_dataBuffer, dataOffset, 2);
+    enc->drawIndexedPrimitives(
+      MTL::PrimitiveTypeTriangle,
+      md.mesh.asset->indexCount(),
+      MTL::IndexTypeUInt32,
+			md.mesh.asset->indices(),
+      0
+    );
+
+    dataOffset += sizeof(shaders_studio::NodeData);
+  }
 
   enc->endEncoding();
 
@@ -571,13 +571,13 @@ void Renderer::rebuildDataBuffers() {
   /*
    * Calculate buffer sizes and create buffers
    */
-//  m_meshData = m_store.scene().getAllInstances(Scene::NodeFlags_Visible);
-//  size_t meshCount = m_meshData.size();
-//
-//  size_t dataBufferSize = meshCount * sizeof(shaders_studio::NodeData);
-//  m_dataBuffer = m_device
-//    ->newBuffer(dataBufferSize, MTL::ResourceStorageModeShared);
-//
+  m_instances = m_store.scene().getInstances();
+
+  m_dataBuffer = m_device->newBuffer(
+		m_instances.size() * sizeof(shaders_studio::NodeData),
+		MTL::ResourceStorageModeShared
+  );
+
 //  m_cameraData = m_store.scene().getAllCameras(Scene::NodeFlags_Visible);
 //  size_t cameraCount = m_cameraData.size();
 //
@@ -588,27 +588,27 @@ void Renderer::rebuildDataBuffers() {
   /*
    * Fill transform buffers
    */
-//  float4x4 view = m_camera.view();
-//  for (size_t i = 0; i < m_meshData.size(); i++) {
-//    const auto& md = m_meshData[i];
-//
-//    float4x4 vmit = transpose(inverse(view * md.transform));
-//    float3x3 normalViewModel(
-//      vmit.columns[0].xyz,
-//      vmit.columns[1].xyz,
-//      vmit.columns[2].xyz
-//    );
-//
-//    const shaders_studio::NodeData nodeData = {
-//      .model = md.transform,
-//      .normalViewModel = normalViewModel,
-//      .nodeIdx = md.nodeId,
-//    };
-//
-//    // Transform
-//    void* dbw = (char*) m_dataBuffer->contents() + i * sizeof(shaders_studio::NodeData);
-//    memcpy(dbw, &nodeData, sizeof(shaders_studio::NodeData));
-//  }
+  float4x4 view = m_camera.view();
+  for (size_t i = 0; i < m_instances.size(); i++) {
+    const auto& instance = m_instances[i];
+
+    float4x4 vmit = transpose(inverse(view * instance.transformMatrix));
+    float3x3 normalViewModel(
+      vmit.columns[0].xyz,
+      vmit.columns[1].xyz,
+      vmit.columns[2].xyz
+    );
+
+    const shaders_studio::NodeData nodeData = {
+      .model = instance.transformMatrix,
+      .normalViewModel = normalViewModel,
+      .nodeIdx = uint16_t(instance.node.id()), // TODO: upgrade to i32
+    };
+
+    // Transform
+    void* dbw = (char*) m_dataBuffer->contents() + i * sizeof(shaders_studio::NodeData);
+    memcpy(dbw, &nodeData, sizeof(shaders_studio::NodeData));
+  }
 
 //  for (size_t i = 0; i < m_cameraData.size(); i++) {
 //    const auto& cd = m_cameraData[i];

@@ -71,7 +71,7 @@ private:
   MTL::RenderPipelineState* m_pso = nullptr;
   MTL::DepthStencilState* m_dsso = nullptr;
   MTL::Buffer* m_dataBuffer = nullptr;
-//  std::vector<Scene::InstanceData> m_meshData;
+  std::vector<Scene::Instance> m_instances;
 
   // Camera pass pipeline state and buffers
   MTL::RenderPipelineState* m_cameraPso = nullptr;
