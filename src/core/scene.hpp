@@ -35,10 +35,6 @@ public:
     T* asset;
   };
   
-  static constexpr Material defaultMaterial {
-    .name = "Default material"
-  };
-  
   /*
    * Node class. Provides a public interface for interacting with scene nodes.
    */
@@ -89,6 +85,10 @@ public:
   
   [[nodiscard]] constexpr Environment& envmap() {
     return m_envmap;
+  }
+  
+  [[nodiscard]] constexpr Material& defaultMaterial() {
+    return m_defaultMaterial;
   }
 
 //  [[nodiscard]] float4x4 worldTransform(NodeID id) const;
@@ -144,7 +144,6 @@ private:
   /*
    * ECS component structs
    */
-  
   // Hierarchy component. Encapsulates parent/child relation data.
   struct Hierarchy {
     std::string name;
@@ -181,7 +180,10 @@ private:
   bool releaseAsset(AssetID id);
   void removeAssetImpl(AssetID id);
   
-  // Envmaps
+  /*
+   * Additional data
+   */
+  Material m_defaultMaterial;
   Environment m_envmap;
 
 //  void traverseHierarchy(

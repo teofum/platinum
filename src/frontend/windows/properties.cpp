@@ -122,8 +122,8 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
       if (open) {
         for (uint32_t i = 0; i < materials.size(); i++) {
           auto* material = node.material(i)
-            .transform([](auto material){ return (const Material*) material.asset; })
-            .value_or(&Scene::defaultMaterial);
+            .transform([](auto material){ return material.asset; })
+            .value_or(&m_store.scene().defaultMaterial());
           
           auto isSelected = i == m_selectedMaterialIdx;
           auto label = std::format("[{}]: {}", i, material->name);
@@ -140,8 +140,8 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
        */
       auto selectedId = selected.transform([](auto s){ return s.id; });
       auto* selectedMaterial = selected
-        .transform([](auto material){ return (const Material*) material.asset; })
-        .value_or(&Scene::defaultMaterial);
+        .transform([](auto material){ return material.asset; })
+        .value_or(&m_store.scene().defaultMaterial());
       
       auto nextMaterialId = selectedId;
       ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
@@ -164,7 +164,7 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
         ImGui::EndCombo();
       }
       
-//      renderMaterialProperties(selectedId);
+      renderMaterialProperties(selectedMaterial, selectedId);
       ImGui::Spacing();
       
       // Update material ID
@@ -221,76 +221,71 @@ void Properties::renderMeshProperties(const Scene::AssetData<Mesh>& mesh) {
 //  if (widgets::button("35mm FF", {buttonWidth, 0})) camera->sensorSize = float2{36.0f, 24.0f};
 //  ImGui::SameLine();
 //}
-//
-//void Properties::renderMaterialProperties(Scene::MaterialID id) {
-//  auto material = m_store.scene().material(id);
-//  auto& name = m_store.scene().materialName(id);
-//  
-//  bool mustRecalculateFlags = false;
-//  
-//  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-//  ImGui::InputText("##MaterialNameInput", &name);
-//  
-//  ImGui::AlignTextToFramePadding();
-//  ImGui::Text("Material [id: %u]", id);
-//  
-//  ImGui::SeparatorText("Basic properties");
-//  
-//  auto buttonWidth = ImGui::CalcItemWidth();
-//  ImGui::ColorEdit3("Base color", (float*) &material->baseColor, m_colorFlags, {buttonWidth, 0});
-//  
-//  material->baseTextureId = textureSelect("Base texture", material->baseTextureId);
-//  
-//  ImGui::DragFloat("Roughness", &material->roughness, 0.01f, 0.0f, 1.0f);
-//  ImGui::DragFloat("Metallic", &material->metallic, 0.01f, 0.0f, 1.0f);
-//  ImGui::DragFloat("Transmission", &material->transmission, 0.01f, 0.0f, 1.0f);
-//  ImGui::DragFloat("IOR", &material->ior, 0.01f, 0.1f, 5.0f);
-//  
-//  material->rmTextureId = textureSelect("R/M texture", material->rmTextureId);
-//  material->transmissionTextureId = textureSelect("Trm. texture", material->transmissionTextureId);
-//    
-//  float alpha = material->baseColor[3];
-//  if (ImGui::DragFloat("Alpha", &alpha, 0.01f, 0.0f, 1.0f)) {
-//    material->baseColor[3] = alpha;
-//    mustRecalculateFlags = true;
-//  }
-//  
-//  ImGui::SeparatorText("Emission");
-//  
-//  mustRecalculateFlags |= ImGui::ColorEdit3("Color", (float*) &material->emission, m_colorFlags, {buttonWidth, 0});
-//  mustRecalculateFlags |= ImGui::DragFloat("Strength", &material->emissionStrength, 0.1f);
-//  
-//  material->emissionTextureId = textureSelect("Texture##EmissionTexture", material->emissionTextureId);
-//  
-//  ImGui::SeparatorText("Clearcoat");
-//  
-//  ImGui::DragFloat("Value", &material->clearcoat, 0.01f, 0.0f, 1.0f);
-//  ImGui::DragFloat("Roughness##CoatRoughness", &material->clearcoatRoughness, 0.01f, 0.0f, 1.0f);
-//  
-//  material->clearcoatTextureId = textureSelect("Texture##CoatTexture", material->clearcoatTextureId);
-//  
-//  ImGui::SeparatorText("Anisotropy");
-//  
-//  mustRecalculateFlags |= ImGui::DragFloat("Anisotropy", &material->anisotropy, 0.01f, 0.0f, 1.0f);
-//  ImGui::DragFloat("Rotation", &material->anisotropyRotation, 0.01f, 0.0f, 1.0f);
-//  
-//  ImGui::SeparatorText("Additional properties");
-//  
-//  ImGui::CheckboxFlags("Thin transmission", &material->flags, BSDF::Material_ThinDielectric);
-//  ImGui::SameLine();
-//  ImGui::TextDisabled("[?]");
-//  if (ImGui::BeginItemTooltip()) {
-//      ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-//      ImGui::TextUnformatted("Render the surface as a thin sheet, rather than the boundary "
-//                             "of a solid object. Disables refraction for a transmissive material.");
-//      ImGui::PopTextWrapPos();
-//      ImGui::EndTooltip();
-//  }
-//  
-//  // Recalculate material flags in case properties changed
-//  if (mustRecalculateFlags) m_store.scene().recalculateMaterialFlags(id);
-//}
-//
+
+void Properties::renderMaterialProperties(Material* material, std::optional<Scene::AssetID> id) {
+  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+  ImGui::InputText("##MaterialNameInput", &material->name);
+  
+  ImGui::AlignTextToFramePadding();
+  if (id) {
+    ImGui::Text("Material [id: %llu]", id.value());
+  } else {
+    ImGui::Text("Material [default]");
+  }
+  
+  ImGui::SeparatorText("Basic properties");
+  
+  auto buttonWidth = ImGui::CalcItemWidth();
+  ImGui::ColorEdit3("Base color", (float*) &material->baseColor, m_colorFlags, {buttonWidth, 0});
+  
+  material->baseTextureId = textureSelect("Base texture", material->baseTextureId);
+  
+  ImGui::DragFloat("Roughness", &material->roughness, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Metallic", &material->metallic, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Transmission", &material->transmission, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("IOR", &material->ior, 0.01f, 0.1f, 5.0f);
+  
+  material->rmTextureId = textureSelect("R/M texture", material->rmTextureId);
+  material->transmissionTextureId = textureSelect("Trm. texture", material->transmissionTextureId);
+    
+  float alpha = material->baseColor[3];
+  if (ImGui::DragFloat("Alpha", &alpha, 0.01f, 0.0f, 1.0f)) {
+    material->baseColor[3] = alpha;
+  }
+  
+  ImGui::SeparatorText("Emission");
+  
+  ImGui::ColorEdit3("Color", (float*) &material->emission, m_colorFlags, {buttonWidth, 0});
+  ImGui::DragFloat("Strength", &material->emissionStrength, 0.1f);
+  
+  material->emissionTextureId = textureSelect("Texture##EmissionTexture", material->emissionTextureId);
+  
+  ImGui::SeparatorText("Clearcoat");
+  
+  ImGui::DragFloat("Value", &material->clearcoat, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Roughness##CoatRoughness", &material->clearcoatRoughness, 0.01f, 0.0f, 1.0f);
+  
+  material->clearcoatTextureId = textureSelect("Texture##CoatTexture", material->clearcoatTextureId);
+  
+  ImGui::SeparatorText("Anisotropy");
+  
+  ImGui::DragFloat("Anisotropy", &material->anisotropy, 0.01f, 0.0f, 1.0f);
+  ImGui::DragFloat("Rotation", &material->anisotropyRotation, 0.01f, 0.0f, 1.0f);
+  
+  ImGui::SeparatorText("Additional properties");
+  
+  ImGui::Checkbox("Thin transmission", &material->thinTransmission);
+  ImGui::SameLine();
+  ImGui::TextDisabled("[?]");
+  if (ImGui::BeginItemTooltip()) {
+      ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+      ImGui::TextUnformatted("Render the surface as a thin sheet, rather than the boundary "
+                             "of a solid object. Disables refraction for a transmissive material.");
+      ImGui::PopTextWrapPos();
+      ImGui::EndTooltip();
+  }
+}
+
 //void Properties::renderTextureProperties(Scene::TextureID id) {
 //  MTL::Texture* texture = m_store.scene().texture(id);
 //

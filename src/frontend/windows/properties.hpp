@@ -30,8 +30,8 @@ private:
 //
 //  void renderCameraProperties(Scene::CameraID id);
 //  
-//  void renderMaterialProperties(Scene::MaterialID id);
-//  
+  void renderMaterialProperties(Material* material, std::optional<Scene::AssetID> id);
+//
 //  void renderTextureProperties(Scene::TextureID id);
 //  
   std::optional<Scene::AssetID> textureSelect(const char* label, std::optional<Scene::AssetID> selectedId);
