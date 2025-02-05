@@ -35,6 +35,10 @@ public:
     T* asset;
   };
   
+  static constexpr Material defaultMaterial {
+    .name = "Default material"
+  };
+  
   /*
    * Node class. Provides a public interface for interacting with scene nodes.
    */
@@ -89,15 +93,9 @@ public:
 
 //  [[nodiscard]] float4x4 worldTransform(NodeID id) const;
 
-//  [[nodiscard]] std::vector<MeshData> getAllMeshes() const;
-//
 //  [[nodiscard]] std::vector<InstanceData> getAllInstances(int filter = 0) const;
-//
+
 //  [[nodiscard]] std::vector<CameraData> getAllCameras(int filter = 0) const;
-//  
-//  [[nodiscard]] std::vector<MaterialData> getAllMaterials() const;
-//  
-//  [[nodiscard]] std::vector<TextureData> getAllTextures() const;
   
 //  void recalculateMaterialFlags(AssetID id);
   

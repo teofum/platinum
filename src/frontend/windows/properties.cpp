@@ -103,64 +103,75 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
 //    }
 //  }
   
-//  if (!node->materials.empty()) {
-//    if (ImGui::CollapsingHeader("Materials")) {
-//      auto selectedId = node->materials[m_selectedMaterialIdx];
-//      auto& selectedName = m_store.scene().materialName(selectedId);
-//      
-//      /*
-//       * Material slot selection
-//       */
-//      auto nextSlotId = m_selectedMaterialIdx;
-//     	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-//      ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {8, 6});
-//      auto open = ImGui::BeginListBox("##SlotSelect", {0, 5 * ImGui::GetTextLineHeightWithSpacing()});
-//      ImGui::PopStyleVar(2);
-//      if (open) {
-//        for (uint32_t i = 0; i < node->materials.size(); i++) {
-//          auto isSelected = i == m_selectedMaterialIdx;
-//          auto& name = m_store.scene().materialName(node->materials[i]);
-//          auto label = std::format("[{}]: {}", i, name);
-//          
-//          if (widgets::selectable(label.c_str(), isSelected)) {
-//            nextSlotId = i;
-//          }
-//        }
-//        ImGui::EndListBox();
-//      }
-//      
-//      /*
-//       * Material selection: change the material in selected slot
-//       */
-//      auto nextMaterialId = selectedId;
-//      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-//      if (ImGui::BeginCombo("##MaterialSelect", selectedName.c_str())) {
-//        for (const auto& md: m_store.scene().getAllMaterials()) {
-//          auto isSelected = selectedId == md.materialId;
-//          if (widgets::comboItem(md.name.c_str(), isSelected))
-//            nextMaterialId = md.materialId;
-//        }
-//        
-//        ImGui::Spacing();
-//        ImGui::Separator();
-//        ImGui::Spacing();
-//        
-//        if (widgets::comboItem("New material", false)) {
-//          auto name = std::format("Material {}", m_store.scene().getAllMaterials().size() + 1);
-//          nextMaterialId = m_store.scene().addMaterial(name, BSDF{ .baseColor = {0.8, 0.8, 0.8} });
-//        }
-//        
-//        ImGui::EndCombo();
-//      }
-//      
+  auto materialIds = node.materialIds();
+  if (materialIds && !materialIds.value()->empty()) {
+    if (ImGui::CollapsingHeader("Materials")) {
+      auto selected = node.material(m_selectedMaterialIdx);
+      auto materials = *materialIds.value();
+      
+      /*
+       * Material slot selection
+       */
+      auto nextSlotId = m_selectedMaterialIdx;
+      
+     	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+      ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {8, 6});
+      auto open = ImGui::BeginListBox("##SlotSelect", {0, 5 * ImGui::GetTextLineHeightWithSpacing()});
+      ImGui::PopStyleVar(2);
+      
+      if (open) {
+        for (uint32_t i = 0; i < materials.size(); i++) {
+          auto* material = node.material(i)
+            .transform([](auto material){ return (const Material*) material.asset; })
+            .value_or(&Scene::defaultMaterial);
+          
+          auto isSelected = i == m_selectedMaterialIdx;
+          auto label = std::format("[{}]: {}", i, material->name);
+          
+          if (widgets::selectable(label.c_str(), isSelected)) {
+            nextSlotId = i;
+          }
+        }
+        ImGui::EndListBox();
+      }
+      
+      /*
+       * Material selection: change the material in selected slot
+       */
+      auto selectedId = selected.transform([](auto s){ return s.id; });
+      auto* selectedMaterial = selected
+        .transform([](auto material){ return (const Material*) material.asset; })
+        .value_or(&Scene::defaultMaterial);
+      
+      auto nextMaterialId = selectedId;
+      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+      if (ImGui::BeginCombo("##MaterialSelect", selectedMaterial->name.c_str())) {
+        for (const auto& md: m_store.scene().getAll<Material>()) {
+          auto isSelected = selectedId == md.id;
+          if (widgets::comboItem(md.asset->name.c_str(), isSelected))
+            nextMaterialId = md.id;
+        }
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        if (widgets::comboItem("New material", false)) {
+          auto name = std::format("Material {}", m_store.scene().getAll<Material>().size() + 1);
+          nextMaterialId = m_store.scene().createAsset(Material { .name = name });
+        }
+        
+        ImGui::EndCombo();
+      }
+      
 //      renderMaterialProperties(selectedId);
-//      ImGui::Spacing();
-//      
-//      // Update material ID
-//      node->materials[m_selectedMaterialIdx] = nextMaterialId;
-//      m_selectedMaterialIdx = nextSlotId;
-//    }
-//  }
+      ImGui::Spacing();
+      
+      // Update material ID
+      node.setMaterial(m_selectedMaterialIdx, nextMaterialId);
+      m_selectedMaterialIdx = nextSlotId;
+    }
+  }
 }
 
 void Properties::renderMeshProperties(const Scene::AssetData<Mesh>& mesh) {

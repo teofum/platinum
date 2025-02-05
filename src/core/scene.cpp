@@ -297,28 +297,6 @@ Scene::Node Scene::root() {
 //  return transform;
 //}
 
-//std::vector<Scene::MeshData> Scene::getAllMeshes() const {
-//  std::vector<MeshData> meshes;
-//  meshes.reserve(m_meshes.size());
-//
-//  for (const auto& mesh: m_meshes) {
-//    meshes.emplace_back(mesh.second.get(), mesh.first);
-//  }
-//
-//  return meshes;
-//}
-
-//std::vector<Scene::MaterialData> Scene::getAllMaterials() const {
-//  std::vector<MaterialData> materials;
-//  materials.reserve(m_materials.size());
-//
-//  for (const auto& [id, material]: m_materials) {
-//    materials.emplace_back(&material, id, m_materialNames.at(id));
-//  }
-//
-//  return materials;
-//}
-
 //std::vector<Scene::InstanceData> Scene::getAllInstances(int filter) const {
 //  std::vector<Scene::InstanceData> meshes;
 //  meshes.reserve(m_meshes.size());
@@ -351,17 +329,6 @@ Scene::Node Scene::root() {
 //  );
 //
 //  return cameras;
-//}
-
-//std::vector<Scene::TextureData> Scene::getAllTextures() const {
-//  std::vector<TextureData> textures;
-//  textures.reserve(m_textures.size());
-//
-//  for (const auto& [id, texture]: m_textures) {
-//    textures.emplace_back(texture.get(), id, m_textureNames.at(id));
-//  }
-//
-//  return textures;
 //}
 
 //void Scene::recalculateMaterialFlags(MaterialID id) {
