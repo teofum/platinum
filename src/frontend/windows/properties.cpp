@@ -72,24 +72,22 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
     ImGui::Spacing();
   }
   
-//  if (node.isRoot()) {
-//    if (ImGui::CollapsingHeader("Scene")) {
-//      auto currentValue = m_store.scene().envmap().textureId().value_or(-1);
-//      auto selection = textureSelect(
-//        "Environment",
-//        currentValue
-//      );
-//      if (selection != currentValue && selection != -1) {
-//        m_store.scene().envmap().setTexture(
-//          selection,
-//          m_store.device(),
-//          m_store.scene().texture(selection)
-//        );
-//      }
-//      
-//      ImGui::Spacing();
-//    }
-//  }
+  if (node.isRoot()) {
+    if (ImGui::CollapsingHeader("Scene")) {
+      auto currentValue = m_store.scene().envmap().textureId();
+      auto selection = textureSelect("Environment", currentValue);
+      
+      if (selection && selection != currentValue) {
+        m_store.scene().envmap().setTexture(
+          selection,
+          m_store.device(),
+					m_store.scene().getAsset<Texture>(selection.value())->texture()
+        );
+      }
+      
+      ImGui::Spacing();
+    }
+  }
 
   if (node.mesh()) {
     if (ImGui::CollapsingHeader("Mesh")) {
@@ -315,34 +313,41 @@ void Properties::renderMeshProperties(const Scene::AssetData<Mesh>& mesh) {
 //
 //  ImGui::EndChild();
 //}
-//
-//Scene::TextureID Properties::textureSelect(const char* label, Scene::TextureID selectedId) {
-//  auto newId = selectedId;
-//  auto selectedName = selectedId == -1 ? "No texture" : m_store.scene().textureName(selectedId);
-//  if (selectedName.empty()) selectedName = std::format("Texture [{}]", selectedId);
-//  if (ImGui::BeginCombo(label, selectedName.c_str())) {
-//    if (widgets::comboItem("No texture", false)) {
-//      newId = -1;
-//    }
-//    
-//    auto allTextures = m_store.scene().getAllTextures();
-//    if (!allTextures.empty()){
-//      ImGui::Spacing();
-//      ImGui::Separator();
-//      ImGui::Spacing();
-//    }
-//    
-//    for (const auto& td: allTextures) {
-//      auto isSelected = selectedId == td.textureId;
-//      auto name = td.name.empty() ? std::format("Texture [{}]", td.textureId) : td.name;
-//      if (widgets::comboItem(name.c_str(), isSelected))
-//        newId = td.textureId;
-//    }
-//    
-//    ImGui::EndCombo();
-//  }
-//  
-//  return newId;
-//}
+
+std::optional<Scene::AssetID> Properties::textureSelect(const char* label, std::optional<Scene::AssetID> selectedId) {
+  auto newId = selectedId;
+  
+  auto selectedName = selectedId
+    .transform([&](auto id){ return m_store.scene().getAsset<Texture>(id)->name(); })
+    .value_or("No texture");
+  if (selectedName.empty()) selectedName = std::format("Texture [{}]", selectedId.value());
+  
+  if (ImGui::BeginCombo(label, selectedName.data())) {
+    if (widgets::comboItem("No texture", false)) {
+      newId = std::nullopt;
+    }
+    
+    auto textures = m_store.scene().getAll<Texture>();
+    if (!textures.empty()){
+      ImGui::Spacing();
+      ImGui::Separator();
+      ImGui::Spacing();
+    }
+    
+    for (const auto& td: textures) {
+      auto isSelected = selectedId == td.id;
+      auto name = td.asset->name();
+      if (name.empty()) name = std::format("Texture [{}]", td.id);
+      
+      if (widgets::comboItem(name.data(), isSelected)) {
+        newId = td.id;
+      }
+    }
+    
+    ImGui::EndCombo();
+  }
+  
+  return newId;
+}
 
 }

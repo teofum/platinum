@@ -104,10 +104,24 @@ public:
   template <typename T>
   T* getAsset(AssetID id) {
     using ptr_T = std::unique_ptr<T>;
+    
     ptr_T* value = std::get_if<ptr_T>(&m_assets[id].asset);
     
     if (value) return value->get();
     return nullptr;
+  }
+  
+  template <typename T>
+  std::vector<AssetData<T>> getAll() {
+    using ptr_T = std::unique_ptr<T>;
+    
+    std::vector<AssetData<T>> assets;
+    for (auto& [id, asset]: m_assets) {
+      ptr_T* value = std::get_if<ptr_T>(&asset.asset);
+      if (value) assets.emplace_back(id, value->get());
+    }
+    
+    return assets;
   }
   
   template <typename T>
