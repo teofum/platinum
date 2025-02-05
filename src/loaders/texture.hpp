@@ -25,9 +25,9 @@ class TextureLoader {
 public:
   explicit TextureLoader(MTL::Device* device, MTL::CommandQueue* commandQueue, Scene& scene) noexcept;
   
-  Scene::TextureID loadFromFile(const fs::path& path, std::string_view name, TextureType type);
+  Scene::AssetID loadFromFile(const fs::path& path, std::string_view name, TextureType type);
   
-  Scene::TextureID loadFromMemory(const uint8_t* data, uint32_t len, std::string_view name, TextureType type);
+  Scene::AssetID loadFromMemory(const uint8_t* data, uint32_t len, std::string_view name, TextureType type);
   
 private:
   MTL::Device* m_device;
@@ -38,7 +38,7 @@ private:
   
   static std::tuple<MTL::PixelFormat, MTL::PixelFormat, std::vector<uint8_t>> getAttributesForTexture(TextureType type);
   
-  Scene::TextureID load(const std::unique_ptr<OIIO::ImageInput>& in, std::string_view name, TextureType type);
+  Scene::AssetID load(const std::unique_ptr<OIIO::ImageInput>& in, std::string_view name, TextureType type);
 };
 
 }

@@ -16,25 +16,25 @@ void removeNodePopup(pt::frontend::State& state, pt::Scene::NodeID id) {
       ImGuiCol_FrameBg,
       ImGui::GetStyleColorVec4(ImGuiCol_WindowBg)
     );
-    ImGui::CheckboxFlags(
-      "Keep orphaned meshes",
-      state.removeOptions(),
-      Scene::RemoveOptions_KeepOrphanedObjects
-    );
+//    ImGui::CheckboxFlags(
+//      "Keep orphaned meshes",
+//      state.removeOptions(),
+//      Scene::RemoveOptions_KeepOrphanedObjects
+//    );
     ImGui::PopStyleColor();
 
     ImGui::Separator();
     ImGui::TextDisabled("Action for children:");
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
-    if (selectable("Remove")) {
-      state.removeNode(id, Scene::RemoveOptions_RemoveChildrenRecursively);
-    }
-    if (selectable("Move to root")) {
-      state.removeNode(id, Scene::RemoveOptions_MoveChildrenToRoot);
-    }
-    if (selectable("Move to parent")) {
-      state.removeNode(id, Scene::RemoveOptions_MoveChildrenToParent);
-    }
+//    if (selectable("Remove")) {
+//      state.removeNode(id, Scene::RemoveOptions_RemoveChildrenRecursively);
+//    }
+//    if (selectable("Move to root")) {
+//      state.removeNode(id, Scene::RemoveOptions_MoveChildrenToRoot);
+//    }
+//    if (selectable("Move to parent")) {
+//      state.removeNode(id, Scene::RemoveOptions_MoveChildrenToParent);
+//    }
     ImGui::PopStyleVar();
 
     ImGui::EndPopup();

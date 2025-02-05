@@ -17,10 +17,10 @@ int main() {
   pt::Scene& scene = store.scene();
   
   // Default material
-  pt::Material material{
-    .baseColor = {0.8, 0.8, 0.8, 1.0},
-  };
-  auto materialId = scene.addMaterial("Default material", material);
+//  pt::BSDF material{
+//    .baseColor = {0.8, 0.8, 0.8, 1.0},
+//  };
+//  auto materialId = scene.addMaterial("Default material", material);
 
 //  // Default sphere
 //  auto sphere = pt::primitives::sphere(store.device(), 1.0f, 48, 64);

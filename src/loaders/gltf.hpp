@@ -50,13 +50,13 @@ private:
   texture::TextureLoader m_textureLoader;
   
   std::unique_ptr<fastgltf::Asset> m_asset;
-  std::vector<Scene::MeshID> m_meshIds;
-  ankerl::unordered_dense::map<Scene::MeshID, std::vector<Scene::MaterialID>> m_meshMaterials;
+  std::vector<Scene::AssetID> m_meshIds;
+  ankerl::unordered_dense::map<Scene::AssetID, std::vector<Scene::AssetID>> m_meshMaterials;
   
   Scene& m_scene;
-  std::vector<Scene::CameraID> m_cameraIds;
-  std::vector<Scene::MaterialID> m_materialIds;
-  std::vector<Scene::TextureID> m_textureIds;
+//  std::vector<Scene::CameraID> m_cameraIds;
+  std::vector<Scene::AssetID> m_materialIds;
+  std::vector<Scene::AssetID> m_textureIds;
   
   ankerl::unordered_dense::map<uint32_t, texture::TextureType> m_texturesToLoad;
   
@@ -64,11 +64,11 @@ private:
 
   void loadMesh(const fastgltf::Mesh& gltfMesh);
 
-  void loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent = 0);
+  void loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent = Scene::null);
   
   void loadMaterial(const fastgltf::Material& gltfMat);
   
-  [[nodiscard]] Scene::TextureID loadTexture(const fastgltf::Texture& gltfTex, texture::TextureType type);
+  [[nodiscard]] Scene::AssetID loadTexture(const fastgltf::Texture& gltfTex, texture::TextureType type);
 };
 
 

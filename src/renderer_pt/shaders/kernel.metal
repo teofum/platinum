@@ -80,7 +80,7 @@ struct Hit {
   float2 uv;                            // Surface UVs at hit position
   float3 wo;                            // Outgoing light direction (tangent space)
   Frame frame;													// Shading coordinate frame, Z-up normal aligned
-  device const pt::Material* material;	// Material
+  device const pt::BSDF* material;	// Material
 };
 
 /*

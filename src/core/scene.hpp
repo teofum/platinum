@@ -5,9 +5,11 @@
 #include <vector>
 #include <optional>
 #include <unordered_dense.h>
+#include <entt.hpp>
 
 #include "camera.hpp"
 #include "material.hpp"
+#include "texture.hpp"
 #include "mesh.hpp"
 #include "transform.hpp"
 #include "environment.hpp"
@@ -16,207 +18,162 @@ namespace pt {
 
 class Scene {
 public:
-  using NodeID = uint16_t;
-  using MeshID = uint16_t;
-  using CameraID = uint16_t;
-  using MaterialID = uint16_t;
-  using TextureID = int32_t;
-
-  enum NodeFlags {
-    NodeFlags_None = 0,
-    NodeFlags_Visible = 1 << 0,
-    NodeFlags_Default = NodeFlags_Visible,
+  using NodeID = entt::entity;
+  static constexpr NodeID null = entt::null;
+  
+  using AssetID = uint64_t;
+  using AssetPtr = std::variant<std::unique_ptr<Texture>, std::unique_ptr<Mesh>, std::unique_ptr<Material>>;
+  
+  struct Asset {
+    bool retain;
+    AssetPtr asset;
   };
-
-  struct Node {
-    std::string name;
-    std::optional<MeshID> meshId;
-    std::optional<CameraID> cameraId;
+  
+  template <typename T>
+  struct AssetData {
+    AssetID id;
+    T* asset;
+  };
+  
+  /*
+   * Node class. Provides a public interface for interacting with scene nodes.
+   */
+  class Node {
+  public:
+    constexpr NodeID id() const { return m_entity; }
     
-    // Each node has a number of material "slots" referenced by primitives. This lets us share a mesh
-    // between multiple instances and use different materials for each one.
-    std::vector<MaterialID> materials;
-    std::vector<NodeID> children;
-    NodeID parent = 0;
-    int flags = NodeFlags_Default;
-    Transform transform;
-
-    constexpr explicit Node(std::string_view name, std::optional<MeshID> meshId = std::nullopt) noexcept
-      : name(name), meshId(meshId) {
-    }
-  };
-
-  struct MeshData {
-    const Mesh* mesh = nullptr;
-    MeshID meshId = 0;
-  };
-  
-  struct MaterialData {
-    const Material* material = nullptr;
-    MaterialID materialId = 0;
-    const std::string& name;
-  };
-  
-  struct TextureData {
-    const MTL::Texture* texture = nullptr;
-    TextureID textureId = 0;
-    const std::string& name;
-  };
-
-  struct InstanceData {
-    const Mesh* mesh = nullptr;
-    NodeID nodeId = 0;
-    MeshID meshId = 0;
-    const std::vector<MaterialID>& materials;
-    float4x4 transform;
-  };
-
-  struct CameraData {
-    const Camera* camera = nullptr;
-    float4x4 transform;
-    NodeID nodeId = 0;
-  };
-
-  enum RemoveOptions {
-    RemoveOptions_RemoveOrphanedObjects = 0,
-    RemoveOptions_KeepOrphanedObjects = 1 << 0,
-    RemoveOptions_RemoveChildrenRecursively = 0,
-    RemoveOptions_MoveChildrenToRoot = 1 << 1,
-    RemoveOptions_MoveChildrenToParent = 1 << 2,
+    std::optional<AssetData<Mesh>> mesh() const;
+    void setMesh(std::optional<AssetID> id);
+    
+    std::optional<std::vector<std::optional<AssetID>>*> materialIds() const;
+    std::optional<AssetData<Material>> material(size_t idx) const;
+    void setMaterial(size_t idx, std::optional<AssetID> id);
+    
+    std::string_view name() const;
+    Transform& transform() const;
+    
+    std::optional<Node> parent() const;
+    std::vector<Node> children() const;
+    bool isRoot() const;
+    
+    Node createChild(std::string_view name);
+    
+  private:
+    explicit Node(entt::entity entity, Scene& scene) noexcept;
+    
+    entt::entity m_entity;
+    Scene& m_scene;
+    
+    friend class Scene;
   };
 
   explicit Scene() noexcept;
 
-  MeshID addMesh(Mesh&& mesh);
+  Node createNode(std::string_view name, NodeID parent = null);
 
-  CameraID addCamera(Camera camera);
-
-  NodeID addNode(Node&& node, NodeID parent = 0);
-  
-  MaterialID addMaterial(const std::string_view& name, Material material);
-  
-  TextureID addTexture(const std::string_view& name, NS::SharedPtr<MTL::Texture> texture, bool hasAlpha);
-
-  void removeNode(NodeID id, int flags = 0);
+  void removeNode(NodeID id);
 
   bool moveNode(NodeID id, NodeID targetId);
 
   bool cloneNode(NodeID id, NodeID targetId);
 
-  [[nodiscard]] constexpr const Node* root() const {
-    return m_nodes.at(0).get();
-  }
+  [[nodiscard]] bool hasNode(NodeID id) const;
 
-  [[nodiscard]] constexpr bool hasNode(NodeID id) const {
-    return m_nodes.contains(id);
-  }
-
-  [[nodiscard]] constexpr const Node* node(NodeID id) const {
-    return m_nodes.at(id).get();
-  }
-
-  [[nodiscard]] constexpr Node* node(NodeID id) {
-    return m_nodes.at(id).get();
-  }
-
-  [[nodiscard]] constexpr const Mesh* mesh(MeshID id) const {
-    return m_meshes.at(id).get();
-  }
-
-  [[nodiscard]] constexpr Mesh* mesh(MeshID id) {
-    return m_meshes.at(id).get();
-  }
-
-  [[nodiscard]] constexpr uint16_t meshUsers(MeshID id) {
-    return m_meshRc.at(id);
-  }
-
-  [[nodiscard]] constexpr const Camera* camera(CameraID id) const {
-    return &m_cameras.at(id);
-  }
-
-  [[nodiscard]] constexpr Camera* camera(CameraID id) {
-    return &m_cameras.at(id);
-  }
-
-  [[nodiscard]] constexpr uint16_t cameraUsers(CameraID id) {
-    return m_cameraRc.at(id);
-  }
+  [[nodiscard]] Node node(NodeID id);
   
-  [[nodiscard]] constexpr const Material* material(MaterialID id) const {
-    return &m_materials.at(id);
-  }
-
-  [[nodiscard]] constexpr Material* material(MaterialID id) {
-    return &m_materials.at(id);
-  }
-  
-  [[nodiscard]] constexpr std::string& materialName(MaterialID id) {
-    return m_materialNames.at(id);
-  }
-  
-  [[nodiscard]] constexpr const MTL::Texture* texture(TextureID id) const {
-    return m_textures.at(id).get();
-  }
-
-  [[nodiscard]] constexpr MTL::Texture* texture(TextureID id) {
-    return m_textures.at(id).get();
-  }
-
-  [[nodiscard]] constexpr uint16_t textureUsers(TextureID id) {
-    return m_textureRc.at(id);
-  }
-  
-  [[nodiscard]] constexpr std::string& textureName(TextureID id) {
-    return m_textureNames.at(id);
-  }
+  [[nodiscard]] Node root();
   
   [[nodiscard]] constexpr Environment& envmap() {
     return m_envmap;
   }
 
-  [[nodiscard]] float4x4 worldTransform(NodeID id) const;
+//  [[nodiscard]] float4x4 worldTransform(NodeID id) const;
 
-  [[nodiscard]] std::vector<MeshData> getAllMeshes() const;
-
-  [[nodiscard]] std::vector<InstanceData> getAllInstances(int filter = 0) const;
-
-  [[nodiscard]] std::vector<CameraData> getAllCameras(int filter = 0) const;
+//  [[nodiscard]] std::vector<MeshData> getAllMeshes() const;
+//
+//  [[nodiscard]] std::vector<InstanceData> getAllInstances(int filter = 0) const;
+//
+//  [[nodiscard]] std::vector<CameraData> getAllCameras(int filter = 0) const;
+//  
+//  [[nodiscard]] std::vector<MaterialData> getAllMaterials() const;
+//  
+//  [[nodiscard]] std::vector<TextureData> getAllTextures() const;
   
-  [[nodiscard]] std::vector<MaterialData> getAllMaterials() const;
+//  void recalculateMaterialFlags(AssetID id);
   
-  [[nodiscard]] std::vector<TextureData> getAllTextures() const;
+  template <typename T>
+  T* getAsset(AssetID id) {
+    using ptr_T = std::unique_ptr<T>;
+    ptr_T* value = std::get_if<ptr_T>(&m_assets[id].asset);
+    
+    if (value) return value->get();
+    return nullptr;
+  }
   
-  void recalculateMaterialFlags(MaterialID id);
+  template <typename T>
+  AssetID createAsset(T&& asset, bool retain = true) {
+    AssetID id = m_nextAssetId++;
+    
+    m_assets[id] = {
+      .asset = AssetPtr(std::make_unique<T>(std::move(asset))),
+      .retain = retain,
+    };
+    m_assetRc[id] = 0;
+    
+    
+    return id;
+  }
+  
+  void removeAsset(AssetID id);
 
 private:
-  NodeID m_nextNodeId;
-  MeshID m_nextMeshId;
-  CameraID m_nextCameraId;
-  MaterialID m_nextMaterialId;
-  TextureID m_nextTextureId;
+  /*
+   * ECS component structs
+   */
+  
+  // Hierarchy component. Encapsulates parent/child relation data.
+  struct Hierarchy {
+    std::string name;
+    std::vector<NodeID> children;
+    NodeID parent;
+    
+    constexpr explicit Hierarchy(std::string_view name, NodeID parent) noexcept
+    : name(name), parent(parent) {}
+  };
+  
+  struct MeshComponent {
+    AssetID id;
+    std::vector<std::optional<AssetID>> materials;
+    
+    constexpr explicit MeshComponent(AssetID id, size_t materialCount = 1) noexcept
+    : id(id), materials(materialCount, std::nullopt) {}
+  };
+  
+  /*
+   * Scene ECS
+   */
+  entt::registry m_registry;
+  entt::entity m_root;
+  
+  /*
+   * Asset management
+   */
+  AssetID m_nextAssetId;
 
-  ankerl::unordered_dense::map<NodeID, std::unique_ptr<Node>> m_nodes;
-  ankerl::unordered_dense::map<MaterialID, Material> m_materials;
-  ankerl::unordered_dense::map<MaterialID, std::string> m_materialNames;
+  ankerl::unordered_dense::map<AssetID, Asset> m_assets;
+  ankerl::unordered_dense::map<AssetID, uint32_t> m_assetRc;
   
-  ankerl::unordered_dense::map<MeshID, std::unique_ptr<Mesh>> m_meshes;
-  ankerl::unordered_dense::map<MeshID, uint16_t> m_meshRc; // Refcount
+  void retainAsset(AssetID id);
+  bool releaseAsset(AssetID id);
+  void removeAssetImpl(AssetID id);
   
-  ankerl::unordered_dense::map<CameraID, Camera> m_cameras;
-  ankerl::unordered_dense::map<CameraID, uint16_t> m_cameraRc; // Refcount
-  
-  ankerl::unordered_dense::map<TextureID, NS::SharedPtr<MTL::Texture>> m_textures;
-  ankerl::unordered_dense::map<TextureID, std::string> m_textureNames;
-  ankerl::unordered_dense::map<TextureID, bool> m_textureAlpha;
-  ankerl::unordered_dense::map<TextureID, uint16_t> m_textureRc; // TODO: refcount
-  
+  // Envmaps
   Environment m_envmap;
 
-  void traverseHierarchy(
-    const std::function<void(NodeID id, const Node*, const float4x4&)>& cb,
-    int filter = 0
-  ) const;
+//  void traverseHierarchy(
+//    const std::function<void(NodeID id, const Node*, const float4x4&)>& cb,
+//    int filter = 0
+//  ) const;
 };
 
 }

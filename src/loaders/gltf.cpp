@@ -81,8 +81,9 @@ void GltfLoader::load(const fs::path& path, int options) {
     auto textureId = loadTexture(m_asset->textures[idx], type);
     
     // Replace the index with the real ID on any materials using the texture
-    for (auto mid: m_materialIds) {
-      auto* material = m_scene.material(mid);
+    for (auto materialId: m_materialIds) {
+      auto* material = m_scene.getAsset<Material>(materialId);
+      
       if (material->baseTextureId == -2 - idx) material->baseTextureId = textureId;
       if (material->rmTextureId == -2 - idx) material->rmTextureId = textureId;
       if (material->transmissionTextureId == -2 - idx) material->transmissionTextureId = textureId;
@@ -92,25 +93,25 @@ void GltfLoader::load(const fs::path& path, int options) {
     }
   }
   
-  for (auto mid: m_materialIds) {
-    m_scene.recalculateMaterialFlags(mid);
-  }
+//  for (auto mid: m_materialIds) {
+//    m_scene.recalculateMaterialFlags(mid);
+//  }
 
   m_meshIds.reserve(m_asset->meshes.size());
   for (const auto& mesh: m_asset->meshes)
     loadMesh(mesh);
 
-  m_cameraIds.reserve(m_asset->cameras.size());
-  for (const auto& camera: m_asset->cameras) {
-    auto perspective = std::get_if<fastgltf::Camera::Perspective>(&camera.camera);
-    if (perspective) {
-      float2 size{24.0f * perspective->aspectRatio.value_or(1.5f), 24.0f};
-      auto id = m_scene.addCamera(Camera::withFov(perspective->yfov, size));
-      m_cameraIds.push_back(id);
-    }
-  }
+//  m_cameraIds.reserve(m_asset->cameras.size());
+//  for (const auto& camera: m_asset->cameras) {
+//    auto perspective = std::get_if<fastgltf::Camera::Perspective>(&camera.camera);
+//    if (perspective) {
+//      float2 size{24.0f * perspective->aspectRatio.value_or(1.5f), 24.0f};
+//      auto id = m_scene.addCamera(Camera::withFov(perspective->yfov, size));
+//      m_cameraIds.push_back(id);
+//    }
+//  }
 
-  Scene::NodeID localRoot = 0;
+  Scene::NodeID localRoot = m_scene.root().id();
   auto filename = path.stem().string();
   uint32_t sceneIdx = 0;
   for (const auto& scene: m_asset->scenes) {
@@ -118,7 +119,7 @@ void GltfLoader::load(const fs::path& path, int options) {
       auto nodeName = m_asset->scenes.size() > 1
                       ? std::format("{}.{:3}", filename, sceneIdx++)
                       : filename;
-      localRoot = m_scene.addNode(Scene::Node(nodeName));
+      localRoot = m_scene.createNode(nodeName).id();
     }
 
     for (auto nodeIdx: scene.nodeIndices) {
@@ -135,7 +136,7 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
   std::vector<VertexData> vertexData;
   std::vector<uint32_t> indices;
   std::vector<uint32_t> materialSlotIndices;
-  std::vector<Scene::MaterialID> materialSlots;
+  std::vector<Scene::AssetID> materialSlots;
 
   std::vector<float3> primitiveVertexPositions;
   std::vector<VertexData> primitiveVertexData;
@@ -240,50 +241,56 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
   /*
    * Create the mesh and store its ID and materials
    */
-  auto id = m_scene.addMesh({m_device, vertexPositions, vertexData, indices, materialSlotIndices});
+  Mesh mesh(m_device, vertexPositions, vertexData, indices, materialSlotIndices);
+  if (!didLoadTangents) mesh.generateTangents();
+  
+  auto id = m_scene.createAsset(std::move(mesh));
   m_meshIds.push_back(id);
   m_meshMaterials[id] = materialSlots;
-  
-  if (!didLoadTangents) m_scene.mesh(id)->generateTangents();
 }
 
 /*
  * Load a glTF scene node and all its children recursively
  */
-void GltfLoader::loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent) {
-  std::optional<Scene::MeshID> meshId = std::nullopt;
+void GltfLoader::loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parentId) {
+  std::optional<Scene::AssetID> meshId = std::nullopt;
   if (gltfNode.meshIndex) meshId = m_meshIds[gltfNode.meshIndex.value()];
 
-  std::optional<Scene::CameraID> cameraId = std::nullopt;
-  if (gltfNode.cameraIndex) cameraId = m_cameraIds[gltfNode.cameraIndex.value()];
+//  std::optional<Scene::CameraID> cameraId = std::nullopt;
+//  if (gltfNode.cameraIndex) cameraId = m_cameraIds[gltfNode.cameraIndex.value()];
 
   // Skip adding empty nodes
-  if ((m_options & LoadOptions_SkipEmptyNodes) && !meshId && !cameraId && gltfNode.children.empty()) {
+  if ((m_options & LoadOptions_SkipEmptyNodes) && !meshId && gltfNode.children.empty()) {
     return;
   }
 
   // Create node
-  std::string_view name(gltfNode.name);
-  Scene::Node node(name, meshId);
-  node.cameraId = cameraId;
+  auto node = m_scene.createNode(gltfNode.name, parentId);
+//  node.cameraId = cameraId;
 
   // Node transform
   auto trs = std::get_if<fastgltf::TRS>(&gltfNode.transform);
   if (trs) {
     auto& t = trs->translation;
-    node.transform.translation = float3{t.x(), t.y(), t.z()};
+    node.transform().translation = float3{t.x(), t.y(), t.z()};
     auto& s = trs->scale;
-    node.transform.scale = float3{s.x(), s.y(), s.z()};
-    node.transform.rotation = eulerFromQuat(trs->rotation);
+    node.transform().scale = float3{s.x(), s.y(), s.z()};
+    node.transform().rotation = eulerFromQuat(trs->rotation);
   }
   
-  // Node material slots
-  if (meshId) node.materials = m_meshMaterials[meshId.value()];
+  // Node mesh and material slots
+  if (meshId) {
+    node.setMesh(meshId);
+    
+    auto& materials = m_meshMaterials[meshId.value()];
+    for (size_t i = 0; i < materials.size(); i++) {
+      node.setMaterial(i, materials[i]);
+    }
+  }
 
-  // Add node and load children
-  auto id = m_scene.addNode(std::move(node), parent);
+  // Load children
   for (auto childIdx: gltfNode.children) {
-    loadNode(m_asset->nodes[childIdx], id);
+    loadNode(m_asset->nodes[childIdx], node.id());
   }
 }
 
@@ -296,6 +303,7 @@ void GltfLoader::loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent) 
  */
 void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   Material material;
+  material.name = gltfMat.name;
   
   // Assign base color
   for (uint32_t i = 0; i < 4; i++)
@@ -366,14 +374,14 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
     m_texturesToLoad[id] = texture::TextureType::LinearRGB;
   }
   
-  auto id = m_scene.addMaterial(gltfMat.name, material);
+  Scene::AssetID id = m_scene.createAsset(std::move(material));
   m_materialIds.push_back(id);
 }
 
 /*
  * Load a texture from the glTF file.
  */
-Scene::TextureID GltfLoader::loadTexture(const fastgltf::Texture &gltfTex, texture::TextureType type) {
+Scene::AssetID GltfLoader::loadTexture(const fastgltf::Texture &gltfTex, texture::TextureType type) {
   // Assume the texture has an image index: we don't support any of the image type extensions for now
   const auto& image = m_asset->images[gltfTex.imageIndex.value()];
   

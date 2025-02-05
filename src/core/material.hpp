@@ -7,7 +7,10 @@ using namespace simd;
 
 namespace pt {
 
-struct Material {
+/*
+ * Material struct used GPU side for rendering
+ */
+struct BSDF {
   enum MaterialFlags {
     Material_ThinDielectric = 1 << 0,
     Material_UseAlpha = 1 << 1,
@@ -27,6 +30,29 @@ struct Material {
   
   int32_t baseTextureId = -1, rmTextureId = -1, transmissionTextureId = -1, clearcoatTextureId = -1, emissionTextureId = -1, normalTextureId = -1;
 };
+
+#ifndef __METAL_VERSION__
+
+/*
+ * Material struct used for the scene representation
+ */
+struct Material {
+  std::string name;
+  
+  float4 baseColor = {0.8, 0.8, 0.8, 1.0};
+  float3 emission;
+  float emissionStrength = 0.0f;
+  float roughness = 1.0f, metallic = 0.0f, transmission = 0.0f;
+  float ior = 1.5f;
+  float anisotropy = 0.0f, anisotropyRotation = 0.0f;
+  float clearcoat = 0.0f, clearcoatRoughness = 0.05f;
+  
+  bool thinTransmission;
+  
+  std::optional<uint32_t> baseTextureId, rmTextureId, transmissionTextureId, clearcoatTextureId, emissionTextureId, normalTextureId;
+};
+
+#endif
 
 }
 

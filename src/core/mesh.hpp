@@ -33,38 +33,21 @@ public:
   ) noexcept;
 
   Mesh(const Mesh& m) noexcept = delete;
-
   Mesh(Mesh&& m) noexcept;
 
   Mesh& operator=(const Mesh& m) = delete;
-
   Mesh& operator=(Mesh&& m) noexcept;
 
   ~Mesh();
 
-  [[nodiscard]] constexpr MTL::Buffer* vertexPositions() const {
-    return m_vertexPositions;
-  }
-
-  [[nodiscard]] constexpr MTL::Buffer* vertexData() const {
-    return m_vertexData;
-  }
-
-  [[nodiscard]] constexpr MTL::Buffer* indices() const {
-    return m_indices;
-  }
+  [[nodiscard]] constexpr MTL::Buffer* vertexPositions() const { return m_vertexPositions; }
+  [[nodiscard]] constexpr MTL::Buffer* vertexData() const { return m_vertexData; }
+  [[nodiscard]] constexpr MTL::Buffer* indices() const { return m_indices; }
+  [[nodiscard]] constexpr MTL::Buffer* materialIndices() const { return m_materialIndices; }
   
-  [[nodiscard]] constexpr MTL::Buffer* materialIndices() const {
-    return m_materialIndices;
-  }
-
-  [[nodiscard]] constexpr size_t indexCount() const {
-    return m_indexCount;
-  }
-
-  [[nodiscard]] constexpr size_t vertexCount() const {
-    return m_vertexCount;
-  }
+  [[nodiscard]] constexpr size_t indexCount() const { return m_indexCount; }
+  [[nodiscard]] constexpr size_t vertexCount() const { return m_vertexCount; }
+  [[nodiscard]] constexpr size_t materialCount() const { return m_materialIndices->length() / sizeof(uint32_t); }
   
   void generateTangents();
 

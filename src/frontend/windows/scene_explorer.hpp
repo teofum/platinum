@@ -39,7 +39,7 @@ private:
     ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
     ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_AllowItemOverlap;
   
-  void renderNode(Scene::NodeID id, uint32_t level = 1);
+  void renderNode(const Scene::Node& node, uint32_t level = 1);
   
   void renderMeshesList();
   

@@ -107,7 +107,7 @@ struct PrimitiveResource {
 };
 
 struct InstanceResource {
-  metal_ptr(Material, device) materials;
+  metal_ptr(BSDF, device) materials;
 };
 
 struct Luts {

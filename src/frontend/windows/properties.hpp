@@ -18,7 +18,7 @@ public:
 
 private:
   uint32_t m_selectedMaterialIdx = 0;
-  Scene::NodeID m_lastNodeId = 0;
+  Scene::NodeID m_lastNodeId;
   static constexpr const ImGuiColorEditFlags m_colorFlags =
   	ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoOptions | ImGuiColorEditFlags_NoSidePreview
   | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_DisplayRGB
@@ -26,15 +26,15 @@ private:
   
   void renderNodeProperties(Scene::NodeID id);
 
-  void renderMeshProperties(Scene::MeshID id);
-
-  void renderCameraProperties(Scene::CameraID id);
-  
-  void renderMaterialProperties(Scene::MaterialID id);
-  
-  void renderTextureProperties(Scene::TextureID id);
-  
-  Scene::TextureID textureSelect(const char* label, Scene::TextureID selectedId);
+//  void renderMeshProperties(Scene::MeshID id);
+//
+//  void renderCameraProperties(Scene::CameraID id);
+//  
+//  void renderMaterialProperties(Scene::MaterialID id);
+//  
+//  void renderTextureProperties(Scene::TextureID id);
+//  
+//  Scene::TextureID textureSelect(const char* label, Scene::TextureID selectedId);
 };
 
 }

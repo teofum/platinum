@@ -3,285 +3,402 @@
 namespace pt {
 
 Scene::Scene() noexcept
-  : m_nextNodeId(1), m_nextMeshId(0), m_nodes(), m_meshes() {
-  m_nodes[0] = std::make_unique<Node>("Scene"); // Create root node
+: m_nextAssetId(0), m_assets() {
+  /*
+   * Initialize the scene
+   */
+  m_root = m_registry.create();
+  m_registry.emplace<Transform>(m_root);
+  m_registry.emplace<Hierarchy>(m_root, "Scene", entt::null);
 }
 
-Scene::MeshID Scene::addMesh(Mesh&& mesh) {
-  MeshID id = m_nextMeshId++;
-  m_meshes[id] = std::make_unique<Mesh>(std::move(mesh));
-  m_meshRc[id] = 0;
-  while (m_meshes.contains(m_nextMeshId)) m_nextMeshId++; // Find next unused ID
-
-  return id;
-}
-
-Scene::CameraID Scene::addCamera(Camera camera) {
-  CameraID id = m_nextCameraId++;
-  m_cameras[id] = camera;
-  m_cameraRc[id] = 0;
-  while (m_cameras.contains(m_nextCameraId)) m_nextCameraId++; // Find next unused ID
-
-  return id;
-}
-
-Scene::NodeID Scene::addNode(Node&& node, Scene::NodeID parent) {
-  NodeID id = m_nextNodeId++;
-  node.parent = parent;
-  m_nodes[id] = std::make_unique<Node>(std::move(node));
-  while (m_nodes.contains(m_nextNodeId)) m_nextNodeId++; // Find next unused ID
-
-  auto& parentNode = m_nodes[parent];
-  parentNode->children.push_back(id);
-
-  // Increase ref counts
-  if (node.meshId) m_meshRc[node.meshId.value()]++;
-  if (node.cameraId) m_cameraRc[node.cameraId.value()]++;
-  return id;
-}
-
-Scene::MaterialID Scene::addMaterial(const std::string_view& name, Material material) {
-  MaterialID id = m_nextMaterialId++;
-  m_materials[id] = material;
-  m_materialNames[id] = std::string(name);
-  while (m_materials.contains(m_nextMaterialId)) m_nextMaterialId++; // Find next unused ID
-
-  return id;
-}
-
-Scene::TextureID Scene::addTexture(const std::string_view& name, NS::SharedPtr<MTL::Texture> texture, bool hasAlpha) {
-  TextureID id = m_nextTextureId++;
-  m_textures[id] = texture;
-  m_textureNames[id] = std::string(name);
-  m_textureAlpha[id] = hasAlpha;
+void Scene::removeAsset(AssetID id) {
+  // Any cleanup specific to manually deleting assets should be done here
   
-  while (m_textures.contains(m_nextTextureId)) m_nextTextureId++; // Find next unused ID
-
-  return id;
+  removeAssetImpl(id);
 }
 
-void Scene::removeNode(Scene::NodeID id, int flags) {
-  if (id == 0) return; // Can't remove the root node
-
-  const auto& removed = m_nodes.at(id);
-
-  // Remove the node id from the parent's child list
-  const auto& parent = m_nodes.at(removed->parent);
-  parent->children.erase(
-    std::find(parent->children.begin(), parent->children.end(), id)
-  );
-
-  // Handle removal or moving of the children
-  auto children = removed->children; // Clone child IDs to prevent modifying while iterating
-  for (auto childId: children) {
-    const auto& child = m_nodes.at(childId);
-
-    if (flags & RemoveOptions_MoveChildrenToRoot) {
-      child->parent = 0;
-      m_nodes[0]->children.push_back(childId);
-    } else if (flags & RemoveOptions_MoveChildrenToParent) {
-      child->parent = removed->parent;
-      parent->children.push_back(childId);
-    } else {
-      removeNode(childId, flags); // Remove children recursively
-    }
-  }
-
-  // Decrease refcount of mesh/camera if present and handle orphaned objects
-  if (removed->meshId) {
-    const auto rc = --m_meshRc[removed->meshId.value()];
-    if (rc == 0 && !(flags & RemoveOptions_KeepOrphanedObjects)) {
-      m_meshes.erase(removed->meshId.value());
-      m_nextMeshId = removed->meshId.value();
-    }
-  }
-  if (removed->cameraId) {
-    const auto rc = --m_cameraRc[removed->cameraId.value()];
-    if (rc == 0 && !(flags & RemoveOptions_KeepOrphanedObjects)) {
-      m_cameras.erase(removed->cameraId.value());
-      m_nextCameraId = removed->cameraId.value();
-    }
-  }
-
-  m_nodes.erase(id); // Remove the node
-  m_nextNodeId = id; // Set next ID to removed one to be reused
+/*
+ * Asset management (internal)
+ */
+void Scene::retainAsset(AssetID id) {
+  m_assetRc[id]++;
 }
 
-bool Scene::moveNode(Scene::NodeID id, Scene::NodeID targetId) {
+bool Scene::releaseAsset(AssetID id) {
+  uint32_t rc = --m_assetRc[id];
+  bool remove = rc == 0 && !m_assets[id].retain;
+  
+  // Because the refcount is 0 we know there are no dependencies, so we can safely remove the asset.
+  if (remove) removeAssetImpl(id);
+  return remove;
+}
+
+void Scene::removeAssetImpl(AssetID id) {
+  // If the asset is a material, it may hold references to other assets (textures) which we need
+  // to release
+  auto* pMaterial = std::get_if<std::unique_ptr<Material>>(&m_assets[id].asset);
+  if (pMaterial) {
+    auto& mat = *(pMaterial->get());
+    if (mat.baseTextureId) releaseAsset(mat.baseTextureId.value());
+    if (mat.rmTextureId) releaseAsset(mat.rmTextureId.value());
+    if (mat.transmissionTextureId) releaseAsset(mat.transmissionTextureId.value());
+    if (mat.clearcoatTextureId) releaseAsset(mat.clearcoatTextureId.value());
+    if (mat.emissionTextureId) releaseAsset(mat.emissionTextureId.value());
+    if (mat.normalTextureId) releaseAsset(mat.normalTextureId.value());
+  }
+  
+  // Remove the asset and force reset refcount to 0. A missing asset with RC 0 is interpreted as
+  // an invalid ID.
+  m_assets.erase(id);
+  m_assetRc[id] = 0;
+}
+
+/*
+ * Node interface
+ */
+Scene::Node::Node(entt::entity entity, Scene &scene) noexcept: m_entity(entity), m_scene(scene) {}
+
+std::optional<Scene::AssetData<Mesh>> Scene::Node::mesh() const {
+  bool exists = m_scene.m_registry.all_of<MeshComponent>(m_entity);
+  if (!exists) return std::nullopt;
+  
+  auto& mesh = m_scene.m_registry.get<MeshComponent>(m_entity);
+  auto* asset = std::get_if<std::unique_ptr<Mesh>>(&m_scene.m_assets[mesh.id].asset);
+  if (!asset) return std::nullopt;
+  
+  AssetData<Mesh> data {
+    .id = mesh.id,
+    .asset = asset->get(),
+  };
+  return data;
+}
+
+void Scene::Node::setMesh(std::optional<AssetID> id) {
+  // Check if there is an existing mesh and release it
+  bool exists = m_scene.m_registry.all_of<MeshComponent>(m_entity);
+  if (exists) {
+    auto mesh = m_scene.m_registry.get<MeshComponent>(m_entity);
+    
+    for (auto materialId: mesh.materials) {
+      if (materialId) m_scene.releaseAsset(materialId.value());
+    }
+    
+    m_scene.releaseAsset(mesh.id);
+    m_scene.m_registry.erase<MeshComponent>(m_entity);
+  }
+  
+  // Retain a reference to the new mesh (if present) and set it
+  // We lose any material references, but this makes ref counting simpler and any materials are
+  // unlikely to work with the previous mesh anyway
+  if (id) {
+    auto* asset = m_scene.getAsset<Mesh>(id.value());
+    
+    m_scene.retainAsset(id.value());
+    m_scene.m_registry.emplace<MeshComponent>(m_entity, id.value(), asset->materialCount());
+  }
+}
+
+std::optional<std::vector<std::optional<Scene::AssetID>>*> Scene::Node::materialIds() const {
+  bool hasMesh = m_scene.m_registry.all_of<MeshComponent>(m_entity);
+  if (!hasMesh) return std::nullopt;
+  
+  auto& mesh = m_scene.m_registry.get<MeshComponent>(m_entity);
+  return &mesh.materials;
+}
+
+std::optional<Scene::AssetData<Material>> Scene::Node::material(size_t idx) const {
+  bool hasMesh = m_scene.m_registry.all_of<MeshComponent>(m_entity);
+  if (!hasMesh) return std::nullopt;
+  
+  auto& mesh = m_scene.m_registry.get<MeshComponent>(m_entity);
+  auto materialId = mesh.materials[idx];
+  if (!materialId) return std::nullopt;
+  
+  auto* asset = std::get_if<std::unique_ptr<Material>>(&m_scene.m_assets[materialId.value()].asset);
+  if (!asset) return std::nullopt;
+  
+  AssetData<Material> data {
+    .id = materialId.value(),
+    .asset = asset->get(),
+  };
+  return data;
+}
+
+void Scene::Node::setMaterial(size_t idx, std::optional<AssetID> id) {
+  bool hasMesh = m_scene.m_registry.all_of<MeshComponent>(m_entity);
+  if (!hasMesh) return;
+  
+  auto& mesh = m_scene.m_registry.get<MeshComponent>(m_entity);
+  auto currentId = mesh.materials[idx];
+  
+  if (currentId) m_scene.releaseAsset(id.value());
+  if (id) m_scene.retainAsset(id.value());
+  
+  mesh.materials[idx] = id;
+}
+
+std::string_view Scene::Node::name() const {
+  return m_scene.m_registry.get<Hierarchy>(m_entity).name;
+}
+
+Transform& Scene::Node::transform() const {
+  return m_scene.m_registry.get<Transform>(m_entity);
+}
+
+std::optional<Scene::Node> Scene::Node::parent() const {
+  auto& hierarchy = m_scene.m_registry.get<Hierarchy>(m_entity);
+  
+  if (hierarchy.parent == entt::null) return std::nullopt;
+  return m_scene.node(hierarchy.parent);
+}
+
+std::vector<Scene::Node> Scene::Node::children() const {
+  std::vector<Scene::Node> children;
+  
+  auto& hierarchy = m_scene.m_registry.get<Hierarchy>(m_entity);
+  children.reserve(hierarchy.children.size());
+
+  for (auto child: hierarchy.children) {
+    children.push_back(m_scene.node(child));
+  }
+  
+  return children;
+}
+
+bool Scene::Node::isRoot() const {
+  return m_entity == m_scene.m_root;
+}
+
+Scene::Node Scene::Node::createChild(std::string_view name) {
+  return m_scene.createNode(name, m_entity);
+}
+
+
+/*
+ * Node API
+ */
+Scene::Node Scene::createNode(std::string_view name, Scene::NodeID parent) {
+  auto id = m_registry.create();
+  
+  // Create transform component
+  m_registry.emplace<Transform>(id);
+  
+  // Create hierarchy component
+  auto parentId = parent == null ? m_root : parent;
+  m_registry.emplace<Hierarchy>(id, name, parentId);
+  
+  // Append to children of parent node
+  auto& parentHierarchy = m_registry.get<Hierarchy>(parentId);
+  parentHierarchy.children.push_back(id);
+  
+  return node(id);
+}
+
+void Scene::removeNode(NodeID id) {
+  if (!m_registry.valid(id)) return;
+  
+  // Clean up the node by removing any meshes and materials
+  auto removed = node(id);
+  removed.setMesh(std::nullopt);
+  
+  // TODO: recursively remove children
+  
+  m_registry.destroy(id);
+}
+
+bool Scene::moveNode(NodeID id, NodeID targetId) {
   if (targetId == id) return false; // Can't move a node into itself!
 
-  const auto& node = m_nodes.at(id);
-  const auto& target = m_nodes.at(targetId);
+  auto& hierarchy = m_registry.get<Hierarchy>(id);
+  auto& target = m_registry.get<Hierarchy>(targetId);
 
   // While moving a node into its own parent is technically a valid operation,
   // it's also completely pointless
-  if (node->parent == targetId) return false;
+  if (hierarchy.parent == targetId) return false;
 
   // Make sure we don't move a node into its own children
-  NodeID parentId = target->parent;
-  while (parentId != 0) {
+  NodeID parentId = target.parent;
+  while (parentId != m_root) {
     if (parentId == id) return false;
-    parentId = m_nodes.at(parentId)->parent;
+    parentId = m_registry.get<Hierarchy>(parentId).parent;
   }
 
   // Move the node
-  const auto& oldParent = m_nodes.at(node->parent);
-  oldParent->children.erase(
-    std::find(oldParent->children.begin(), oldParent->children.end(), id)
+  auto& oldParent = m_registry.get<Hierarchy>(hierarchy.parent);
+  oldParent.children.erase(
+    std::find(oldParent.children.begin(), oldParent.children.end(), id)
   );
-  target->children.push_back(id);
-  node->parent = targetId;
+  
+  target.children.push_back(id);
+  hierarchy.parent = targetId;
 
   return true;
 }
 
 bool Scene::cloneNode(Scene::NodeID id, Scene::NodeID targetId) {
-  const auto& node = m_nodes.at(id);
-  const auto& target = m_nodes.at(targetId);
+  auto& hierarchy = m_registry.get<Hierarchy>(id);
+  auto& target = m_registry.get<Hierarchy>(targetId);
 
   // Make sure we don't clone a node into its own children
-  NodeID parentId = target->parent;
-  while (parentId != 0) {
+  NodeID parentId = target.parent;
+  while (parentId != m_root) {
     if (parentId == id) return false;
-    parentId = m_nodes.at(parentId)->parent;
+    parentId = m_registry.get<Hierarchy>(parentId).parent;
   }
 
-  auto children = node->children;
-
-  Node clone(node->name, node->meshId);
-  clone.transform = node->transform;
-  clone.cameraId = node->cameraId;
-  clone.materials = node->materials;
-  clone.flags = node->flags;
-  const auto cloneId = addNode(std::move(clone), targetId);
+  auto children = hierarchy.children;
+  auto clone = createNode(hierarchy.name, targetId);
+  
+  // Clone any mesh components
+  if (m_registry.all_of<MeshComponent>(id)) {
+    auto& mesh = m_registry.get<MeshComponent>(id);
+    clone.setMesh(mesh.id);
+    
+    for (size_t i = 0; i < mesh.materials.size(); i++) {
+      clone.setMaterial(i, mesh.materials[i]);
+    }
+  }
 
   // Recursively clone children
   for (auto childId: children) {
-    cloneNode(childId, cloneId);
+    cloneNode(childId, clone.id());
   }
 
   return true;
 }
 
-float4x4 Scene::worldTransform(Scene::NodeID id) const {
-  const auto* node = m_nodes.at(id).get();
-  auto transform = node->transform.matrix();
-
-  while (id != 0) {
-    id = node->parent;
-    node = m_nodes.at(id).get();
-    transform = node->transform.matrix() * transform;
-  }
-
-  return transform;
+bool Scene::hasNode(NodeID id) const {
+  return m_registry.valid(id);
 }
 
-std::vector<Scene::MeshData> Scene::getAllMeshes() const {
-  std::vector<MeshData> meshes;
-  meshes.reserve(m_meshes.size());
-
-  for (const auto& mesh: m_meshes) {
-    meshes.emplace_back(mesh.second.get(), mesh.first);
-  }
-
-  return meshes;
+Scene::Node Scene::node(NodeID id) {
+  return Node(id, *this);
 }
 
-std::vector<Scene::MaterialData> Scene::getAllMaterials() const {
-  std::vector<MaterialData> materials;
-  materials.reserve(m_materials.size());
-
-  for (const auto& [id, material]: m_materials) {
-    materials.emplace_back(&material, id, m_materialNames.at(id));
-  }
-
-  return materials;
+Scene::Node Scene::root() {
+  return node(m_root);
 }
 
-std::vector<Scene::InstanceData> Scene::getAllInstances(int filter) const {
-  std::vector<Scene::InstanceData> meshes;
-  meshes.reserve(m_meshes.size());
+//float4x4 Scene::worldTransform(Scene::NodeID id) const {
+//  const auto* node = m_nodes.at(id).get();
+//  auto transform = node->transform.matrix();
+//
+//  while (id != 0) {
+//    id = node->parent;
+//    node = m_nodes.at(id).get();
+//    transform = node->transform.matrix() * transform;
+//  }
+//
+//  return transform;
+//}
 
-  traverseHierarchy(
-    [&](NodeID id, const Node* node, const float4x4& transform) {
-      if (node->meshId) {
-        const auto& mesh = m_meshes.at(*node->meshId);
-        meshes.emplace_back(mesh.get(), id, node->meshId.value(), node->materials, transform);
-      }
-    },
-    filter
-  );
+//std::vector<Scene::MeshData> Scene::getAllMeshes() const {
+//  std::vector<MeshData> meshes;
+//  meshes.reserve(m_meshes.size());
+//
+//  for (const auto& mesh: m_meshes) {
+//    meshes.emplace_back(mesh.second.get(), mesh.first);
+//  }
+//
+//  return meshes;
+//}
 
-  return meshes;
-}
+//std::vector<Scene::MaterialData> Scene::getAllMaterials() const {
+//  std::vector<MaterialData> materials;
+//  materials.reserve(m_materials.size());
+//
+//  for (const auto& [id, material]: m_materials) {
+//    materials.emplace_back(&material, id, m_materialNames.at(id));
+//  }
+//
+//  return materials;
+//}
 
-std::vector<Scene::CameraData> Scene::getAllCameras(int filter) const {
-  std::vector<Scene::CameraData> cameras;
-  cameras.reserve(m_cameras.size());
+//std::vector<Scene::InstanceData> Scene::getAllInstances(int filter) const {
+//  std::vector<Scene::InstanceData> meshes;
+//  meshes.reserve(m_meshes.size());
+//
+//  traverseHierarchy(
+//    [&](NodeID id, const Node* node, const float4x4& transform) {
+//      if (node->meshId) {
+//        const auto& mesh = m_meshes.at(*node->meshId);
+//        meshes.emplace_back(mesh.get(), id, node->meshId.value(), node->materials, transform);
+//      }
+//    },
+//    filter
+//  );
+//
+//  return meshes;
+//}
 
-  traverseHierarchy(
-    [&](NodeID id, const Node* node, const float4x4& transform) {
-      if (node->cameraId) {
-        const auto& camera = m_cameras.at(*node->cameraId);
-        cameras.emplace_back(&camera, transform, id);
-      }
-    },
-    filter
-  );
+//std::vector<Scene::CameraData> Scene::getAllCameras(int filter) const {
+//  std::vector<Scene::CameraData> cameras;
+//  cameras.reserve(m_cameras.size());
+//
+//  traverseHierarchy(
+//    [&](NodeID id, const Node* node, const float4x4& transform) {
+//      if (node->cameraId) {
+//        const auto& camera = m_cameras.at(*node->cameraId);
+//        cameras.emplace_back(&camera, transform, id);
+//      }
+//    },
+//    filter
+//  );
+//
+//  return cameras;
+//}
 
-  return cameras;
-}
+//std::vector<Scene::TextureData> Scene::getAllTextures() const {
+//  std::vector<TextureData> textures;
+//  textures.reserve(m_textures.size());
+//
+//  for (const auto& [id, texture]: m_textures) {
+//    textures.emplace_back(texture.get(), id, m_textureNames.at(id));
+//  }
+//
+//  return textures;
+//}
 
-std::vector<Scene::TextureData> Scene::getAllTextures() const {
-  std::vector<TextureData> textures;
-  textures.reserve(m_textures.size());
+//void Scene::recalculateMaterialFlags(MaterialID id) {
+//  auto& material = m_materials[id];
+//  
+//  material.flags &= Material::Material_ThinDielectric;
+//  
+//  // Set anisotropic flag if the material has anisotropy
+//  if (material.anisotropy != 0.0f) material.flags |= Material::Material_Anisotropic;
+//  
+//  // Set emissive flag if emission strength is greater than zero
+//  if (length_squared(material.emission) * material.emissionStrength > 0.0f)
+//    material.flags |= Material::Material_Emissive;
+//  
+//  // Set alpha flag is material has alpha < 1 OR has a texture with an alpha channel and values < 1
+//  if (material.baseColor.a < 1 || (material.baseTextureId >= 0 && m_textureAlpha[material.baseTextureId]))
+//    material.flags |= Material::Material_UseAlpha;
+//}
 
-  for (const auto& [id, texture]: m_textures) {
-    textures.emplace_back(texture.get(), id, m_textureNames.at(id));
-  }
-
-  return textures;
-}
-
-void Scene::recalculateMaterialFlags(MaterialID id) {
-  auto& material = m_materials[id];
-  
-  material.flags &= Material::Material_ThinDielectric;
-  
-  // Set anisotropic flag if the material has anisotropy
-  if (material.anisotropy != 0.0f) material.flags |= Material::Material_Anisotropic;
-  
-  // Set emissive flag if emission strength is greater than zero
-  if (length_squared(material.emission) * material.emissionStrength > 0.0f)
-    material.flags |= Material::Material_Emissive;
-  
-  // Set alpha flag is material has alpha < 1 OR has a texture with an alpha channel and values < 1
-  if (material.baseColor.a < 1 || (material.baseTextureId >= 0 && m_textureAlpha[material.baseTextureId]))
-    material.flags |= Material::Material_UseAlpha;
-}
-
-void Scene::traverseHierarchy(
-  const std::function<void(NodeID id, const Node*, const float4x4&)>& cb,
-  int filter
-) const {
-  std::vector<std::pair<NodeID, float4x4>> stack = {
-    {0, mat::identity()}
-  };
-
-  while (!stack.empty()) {
-    const auto& [currentId, parentMatrix] = stack.back();
-    stack.pop_back();
-
-    const auto& current = m_nodes.at(currentId);
-    if (filter && !(current->flags & filter)) continue;
-
-    const float4x4 transformMatrix = parentMatrix * current->transform.matrix();
-    cb(currentId, current.get(), transformMatrix);
-
-    for (auto childIdx: current->children) {
-      stack.emplace_back(childIdx, transformMatrix);
-    }
-  }
-}
+//void Scene::traverseHierarchy(
+//  const std::function<void(NodeID id, const Node*, const float4x4&)>& cb,
+//  int filter
+//) const {
+//  std::vector<std::pair<NodeID, float4x4>> stack = {
+//    {0, mat::identity()}
+//  };
+//
+//  while (!stack.empty()) {
+//    const auto& [currentId, parentMatrix] = stack.back();
+//    stack.pop_back();
+//
+//    const auto& current = m_nodes.at(currentId);
+//    if (filter && !(current->flags & filter)) continue;
+//
+//    const float4x4 transformMatrix = parentMatrix * current->transform.matrix();
+//    cb(currentId, current.get(), transformMatrix);
+//
+//    for (auto childIdx: current->children) {
+//      stack.emplace_back(childIdx, transformMatrix);
+//    }
+//  }
+//}
 
 }

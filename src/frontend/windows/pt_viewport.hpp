@@ -17,7 +17,6 @@ public:
     : Window(store, state, open), m_dpiScaling(dpiScaling) {
   }
   
-
   void init(MTL::Device* device, MTL::CommandQueue* commandQueue);
 
   void render() final;
