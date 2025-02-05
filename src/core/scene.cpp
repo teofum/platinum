@@ -256,6 +256,7 @@ bool Scene::cloneNode(Scene::NodeID id, Scene::NodeID targetId) {
 
   auto children = hierarchy.children;
   auto clone = createNode(hierarchy.name, targetId);
+  clone.transform() = node(id).transform();
   
   // Clone any mesh components
   if (m_registry.all_of<MeshComponent>(id)) {
