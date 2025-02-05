@@ -226,7 +226,7 @@ bool Scene::moveNode(NodeID id, NodeID targetId) {
 
   // Make sure we don't move a node into its own children
   NodeID parentId = target.parent;
-  while (parentId != m_root) {
+  while (parentId != Scene::null) {
     if (parentId == id) return false;
     parentId = m_registry.get<Hierarchy>(parentId).parent;
   }
@@ -249,7 +249,7 @@ bool Scene::cloneNode(Scene::NodeID id, Scene::NodeID targetId) {
 
   // Make sure we don't clone a node into its own children
   NodeID parentId = target.parent;
-  while (parentId != m_root) {
+  while (parentId != Scene::null) {
     if (parentId == id) return false;
     parentId = m_registry.get<Hierarchy>(parentId).parent;
   }
