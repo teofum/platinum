@@ -344,12 +344,7 @@ std::optional<Scene::AssetID> Properties::textureSelect(const char* label, std::
 }
 
 void Properties::materialTextureSelect(const char *label, Material *material, Material::TextureSlot slot) {
-  auto newSelection = textureSelect(label, material->getTexture(slot));
-  if (newSelection) {
-    material->textures[slot] = newSelection.value();
-  } else {
-    material->textures.erase(slot);
-  }
+  m_store.scene().updateMaterialTexture(material, slot, textureSelect(label, material->getTexture(slot)));
 }
 
 }

@@ -173,6 +173,8 @@ public:
   uint32_t getAssetRc(AssetID id);
   
   bool& assetRetained(AssetID id);
+  
+  void updateMaterialTexture(Material* material, Material::TextureSlot slot, std::optional<AssetID> textureId);
 
 private:
   /*

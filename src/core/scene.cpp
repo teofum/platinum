@@ -26,6 +26,22 @@ bool& Scene::assetRetained(AssetID id) {
   return m_assets.at(id).retain;
 }
 
+void Scene::updateMaterialTexture(Material *material, Material::TextureSlot slot, std::optional<AssetID> textureId) {
+  if (material->textures.contains(slot)) {
+    auto currentId = material->textures.at(slot);
+    if (textureId == currentId) return;
+    
+    releaseAsset(currentId);
+  }
+  
+  if (textureId) {
+    retainAsset(textureId.value());
+    material->textures[slot] = textureId.value();
+  } else {
+    material->textures.erase(slot);
+  }
+}
+
 /*
  * Asset management (internal)
  */

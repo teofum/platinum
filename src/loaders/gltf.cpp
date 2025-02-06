@@ -83,7 +83,7 @@ void GltfLoader::load(const fs::path& path, int options) {
     // Set texture ID on materials using the texture
     for (const auto& [materialId, slot]: desc.users) {
       auto* material = m_scene.getAsset<Material>(materialId);
-      material->textures[slot] = textureId;
+      m_scene.updateMaterialTexture(material, slot, textureId);
     }
   }
 
