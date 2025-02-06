@@ -210,7 +210,16 @@ void Scene::removeNode(NodeID id) {
   auto removed = node(id);
   removed.setMesh(std::nullopt);
   
-  // TODO: recursively remove children
+  // Remove children recursively
+  auto& hierarchy = m_registry.get<Hierarchy>(id);
+  for (auto& childId: hierarchy.children) {
+    removeNode(childId);
+  }
+  
+  // Remove the node from its parent's child list
+  // We don't need to check if it has a parent because the root cannot be removed
+  auto& parent = m_registry.get<Hierarchy>(hierarchy.parent);
+  std::erase_if(parent.children, [&](NodeID child) { return child == id; });
   
   m_registry.destroy(id);
 }
