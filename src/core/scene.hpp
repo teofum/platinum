@@ -171,6 +171,8 @@ public:
   void removeAsset(AssetID id);
   
   uint32_t getAssetRc(AssetID id);
+  
+  bool& assetRetained(AssetID id);
 
 private:
   /*

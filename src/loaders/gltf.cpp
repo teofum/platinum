@@ -234,6 +234,7 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
   if (!didLoadTangents) mesh.generateTangents();
   
   auto id = m_scene.createAsset(std::move(mesh));
+  m_scene.assetRetained(id) = false;
   m_meshIds.push_back(id);
   m_meshMaterials[id] = materialSlots;
 }
@@ -321,6 +322,7 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   }
   
   Scene::AssetID materialId = m_scene.createAsset(std::move(material));
+  m_scene.assetRetained(materialId) = false;
   m_materialIds.push_back(materialId);
   
   /*
@@ -385,7 +387,9 @@ Scene::AssetID GltfLoader::loadTexture(const fastgltf::Texture &gltfTex, texture
   const uint8_t* data = reinterpret_cast<const uint8_t*>(&bytes->bytes[bv.byteOffset]);
   int32_t len = int32_t(bv.byteLength);
   
-  return m_textureLoader.loadFromMemory(data, len, gltfTex.name, type);
+  auto id = m_textureLoader.loadFromMemory(data, len, gltfTex.name, type);
+  m_scene.assetRetained(id) = false;
+  return id;
 }
 
 }

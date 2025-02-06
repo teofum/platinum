@@ -26,6 +26,7 @@ Frontend::Frontend(Store& store) noexcept
   : m_store(store), m_state(store),
     m_properties(m_store, m_state),
     m_sceneExplorer(m_store, m_state),
+		m_assetManager(m_store, m_state),
     m_studioViewport(m_store, m_state, m_dpiScaling),
 		m_renderViewport(m_store, m_state, m_dpiScaling),
 		m_multiscatterLutGenerator(m_store, m_state, &m_toolMultiscatterLutGeneratorOpen) {
@@ -236,6 +237,7 @@ void Frontend::drawImGui() {
 
   // Render controls windows
   m_sceneExplorer.render();
+  m_assetManager.render();
   m_properties.render();
   
   // Additional windows

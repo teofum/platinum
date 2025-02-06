@@ -19,7 +19,11 @@ void Scene::removeAsset(AssetID id) {
 }
 
 uint32_t Scene::getAssetRc(AssetID id) {
-  return m_assetRc[id];
+  return m_assetRc.at(id);
+}
+
+bool& Scene::assetRetained(AssetID id) {
+  return m_assets.at(id).retain;
 }
 
 /*

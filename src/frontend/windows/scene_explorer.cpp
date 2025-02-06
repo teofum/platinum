@@ -10,20 +10,6 @@ void SceneExplorer::render() {
   ImGui::Begin("Scene Explorer");
 
   /*
-   * Mode selection
-   */
-  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-  if (ImGui::BeginCombo("##ModeSelect", m_modeNames[m_mode])) {
-    for (uint32_t mode = 0; mode < m_modeCount; mode++) {
-      auto isSelected = mode == m_mode;
-      if (widgets::comboItem(m_modeNames[mode], isSelected)) m_mode = mode;
-    }
-    ImGui::EndCombo();
-  }
-  
-  ImGui::Spacing();
-
-  /*
    * Main panel
    */
   ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
@@ -35,23 +21,7 @@ void SceneExplorer::render() {
   ImGui::PopStyleVar(2);
   if (visible) {
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
-    switch (m_mode) {
-      case Mode_Hierarchy:
-        renderNode(m_store.scene().root());
-        break;
-        
-      case Mode_Meshes:
-        renderMeshesList();
-        break;
-        
-      case Mode_Materials:
-        renderMaterialsList();
-        break;
-        
-      case Mode_Textures:
-        renderTexturesList();
-        break;
-    }
+		renderNode(m_store.scene().root());
     ImGui::PopStyleVar();
   }
   ImGui::EndChild();
@@ -218,72 +188,28 @@ void SceneExplorer::renderNode(const Scene::Node& node, uint32_t level) {
   /*
    * Inline buttons
    */
-//  auto visibleLabel = std::format("{}##Node_{}", node->flags & Scene::NodeFlags_Visible ? 'V' : '-', id);
-//  auto inlineButtonWidth = ImGui::GetFrameHeight();
-//  auto offset = ImGui::GetStyle().IndentSpacing * static_cast<float>(isOpen ? level + 1 : level);
-//  ImGui::SameLine(ImGui::GetContentRegionAvail().x + offset - inlineButtonWidth);
-//  if (widgets::button(visibleLabel.c_str(), {inlineButtonWidth, 0})) {
-//    node->flags ^= Scene::NodeFlags_Visible;
-//  }
+  bool& visible = node.visible();
+  auto visibleLabel = std::format("{}##Node_{}", visible ? 'V' : '-', uint32_t(node.id()));
+  auto inlineButtonWidth = ImGui::GetFrameHeight();
+  auto offset = ImGui::GetStyle().IndentSpacing * (isOpen ? level + 1 : level);
+  
+  ImGui::SameLine(ImGui::GetContentRegionAvail().x + offset - inlineButtonWidth);
+  if (widgets::button(visibleLabel.c_str(), {inlineButtonWidth, 0})) {
+    visible = !visible;
+  }
 
   /*
-   * Render contents: mesh and children
+   * Render children
    */
   if (isOpen) {
-//    if (node->meshId) {
-//      auto meshFlags = m_baseFlags;
-//      meshFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-//
-//      bool meshSelected = m_state.selectedMesh() == node->meshId;
-//      if (meshSelected) {
-//        meshFlags |= ImGuiTreeNodeFlags_Selected;
-//      } else {
-//        ImGui::PushStyleColor(
-//          ImGuiCol_Header,
-//          ImGui::GetStyleColorVec4(ImGuiCol_FrameBg)
-//        );
-//      }
-//
-//      auto meshLabel = std::format("Mesh [{}]", node->meshId.value());
-//      ImGui::TreeNodeEx(meshLabel.c_str(), meshFlags);
-//      if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-//        m_state.selectMesh(node->meshId);
-//      }
-//
-//      if (!meshSelected) ImGui::PopStyleColor();
-//    }
-//    if (node->cameraId) {
-//      auto cameraFlags = m_baseFlags;
-//      cameraFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-//
-//      bool cameraSelected = m_state.selectedCamera() == node->cameraId;
-//      if (cameraSelected) {
-//        cameraFlags |= ImGuiTreeNodeFlags_Selected;
-//      } else {
-//        ImGui::PushStyleColor(
-//          ImGuiCol_Header,
-//          ImGui::GetStyleColorVec4(ImGuiCol_FrameBg)
-//        );
-//      }
-//
-//      auto cameraLabel = std::format("Camera [{}]", node->cameraId.value());
-//      ImGui::TreeNodeEx(cameraLabel.c_str(), cameraFlags);
-//      if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-//        m_state.selectCamera(node->cameraId);
-//      }
-//
-//      if (!cameraSelected) ImGui::PopStyleColor();
-//    }
-    for (const auto& child: node.children()) {
-      renderNode(child, level + 1);
-    }
+    for (const auto& child: node.children()) renderNode(child, level + 1);
     ImGui::TreePop();
   }
 
   ImGui::PopID();
 }
 
-void SceneExplorer::renderMeshesList() {
+//void SceneExplorer::renderMeshesList() {
 //  for (const auto& md: m_store.scene().getAllMeshes()) {
 //    auto flags = m_baseFlags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 //    
@@ -305,9 +231,9 @@ void SceneExplorer::renderMeshesList() {
 //
 //    if (!selected) ImGui::PopStyleColor();
 //  }
-}
+//}
 
-void SceneExplorer::renderMaterialsList() {
+//void SceneExplorer::renderMaterialsList() {
 //  for (const auto& md: m_store.scene().getAllMaterials()) {
 //    auto flags = m_baseFlags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 //    
@@ -329,30 +255,6 @@ void SceneExplorer::renderMaterialsList() {
 //
 //    if (!selected) ImGui::PopStyleColor();
 //  }
-}
-
-void SceneExplorer::renderTexturesList() {
-//  for (const auto& td: m_store.scene().getAllTextures()) { 
-//    auto flags = m_baseFlags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-//    
-//    bool selected = m_state.selectedTexture() == td.textureId;
-//    if (selected) {
-//      flags |= ImGuiTreeNodeFlags_Selected;
-//    } else {
-//      ImGui::PushStyleColor(
-//        ImGuiCol_Header,
-//        ImGui::GetStyleColorVec4(ImGuiCol_FrameBg)
-//      );
-//    }
-//    
-//    auto name = td.name.empty() ? std::format("Texture [{}]", td.textureId) : td.name;
-//    ImGui::TreeNodeEx(name.c_str(), flags);
-//    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-//      m_state.selectTexture(td.textureId);
-//    }
-//
-//    if (!selected) ImGui::PopStyleColor();
-//  }
-}
+//}
 
 }
