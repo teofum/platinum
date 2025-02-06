@@ -168,6 +168,8 @@ private:
   void rebuildLightData();
 
   void updateConstants(Scene::NodeID cameraNodeId, int flags);
+  
+  Material* getMaterialOrDefault(std::optional<Scene::AssetID> id);
 };
 
 }

@@ -108,9 +108,9 @@ void Renderer::render() {
       computeEnc->useResource(instanceMaterialBuffer, MTL::ResourceUsageRead);
     }
     
-//    for (const auto& texture: m_store.scene().getAllTextures()) {
-//      computeEnc->useResource(texture.texture, MTL::ResourceUsageRead);
-//    }
+    for (const auto& texture: m_store.scene().getAll<Texture>()) {
+      computeEnc->useResource(texture.asset->texture(), MTL::ResourceUsageRead);
+    }
     
     for (const auto& aliasTable: m_envLightAliasTables) {
       computeEnc->useResource(aliasTable, MTL::ResourceUsageRead);
@@ -432,93 +432,132 @@ void Renderer::rebuildResourceBuffers() {
    * Create vertex resources buffer, pointing to each mesh's vertex data buffer
    * and primitive resources buffer, pointing to each mesh's material slot index buffer
    */
-//  auto meshes = m_store.scene().getAllMeshes();
+  auto meshes = m_store.scene().getAll<Mesh>();
   
-//  m_vertexResourcesBuffer = m_device->newBuffer(
-//    m_resourcesStride * 2 * meshes.size(),
-//    MTL::ResourceStorageModeShared
-//  );
-//  m_primitiveResourcesBuffer = m_device->newBuffer(
-//    m_resourcesStride * meshes.size(),
-//    MTL::ResourceStorageModeShared
-//  );
-//
-//  size_t idx = 0;
-//  m_meshVertexPositionBuffers.reserve(meshes.size());
-//  m_meshVertexDataBuffers.reserve(meshes.size());
-//  m_meshMaterialIndexBuffers.reserve(meshes.size());
-//  for (const auto& md: meshes) {
-//    auto vertexResourceHandle = (uint64_t*) m_vertexResourcesBuffer->contents() + idx * 2;
-//    vertexResourceHandle[0] = md.mesh->vertexPositions()->gpuAddress();
-//    vertexResourceHandle[1] = md.mesh->vertexData()->gpuAddress();
-//    
-//    auto primResourceHandle = (uint64_t*) m_primitiveResourcesBuffer->contents() + idx;
-//    *primResourceHandle = md.mesh->materialIndices()->gpuAddress();
-//    
-//    m_meshVertexPositionBuffers.push_back(md.mesh->vertexPositions());
-//    m_meshVertexDataBuffers.push_back(md.mesh->vertexData());
-//    m_meshMaterialIndexBuffers.push_back(md.mesh->materialIndices());
-//  
-//    idx++;
-//  }
+  m_vertexResourcesBuffer = m_device->newBuffer(
+    m_resourcesStride * 2 * meshes.size(),
+    MTL::ResourceStorageModeShared
+  );
+  m_primitiveResourcesBuffer = m_device->newBuffer(
+    m_resourcesStride * meshes.size(),
+    MTL::ResourceStorageModeShared
+  );
+
+  size_t idx = 0;
+  m_meshVertexPositionBuffers.reserve(meshes.size());
+  m_meshVertexDataBuffers.reserve(meshes.size());
+  m_meshMaterialIndexBuffers.reserve(meshes.size());
+  for (const auto& mesh: meshes) {
+    auto vertexResourceHandle = (uint64_t*) m_vertexResourcesBuffer->contents() + idx * 2;
+    vertexResourceHandle[0] = mesh.asset->vertexPositions()->gpuAddress();
+    vertexResourceHandle[1] = mesh.asset->vertexData()->gpuAddress();
+    
+    auto primResourceHandle = (uint64_t*) m_primitiveResourcesBuffer->contents() + idx;
+    *primResourceHandle = mesh.asset->materialIndices()->gpuAddress();
+    
+    m_meshVertexPositionBuffers.push_back(mesh.asset->vertexPositions());
+    m_meshVertexDataBuffers.push_back(mesh.asset->vertexData());
+    m_meshMaterialIndexBuffers.push_back(mesh.asset->materialIndices());
+  
+    idx++;
+  }
+  
+  /*
+   * Create texture resource buffer, pointing to each scene texture.
+   * Right now we include all textures, even unused ones.
+   * TODO: figure out if there's even any perf benefit to including only textures that are used.
+   */
+  auto textures = m_store.scene().getAll<Texture>();
+  std::vector<MTL::ResourceID> texturePointers;
+  ankerl::unordered_dense::map<Scene::AssetID, size_t> textureIndices;
+  
+  for (const auto& texture: textures) {
+    textureIndices[texture.id] = texturePointers.size();
+    texturePointers.push_back(texture.asset->texture()->gpuResourceID());
+  }
+  
+  m_texturesBuffer = m_device->newBuffer(
+		sizeof(MTL::ResourceID) * texturePointers.size(),
+		MTL::ResourceStorageModeShared
+	);
+  memcpy(m_texturesBuffer->contents(), texturePointers.data(), sizeof(MTL::ResourceID) * texturePointers.size());
   
   /*
    * Create instance resources buffer, pointing to each *instance's* materials buffer
    * Also create the materials buffers
    * This duplicates materials across instances, but it's a very small struct, this is ok
    */
-//  auto instances = m_store.scene().getAllInstances(Scene::NodeFlags_Visible);
-//  
-//  m_instanceResourcesBuffer = m_device->newBuffer(
-//    m_resourcesStride * instances.size(),
-//    MTL::ResourceStorageModeShared
-//  );
-//  
-//  idx = 0;
-//  m_instanceMaterialBuffers.reserve(instances.size());
-//  for (const auto& instance: instances) {
-//    // Create and fill the materials buffer
-//    auto materialsBuffer = m_device->newBuffer(
-//		  instance.materials.size() * sizeof(Material),
-//		  MTL::ResourceStorageModeShared
-//		);
-//    
-//    size_t materialIdx = 0;
-//    for (auto mid: instance.materials) {
-//      auto materialHandle = (Material*) materialsBuffer->contents() + materialIdx++;
-//      *materialHandle = *m_store.scene().material(mid);
-//    }
-//    
-//    // Add the material buffer addresses to the instance resources buffer
-//    auto instanceResourceHandle = (uint64_t*) m_instanceResourcesBuffer->contents() + idx++;
-//    *instanceResourceHandle = materialsBuffer->gpuAddress();
-//    
-//    m_instanceMaterialBuffers.push_back(materialsBuffer);
-//  }
+  auto instances = m_store.scene().getInstances();
   
-  /*
-   * Create texture resource buffer, pointing to each scene texture. To avoid needing an ID-index
-   * mapping, we simply make the indices in this buffer match the IDs and assume there won't be big
-   * gaps in texture IDs, which because of the way they are assigned should be the case.
-   * Right now we include all textures, even unused ones.
-   * TODO: figure out if there's even any perf benefit to including only textures that are used.
-   */
-//  auto textures = m_store.scene().getAllTextures();
-//  std::vector<MTL::ResourceID> texturePointers;
-//  
-//  for (const auto& texture: textures) {
-//    if (texturePointers.size() < texture.textureId + 1){
-//      texturePointers.resize(texture.textureId + 1, MTL::ResourceID(0ull));
-//    }
-//    
-//    texturePointers[texture.textureId] = texture.texture->gpuResourceID();
-//  }
-//  
-//  m_texturesBuffer = m_device->newBuffer(
-//   	sizeof(MTL::ResourceID) * texturePointers.size(),
-//   	MTL::ResourceStorageModeShared
-// 	);
-//  memcpy(m_texturesBuffer->contents(), texturePointers.data(), sizeof(MTL::ResourceID) * texturePointers.size());
+  m_instanceResourcesBuffer = m_device->newBuffer(
+    m_resourcesStride * instances.size(),
+    MTL::ResourceStorageModeShared
+  );
+  
+  idx = 0;
+  m_instanceMaterialBuffers.reserve(instances.size());
+  for (const auto& instance: instances) {
+    // Create and fill the materials buffer
+    const auto& materialIds = *instance.node.materialIds().value(); // We know the node has a mesh so there is a value
+    auto materialsBuffer = m_device->newBuffer(
+      materialIds.size() * sizeof(shaders_pt::MaterialGPU),
+		  MTL::ResourceStorageModeShared
+		);
+    
+    size_t materialIdx = 0;
+    for (auto materialId: materialIds) {
+      auto* material = getMaterialOrDefault(materialId);
+      
+      // Create BSDF struct from material
+      auto getTextureIdx = [&](std::optional<Scene::AssetID> id) {
+        return id
+          .transform([&](Scene::AssetID id) { return int32_t(textureIndices[id]); })
+          .value_or(-1);
+      };
+      
+      auto bsdfHandle = (shaders_pt::MaterialGPU*) materialsBuffer->contents() + materialIdx++;
+      auto& bsdf = *bsdfHandle;
+      bsdf = shaders_pt::MaterialGPU {
+        .baseColor = material->baseColor,
+        .emission = material->emission,
+        .emissionStrength = material->emissionStrength,
+        .roughness = material->roughness,
+        .metallic = material->metallic,
+        .transmission = material->transmission,
+        .ior = material->ior,
+        .anisotropy = material->anisotropy,
+        .anisotropyRotation = material->anisotropyRotation,
+        .clearcoat = material->clearcoat,
+        .clearcoatRoughness = material->clearcoatRoughness,
+        .baseTextureId = getTextureIdx(material->getTexture(Material::TextureSlot::BaseColor)),
+        .rmTextureId = getTextureIdx(material->getTexture(Material::TextureSlot::RoughnessMetallic)),
+        .transmissionTextureId = getTextureIdx(material->getTexture(Material::TextureSlot::Transmission)),
+        .emissionTextureId = getTextureIdx(material->getTexture(Material::TextureSlot::Emission)),
+        .clearcoatTextureId = getTextureIdx(material->getTexture(Material::TextureSlot::Clearcoat)),
+        .normalTextureId = getTextureIdx(material->getTexture(Material::TextureSlot::Normal)),
+        .flags = 0,
+      };
+      
+      auto baseTexture = material->getTexture(Material::TextureSlot::BaseColor)
+        .transform([&](Scene::AssetID id) { return m_store.scene().getAsset<Texture>(id); })
+        .value_or(nullptr);
+      
+      if (material->thinTransmission)
+        bsdf.flags |= shaders_pt::MaterialGPU::Material_ThinDielectric;
+      if (material->baseColor[3] < 1.0 || (baseTexture && baseTexture->hasAlpha()))
+        bsdf.flags |= shaders_pt::MaterialGPU::Material_UseAlpha;
+      if (material->anisotropy != 0.0)
+        bsdf.flags |= shaders_pt::MaterialGPU::Material_Anisotropic;
+      if (material->isEmissive())
+        bsdf.flags |= shaders_pt::MaterialGPU::Material_Emissive;
+    }
+    
+    // Add the material buffer addresses to the instance resources buffer
+    auto instanceResourceHandle = (uint64_t*) m_instanceResourcesBuffer->contents() + idx++;
+    *instanceResourceHandle = materialsBuffer->gpuAddress();
+    
+    m_instanceMaterialBuffers.push_back(materialsBuffer);
+  }
 }
 
 void Renderer::rebuildAccelerationStructures() {
@@ -534,75 +573,80 @@ void Renderer::rebuildAccelerationStructures() {
   /*
    * Get mesh data and build mesh acceleration structures (BLAS)
    */
-//  auto meshes = m_store.scene().getAllMeshes();
-//  std::vector<Scene::MeshID> meshIds;
-//  meshIds.reserve(meshes.size());
-//  std::vector<MTL::AccelerationStructure*> meshAccelStructs;
-//  meshAccelStructs.reserve(meshes.size());
-//
-//  size_t idx = 0;
-//  for (const auto& md: meshes) {
-//    auto geometryDesc = makeGeometryDescriptor(md.mesh);
-//    geometryDesc->setIntersectionFunctionTableOffset(0);
-//
-//    auto accelDesc = ns_shared<MTL::PrimitiveAccelerationStructureDescriptor>();
-//    accelDesc->setGeometryDescriptors(NS::Array::array(geometryDesc));
-//
-//    meshAccelStructs.push_back(makeAccelStruct(accelDesc));
-//    meshIds.push_back(md.meshId);
-//  }
-//
-//  m_meshAccelStructs = NS::Array::array(
-//    (NS::Object**) meshAccelStructs.data(),
-//    meshAccelStructs.size()
-//  )->retain();
+  auto meshes = m_store.scene().getAll<Mesh>();
+  std::vector<Scene::AssetID> meshIds;
+  meshIds.reserve(meshes.size());
+  std::vector<MTL::AccelerationStructure*> meshAccelStructs;
+  meshAccelStructs.reserve(meshes.size());
+
+  size_t idx = 0;
+  for (const auto& mesh: meshes) {
+    auto geometryDesc = makeGeometryDescriptor(mesh.asset);
+    geometryDesc->setIntersectionFunctionTableOffset(0);
+
+    auto accelDesc = ns_shared<MTL::PrimitiveAccelerationStructureDescriptor>();
+    accelDesc->setGeometryDescriptors(NS::Array::array(geometryDesc));
+
+    meshAccelStructs.push_back(makeAccelStruct(accelDesc));
+    meshIds.push_back(mesh.id);
+  }
+
+  m_meshAccelStructs = NS::Array::array(
+    (NS::Object**) meshAccelStructs.data(),
+    meshAccelStructs.size()
+  )->retain();
 
   /*
    * Get instance data and build instance acceleration structure (TLAS)
    */
-//  auto instances = m_store.scene().getAllInstances(Scene::NodeFlags_Visible);
-//  m_instanceBuffer = m_device->newBuffer(
-//    sizeof(MTL::AccelerationStructureInstanceDescriptor) * instances.size(),
-//    MTL::ResourceStorageModeShared
-//  );
-//  auto instanceDescriptors = static_cast<MTL::AccelerationStructureInstanceDescriptor*>(m_instanceBuffer->contents());
-//
-//  idx = 0;
-//  for (const auto& instance: instances) {
-//    auto& id = instanceDescriptors[idx++];
-//    auto meshIdx = std::find_if(
-//      meshIds.begin(), meshIds.end(), [&](Scene::MeshID id) {
-//        return id == instance.meshId;
-//      }
-//    ) - meshIds.begin();
-//
-//    id.accelerationStructureIndex = (uint32_t) meshIdx;
-//    id.intersectionFunctionTableOffset = 0;
-//    id.mask = 1;
-//    
-//    bool anyMaterialHasAlpha = false;
-//    for (const auto& mid: instance.materials) {
-//      if (m_store.scene().material(mid)->flags & Material::Material_UseAlpha) {
-//        anyMaterialHasAlpha = true;
-//        break;
-//      }
-//    }
-//    
-//    id.options = anyMaterialHasAlpha ? MTL::AccelerationStructureInstanceOptionNonOpaque : MTL::AccelerationStructureInstanceOptionOpaque;
-//
-//    for (int32_t j = 0; j < 4; j++) {
-//      for (int32_t i = 0; i < 3; i++) {
-//        id.transformationMatrix.columns[j][i] = instance.transform.columns[j][i];
-//      }
-//    }
-//  }
+  auto instances = m_store.scene().getInstances();
+  m_instanceBuffer = m_device->newBuffer(
+    sizeof(MTL::AccelerationStructureInstanceDescriptor) * instances.size(),
+    MTL::ResourceStorageModeShared
+  );
+  auto instanceDescriptors = static_cast<MTL::AccelerationStructureInstanceDescriptor*>(m_instanceBuffer->contents());
 
-//  auto instanceAccelDesc = ns_shared<MTL::InstanceAccelerationStructureDescriptor>();
-//  instanceAccelDesc->setInstancedAccelerationStructures(m_meshAccelStructs);
-//  instanceAccelDesc->setInstanceCount(instances.size());
-//  instanceAccelDesc->setInstanceDescriptorBuffer(m_instanceBuffer);
-//
-//  m_instanceAccelStruct = makeAccelStruct(instanceAccelDesc);
+  idx = 0;
+  for (const auto& instance: instances) {
+    auto& id = instanceDescriptors[idx];
+    // TODO: use a map for id -> index instead
+    auto meshIdx = std::find_if(
+        meshIds.begin(), meshIds.end(), [&](Scene::AssetID id) {
+          return id == instance.mesh.id;
+      }
+    ) - meshIds.begin();
+
+    id.accelerationStructureIndex = (uint32_t) meshIdx;
+    id.intersectionFunctionTableOffset = 0;
+    id.mask = 1;
+    
+    bool anyMaterialHasAlpha = false;
+    auto& materials = *instance.node.materialIds().value();
+    for (size_t materialIdx = 0; materialIdx < materials.size(); materialIdx++) {
+      auto* bsdf = (shaders_pt::MaterialGPU*) m_instanceMaterialBuffers[idx]->contents() + materialIdx;
+      if (bsdf->flags & shaders_pt::MaterialGPU::Material_UseAlpha) {
+        anyMaterialHasAlpha = true;
+        break;
+      }
+    }
+    
+    id.options = anyMaterialHasAlpha ? MTL::AccelerationStructureInstanceOptionNonOpaque : MTL::AccelerationStructureInstanceOptionOpaque;
+
+    for (int32_t j = 0; j < 4; j++) {
+      for (int32_t i = 0; i < 3; i++) {
+        id.transformationMatrix.columns[j][i] = instance.transformMatrix.columns[j][i];
+      }
+    }
+    
+    idx++;
+  }
+
+  auto instanceAccelDesc = ns_shared<MTL::InstanceAccelerationStructureDescriptor>();
+  instanceAccelDesc->setInstancedAccelerationStructures(m_meshAccelStructs);
+  instanceAccelDesc->setInstanceCount(instances.size());
+  instanceAccelDesc->setInstanceDescriptorBuffer(m_instanceBuffer);
+
+  m_instanceAccelStruct = makeAccelStruct(instanceAccelDesc);
 }
 
 void Renderer::rebuildArgumentBuffer() {
@@ -701,65 +745,65 @@ void Renderer::rebuildLightData() {
    * use an emissive material get added as lights.
    */
   std::vector<shaders_pt::AreaLight> lights;
-//  ankerl::unordered_dense::set<Scene::MaterialID> instanceEmissiveMaterials;
-//  uint32_t instanceIdx = 0;
-//  m_lightTotalPower = 0.0f;
-//  for (const auto& instance: m_store.scene().getAllInstances(Scene::NodeFlags_Visible)) {
-//    instanceEmissiveMaterials.clear();
-//    for (auto mid: instance.materials) {
-//      const auto material = m_store.scene().material(mid);
-//      if (material->flags & Material::Material_Emissive) {
-//        instanceEmissiveMaterials.insert(mid);
-//      }
-//    }
-//    
-//    if (!instanceEmissiveMaterials.empty()) {
-//      auto materialIndices = (uint32_t*) instance.mesh->materialIndices()->contents();
-//      auto indices = (uint32_t*) instance.mesh->indices()->contents();
-//      auto vertices = (float3*) instance.mesh->vertexPositions()->contents();
-//      
-//      auto triangleCount = instance.mesh->indexCount() / 3;
-//      for (int i = 0; i < triangleCount; i++) {
-//        auto materialId = instance.materials[materialIndices[i]];
-//        if (instanceEmissiveMaterials.contains(materialId)) {
-//          const auto material = m_store.scene().material(materialId);
-//          
-//          // Transform the primitive vertices: this ensures the right area is calculated if the
-//          // instance is scaled
-//          const auto v0 = (instance.transform * make_float4(vertices[indices[i * 3 + 0]], 1.0f)).xyz;
-//          const auto v1 = (instance.transform * make_float4(vertices[indices[i * 3 + 1]], 1.0f)).xyz;
-//          const auto v2 = (instance.transform * make_float4(vertices[indices[i * 3 + 2]], 1.0f)).xyz;
-//          
-//          const auto edge1 = v1 - v0;
-//          const auto edge2 = v2 - v0;
-//          const auto area = length(cross(edge1, edge2)) * 0.5f;
-//          
-//          const auto emission = material->emission * material->emissionStrength;
-//          const auto lightPower = dot(emission, float3{0, 1, 0}) * area * std::numbers::pi_v<float>;
-//          m_lightTotalPower += lightPower;
-//          
-//          lights.push_back({
-//            .instanceIdx = instanceIdx,
-//            .indices = { indices[i * 3 + 0], indices[i * 3 + 1], indices[i * 3 + 2] },
-//            .area = area,
-//            .power = lightPower,
-//            .cumulativePower = m_lightTotalPower,
-//            .emission = emission,
-//          });
-//        }
-//      }
-//    }
-//    instanceIdx++;
-//  }
-//  
-//  m_lightCount = (uint32_t) lights.size();
-//  
-//  /*
-//   * Create and fill the lights buffer
-//   */
-//  size_t lightBufSize = sizeof(shaders_pt::AreaLight) * lights.size();
-//  m_lightDataBuffer = m_device->newBuffer(lightBufSize, MTL::ResourceStorageModeShared);
-//  memcpy(m_lightDataBuffer->contents(), lights.data(), lightBufSize);
+  ankerl::unordered_dense::set<Scene::AssetID> instanceEmissiveMaterials;
+  uint32_t instanceIdx = 0;
+  m_lightTotalPower = 0.0f;
+  for (const auto& instance: m_store.scene().getInstances()) {
+    instanceEmissiveMaterials.clear();
+    for (auto materialId: *instance.node.materialIds().value()) {
+      Material* material = nullptr;
+      if (materialId) material = m_store.scene().getAsset<Material>(materialId.value());
+      
+      if (material != nullptr && material->isEmissive()) {
+        instanceEmissiveMaterials.insert(materialId.value());
+      }
+    }
+    
+    if (!instanceEmissiveMaterials.empty()) {
+      auto materialIndices = (uint32_t*) instance.mesh.asset->materialIndices()->contents();
+      auto indices = (uint32_t*) instance.mesh.asset->indices()->contents();
+      auto vertices = (float3*) instance.mesh.asset->vertexPositions()->contents();
+      
+      auto triangleCount = instance.mesh.asset->indexCount() / 3;
+      for (int i = 0; i < triangleCount; i++) {
+        auto material = instance.node.material(materialIndices[i]).value();
+        if (instanceEmissiveMaterials.contains(material.id)) {
+          // Transform the primitive vertices: this ensures the right area is calculated if the
+          // instance is scaled
+          const auto v0 = (instance.transformMatrix * make_float4(vertices[indices[i * 3 + 0]], 1.0f)).xyz;
+          const auto v1 = (instance.transformMatrix * make_float4(vertices[indices[i * 3 + 1]], 1.0f)).xyz;
+          const auto v2 = (instance.transformMatrix * make_float4(vertices[indices[i * 3 + 2]], 1.0f)).xyz;
+          
+          const auto edge1 = v1 - v0;
+          const auto edge2 = v2 - v0;
+          const auto area = length(cross(edge1, edge2)) * 0.5f;
+          
+          const auto emission = material.asset->emission * material.asset->emissionStrength;
+          const auto lightPower = dot(emission, float3{0, 1, 0}) * area * std::numbers::pi_v<float>;
+          m_lightTotalPower += lightPower;
+          
+          lights.push_back({
+            .instanceIdx = instanceIdx,
+            .indices = { indices[i * 3 + 0], indices[i * 3 + 1], indices[i * 3 + 2] },
+            .area = area,
+            .power = lightPower,
+            .cumulativePower = m_lightTotalPower,
+            .emission = emission,
+          });
+        }
+      }
+    }
+    instanceIdx++;
+  }
+  
+  m_lightCount = (uint32_t) lights.size();
+  
+  /*
+   * Create and fill the lights buffer
+   */
+  size_t lightBufSize = sizeof(shaders_pt::AreaLight) * lights.size();
+  m_lightDataBuffer = m_device->newBuffer(lightBufSize, MTL::ResourceStorageModeShared);
+  memcpy(m_lightDataBuffer->contents(), lights.data(), lightBufSize);
   
   /*
    * Load environment lights into the argument buffer.
@@ -789,49 +833,49 @@ void Renderer::rebuildLightData() {
 
 void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
   auto node = m_store.scene().node(cameraNodeId);
-//  auto transform = m_store.scene().worldTransform(cameraNodeId);
-//  auto camera = m_store.scene().camera(node->cameraId.value());
+  auto transform = m_store.scene().worldTransform(cameraNodeId);
+  auto camera = node.get<Camera>().value();
 
   // Rescale the camera transform
-//  const float3 scale = {
-//    length(transform.columns[0]),
-//    length(transform.columns[1]),
-//    length(transform.columns[2]),
-//  };
-//  transform = {
-//    transform.columns[0] / scale.x,
-//    transform.columns[1] / scale.y,
-//    transform.columns[2] / scale.z,
-//    transform.columns[3],
-//  };
+  const float3 scale = {
+    length(transform.columns[0]),
+    length(transform.columns[1]),
+    length(transform.columns[2]),
+  };
+  transform = {
+    transform.columns[0] / scale.x,
+    transform.columns[1] / scale.y,
+    transform.columns[2] / scale.z,
+    transform.columns[3],
+  };
 
-//  auto vh = camera->croppedSensorHeight(m_aspect) / camera->focalLength;
-//  auto vw = vh * m_aspect;
-//
-//  auto u = transform.columns[0].xyz;
-//  auto v = transform.columns[1].xyz;
-//  auto w = transform.columns[2].xyz;
-//  auto pos = transform.columns[3].xyz;
-//
-//  auto vu = u * vw;
-//  auto vv = -v * vh;
-//
-//  m_constants = {
-//    .frameIdx = 0,
-//    .size = {(uint32_t) m_currentRenderSize.x, (uint32_t) m_currentRenderSize.y},
-//    .camera = {
-//      .position = pos,
-//      .topLeft = pos - w - (vu + vv) * 0.5f,
-//      .pixelDeltaU = vu / m_currentRenderSize.x,
-//      .pixelDeltaV = vv / m_currentRenderSize.y,
-//    },
-//    .lightCount = m_lightCount,
-//    .envLightCount = m_envLightCount,
-//    .totalLightPower = m_lightTotalPower,
-//    .lutSizeE = m_lutSizes[0],
-//    .lutSizeEavg = m_lutSizes[1],
-//    .flags = flags,
-//  };
+  auto vh = camera->croppedSensorHeight(m_aspect) / camera->focalLength;
+  auto vw = vh * m_aspect;
+
+  auto u = transform.columns[0].xyz;
+  auto v = transform.columns[1].xyz;
+  auto w = transform.columns[2].xyz;
+  auto pos = transform.columns[3].xyz;
+
+  auto vu = u * vw;
+  auto vv = -v * vh;
+
+  m_constants = {
+    .frameIdx = 0,
+    .size = {(uint32_t) m_currentRenderSize.x, (uint32_t) m_currentRenderSize.y},
+    .camera = {
+      .position = pos,
+      .topLeft = pos - w - (vu + vv) * 0.5f,
+      .pixelDeltaU = vu / m_currentRenderSize.x,
+      .pixelDeltaV = vv / m_currentRenderSize.y,
+    },
+    .lightCount = m_lightCount,
+    .envLightCount = m_envLightCount,
+    .totalLightPower = m_lightTotalPower,
+    .lutSizeE = m_lutSizes[0],
+    .lutSizeEavg = m_lutSizes[1],
+    .flags = flags,
+  };
 }
 
 int Renderer::status() const {
@@ -876,6 +920,14 @@ NS::SharedPtr<MTL::Buffer> Renderer::readbackRenderTarget(uint2* size) const {
   cmd->waitUntilCompleted();
   
   return NS::TransferPtr(readbackBuffer);
+}
+
+Material* Renderer::getMaterialOrDefault(std::optional<Scene::AssetID> id) {
+  Material* material = nullptr;
+  if (id) material = m_store.scene().getAsset<Material>(id.value());
+  if (material == nullptr) material = &m_store.scene().defaultMaterial();
+  
+  return material;
 }
 
 }

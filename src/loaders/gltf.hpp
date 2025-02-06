@@ -45,6 +45,11 @@ public:
   void load(const fs::path& path, int options = LoadOptions_Default);
 
 private:
+  struct TextureDescription {
+    texture::TextureType type;
+    std::vector<std::pair<Scene::AssetID, Material::TextureSlot>> users;
+  };
+  
   MTL::Device* m_device;
   MTL::CommandQueue* m_commandQueue;
   texture::TextureLoader m_textureLoader;
@@ -58,7 +63,7 @@ private:
   std::vector<Scene::AssetID> m_textureIds;
   std::vector<Camera> m_cameras;
   
-  ankerl::unordered_dense::map<uint32_t, texture::TextureType> m_texturesToLoad;
+  ankerl::unordered_dense::map<uint32_t, TextureDescription> m_texturesToLoad;
   
   int m_options;
 

@@ -223,34 +223,36 @@ void Properties::renderMaterialProperties(Material* material, std::optional<Scen
   auto buttonWidth = ImGui::CalcItemWidth();
   ImGui::ColorEdit3("Base color", (float*) &material->baseColor, m_colorFlags, {buttonWidth, 0});
   
-  material->baseTextureId = textureSelect("Base texture", material->baseTextureId);
+  materialTextureSelect("Base texture", material, Material::TextureSlot::BaseColor);
   
   ImGui::DragFloat("Roughness", &material->roughness, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Metallic", &material->metallic, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Transmission", &material->transmission, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("IOR", &material->ior, 0.01f, 0.1f, 5.0f);
   
-  material->rmTextureId = textureSelect("R/M texture", material->rmTextureId);
-  material->transmissionTextureId = textureSelect("Trm. texture", material->transmissionTextureId);
+  materialTextureSelect("R/M texture", material, Material::TextureSlot::RoughnessMetallic);
+  materialTextureSelect("Trm. texture", material, Material::TextureSlot::Transmission);
     
   float alpha = material->baseColor[3];
   if (ImGui::DragFloat("Alpha", &alpha, 0.01f, 0.0f, 1.0f)) {
     material->baseColor[3] = alpha;
   }
   
+  materialTextureSelect("Normal map", material, Material::TextureSlot::Normal);
+  
   ImGui::SeparatorText("Emission");
   
   ImGui::ColorEdit3("Color", (float*) &material->emission, m_colorFlags, {buttonWidth, 0});
   ImGui::DragFloat("Strength", &material->emissionStrength, 0.1f);
   
-  material->emissionTextureId = textureSelect("Texture##EmissionTexture", material->emissionTextureId);
+  materialTextureSelect("Texture##EmissionTexture", material, Material::TextureSlot::Emission);
   
   ImGui::SeparatorText("Clearcoat");
   
   ImGui::DragFloat("Value", &material->clearcoat, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Roughness##CoatRoughness", &material->clearcoatRoughness, 0.01f, 0.0f, 1.0f);
   
-  material->clearcoatTextureId = textureSelect("Texture##CoatTexture", material->clearcoatTextureId);
+  materialTextureSelect("Texture##CoatTexture", material, Material::TextureSlot::Clearcoat);
   
   ImGui::SeparatorText("Anisotropy");
   
@@ -339,6 +341,15 @@ std::optional<Scene::AssetID> Properties::textureSelect(const char* label, std::
   }
   
   return newId;
+}
+
+void Properties::materialTextureSelect(const char *label, Material *material, Material::TextureSlot slot) {
+  auto newSelection = textureSelect(label, material->getTexture(slot));
+  if (newSelection) {
+    material->textures[slot] = newSelection.value();
+  } else {
+    material->textures.erase(slot);
+  }
 }
 
 }

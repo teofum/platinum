@@ -77,19 +77,13 @@ void GltfLoader::load(const fs::path& path, int options) {
     loadMaterial(material);
   
   m_textureIds.reserve(m_texturesToLoad.size());
-  for (const auto& [idx, type]: m_texturesToLoad) {
-    auto textureId = loadTexture(m_asset->textures[idx], type);
+  for (const auto& [idx, desc]: m_texturesToLoad) {
+    auto textureId = loadTexture(m_asset->textures[idx], desc.type);
     
-    // Replace the index with the real ID on any materials using the texture
-    for (auto materialId: m_materialIds) {
+    // Set texture ID on materials using the texture
+    for (const auto& [materialId, slot]: desc.users) {
       auto* material = m_scene.getAsset<Material>(materialId);
-      
-      if (material->baseTextureId == -2 - idx) material->baseTextureId = textureId;
-      if (material->rmTextureId == -2 - idx) material->rmTextureId = textureId;
-      if (material->transmissionTextureId == -2 - idx) material->transmissionTextureId = textureId;
-      if (material->emissionTextureId == -2 - idx) material->emissionTextureId = textureId;
-      if (material->clearcoatTextureId == -2 - idx) material->clearcoatTextureId = textureId;
-      if (material->normalTextureId == -2 - idx) material->normalTextureId = textureId;
+      material->textures[slot] = textureId;
     }
   }
 
@@ -301,44 +295,17 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   for (uint32_t i = 0; i < 4; i++)
     material.baseColor[i] = gltfMat.pbrData.baseColorFactor[i];
   
-  // Load base color texture
-  if (gltfMat.pbrData.baseColorTexture) {
-    uint16_t id = gltfMat.pbrData.baseColorTexture->textureIndex;
-    material.baseTextureId = -2 - id; // Hacky way to encode non-ids, TODO: do something less shit
-    m_texturesToLoad[id] = texture::TextureType::sRGB;
-  }
-  
   // Assign PBR parameters
   material.roughness = gltfMat.pbrData.roughnessFactor;
   material.metallic = gltfMat.pbrData.metallicFactor;
   
-  // Load roughness/metallic texture
-  if (gltfMat.pbrData.metallicRoughnessTexture) {
-    uint16_t id = gltfMat.pbrData.metallicRoughnessTexture->textureIndex;
-    material.rmTextureId = -2 - id;
-    m_texturesToLoad[id] = texture::TextureType::RoughnessMetallic;
-  }
-  
   if (gltfMat.transmission != nullptr) {
     material.transmission = gltfMat.transmission->transmissionFactor;
-    
-    if (gltfMat.transmission->transmissionTexture) {
-      uint16_t id = gltfMat.transmission->transmissionTexture->textureIndex;
-      material.transmissionTextureId = -2 - id;
-      m_texturesToLoad[id] = texture::TextureType::Mono;
-    }
   }
   
   // Assign emission
   material.emissionStrength = gltfMat.emissiveStrength;
   for (uint32_t i = 0; i < 3; i++) material.emission[i] = gltfMat.emissiveFactor[i];
-  
-  // Load emission texture
-  if (gltfMat.emissiveTexture) {
-    uint16_t id = gltfMat.emissiveTexture->textureIndex;
-    material.emissionTextureId = -2 - id;
-    m_texturesToLoad[id] = texture::TextureType::sRGB;
-  }
   
   // Assign additional parameters
   material.ior = gltfMat.ior;
@@ -351,23 +318,54 @@ void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
   if (gltfMat.clearcoat != nullptr) {
     material.clearcoat = gltfMat.clearcoat->clearcoatFactor;
     material.clearcoatRoughness = gltfMat.clearcoat->clearcoatRoughnessFactor;
-    
-    if (gltfMat.clearcoat->clearcoatTexture) {
-      uint16_t id = gltfMat.clearcoat->clearcoatTexture->textureIndex;
-      material.clearcoatTextureId = -2 - id;
-      m_texturesToLoad[id] = texture::TextureType::Mono;
-    }
+  }
+  
+  Scene::AssetID materialId = m_scene.createAsset(std::move(material));
+  m_materialIds.push_back(materialId);
+  
+  /*
+   * Load textures
+   */
+  
+  // Load base color texture
+  if (gltfMat.pbrData.baseColorTexture) {
+    uint16_t textureIdx = gltfMat.pbrData.baseColorTexture->textureIndex;
+    m_texturesToLoad[textureIdx].type = texture::TextureType::sRGB;
+    m_texturesToLoad[textureIdx].users.push_back(std::make_pair(materialId, Material::TextureSlot::BaseColor));
+  }
+  
+  // Load roughness/metallic texture
+  if (gltfMat.pbrData.metallicRoughnessTexture) {
+    uint16_t textureIdx = gltfMat.pbrData.metallicRoughnessTexture->textureIndex;
+    m_texturesToLoad[textureIdx].type = texture::TextureType::RoughnessMetallic;
+    m_texturesToLoad[textureIdx].users.push_back(std::make_pair(materialId, Material::TextureSlot::RoughnessMetallic));
   }
   
   // Load normal texture
   if (gltfMat.normalTexture) {
-    uint16_t id = gltfMat.normalTexture->textureIndex;
-    material.normalTextureId = -2 - id;
-    m_texturesToLoad[id] = texture::TextureType::LinearRGB;
+    uint16_t textureIdx = gltfMat.normalTexture->textureIndex;
+    m_texturesToLoad[textureIdx].type = texture::TextureType::LinearRGB;
+    m_texturesToLoad[textureIdx].users.push_back(std::make_pair(materialId, Material::TextureSlot::Normal));
   }
   
-  Scene::AssetID id = m_scene.createAsset(std::move(material));
-  m_materialIds.push_back(id);
+  // Load emission texture
+  if (gltfMat.emissiveTexture) {
+    uint16_t textureIdx = gltfMat.emissiveTexture->textureIndex;
+    m_texturesToLoad[textureIdx].type = texture::TextureType::sRGB;
+    m_texturesToLoad[textureIdx].users.push_back(std::make_pair(materialId, Material::TextureSlot::Emission));
+  }
+  
+  if (gltfMat.transmission != nullptr && gltfMat.transmission->transmissionTexture) {
+    uint16_t textureIdx = gltfMat.transmission->transmissionTexture->textureIndex;
+    m_texturesToLoad[textureIdx].type = texture::TextureType::Mono;
+    m_texturesToLoad[textureIdx].users.push_back(std::make_pair(materialId, Material::TextureSlot::Transmission));
+  }
+  
+  if (gltfMat.clearcoat != nullptr && gltfMat.clearcoat->clearcoatTexture) {
+    uint16_t textureIdx = gltfMat.clearcoat->clearcoatTexture->textureIndex;
+    m_texturesToLoad[textureIdx].type = texture::TextureType::Mono;
+    m_texturesToLoad[textureIdx].users.push_back(std::make_pair(materialId, Material::TextureSlot::Clearcoat));
+  }
 }
 
 /*

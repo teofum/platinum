@@ -19,16 +19,16 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "C004D3D5-EDCC-48DA-A57A-60789B7CD228"
+            uuid = "9ECC7A5F-A453-4FC4-9775-4E5E4CF61CD9"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "src/renderer_pt/renderer_pt.cpp"
+            filePath = "src/core/scene.hpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "786"
-            endingLineNumber = "786"
-            landmarkName = "Renderer::rebuildLightData()"
+            startingLineNumber = "151"
+            endingLineNumber = "151"
+            landmarkName = "getAll()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

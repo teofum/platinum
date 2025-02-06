@@ -44,12 +44,9 @@ void Scene::removeAssetImpl(AssetID id) {
   auto* pMaterial = std::get_if<std::unique_ptr<Material>>(&m_assets[id].asset);
   if (pMaterial) {
     auto& mat = *(pMaterial->get());
-    if (mat.baseTextureId) releaseAsset(mat.baseTextureId.value());
-    if (mat.rmTextureId) releaseAsset(mat.rmTextureId.value());
-    if (mat.transmissionTextureId) releaseAsset(mat.transmissionTextureId.value());
-    if (mat.clearcoatTextureId) releaseAsset(mat.clearcoatTextureId.value());
-    if (mat.emissionTextureId) releaseAsset(mat.emissionTextureId.value());
-    if (mat.normalTextureId) releaseAsset(mat.normalTextureId.value());
+    for (const auto& [slot, textureId]: mat.textures) {
+      releaseAsset(textureId);
+    }
   }
   
   // Remove the asset and force reset refcount to 0. A missing asset with RC 0 is interpreted as

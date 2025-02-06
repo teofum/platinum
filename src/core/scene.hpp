@@ -135,7 +135,7 @@ public:
   T* getAsset(AssetID id) {
     using ptr_T = std::unique_ptr<T>;
     
-    ptr_T* value = std::get_if<ptr_T>(&m_assets[id].asset);
+    ptr_T* value = std::get_if<ptr_T>(&m_assets.at(id).asset);
     
     if (value) return value->get();
     return nullptr;

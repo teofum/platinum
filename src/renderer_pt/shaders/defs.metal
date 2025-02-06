@@ -116,10 +116,6 @@ namespace samplers {
   float2 sampleDisk(float2 u);
   float3 sampleCosineHemisphere(float2 u);
   float2 sampleTriUniform(float2 u);
-  
-  float sampleDistribution1D(device Distribution1D& dist, float r, thread float* pdf = nullptr, thread uint32_t* offset = nullptr);
-  float2 sampleDistribution2D(device Distribution2D& dist, float2 r, thread float* pdf = nullptr);
-  float pdfDistribution2D(device Distribution2D& dist, float2 uv);
 }
 
 /*
@@ -192,7 +188,7 @@ namespace bsdf {
     
     MaterialLobe lobe = Lobe_Invalid;
     
-    ShadingContext(device const pt::BSDF& mat, float2 uv, device Texture* textures);
+    ShadingContext(device const MaterialGPU& mat, float2 uv, device Texture* textures);
   };
       
   struct Sample {

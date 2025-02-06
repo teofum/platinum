@@ -7,36 +7,21 @@ using namespace simd;
 
 namespace pt {
 
-/*
- * Material struct used GPU side for rendering
- */
-struct BSDF {
-  enum MaterialFlags {
-    Material_ThinDielectric = 1 << 0,
-    Material_UseAlpha = 1 << 1,
-    Material_Emissive = 1 << 2,
-    Material_Anisotropic = 1 << 3,
-  };
-  
-  float4 baseColor = {0.8, 0.8, 0.8, 1.0};
-  float3 emission;
-  float emissionStrength = 0.0f;
-  float roughness = 1.0f, metallic = 0.0f, transmission = 0.0f;
-  float ior = 1.5f;
-  float anisotropy = 0.0f, anisotropyRotation = 0.0f;
-  float clearcoat = 0.0f, clearcoatRoughness = 0.05f;
-  
-  int flags = 0;
-  
-  int32_t baseTextureId = -1, rmTextureId = -1, transmissionTextureId = -1, clearcoatTextureId = -1, emissionTextureId = -1, normalTextureId = -1;
-};
-
 #ifndef __METAL_VERSION__
 
 /*
  * Material struct used for the scene representation
  */
 struct Material {
+  enum class TextureSlot {
+    BaseColor,
+    RoughnessMetallic,
+    Transmission,
+    Clearcoat,
+    Emission,
+    Normal
+  };
+  
   std::string name;
   
   float4 baseColor = {0.8, 0.8, 0.8, 1.0};
@@ -49,7 +34,16 @@ struct Material {
   
   bool thinTransmission;
   
-  std::optional<uint32_t> baseTextureId, rmTextureId, transmissionTextureId, clearcoatTextureId, emissionTextureId, normalTextureId;
+  ankerl::unordered_dense::map<TextureSlot, uint64_t> textures;
+  
+  constexpr std::optional<uint64_t> getTexture(TextureSlot slot) const {
+    if (textures.contains(slot)) return textures.at(slot);
+    return std::nullopt;
+  }
+  
+  constexpr bool isEmissive() const {
+    return length_squared(emission * emissionStrength) > 0.0 || textures.contains(TextureSlot::Emission);
+  }
 };
 
 #endif
