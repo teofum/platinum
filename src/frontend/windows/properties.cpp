@@ -169,7 +169,9 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
       ImGui::Spacing();
       
       // Update material ID
-      node.setMaterial(m_selectedMaterialIdx, nextMaterialId);
+      if (nextMaterialId && nextMaterialId != selectedId) {
+        node.setMaterial(m_selectedMaterialIdx, nextMaterialId);
+      }
       m_selectedMaterialIdx = nextSlotId;
     }
   }

@@ -15,7 +15,7 @@ namespace pt::frontend {
 using metal_utils::operator ""_ns;
 
 static bool isExitEvent(const SDL_Event& event, uint32_t windowID) {
-return event.type == SDL_QUIT || (
+  return event.type == SDL_QUIT || (
     event.type == SDL_WINDOWEVENT &&
     event.window.event == SDL_WINDOWEVENT_CLOSE &&
     event.window.windowID == windowID

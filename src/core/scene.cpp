@@ -227,7 +227,7 @@ void Scene::removeNode(NodeID id) {
   removed.setMesh(std::nullopt);
   
   // Remove children recursively
-  auto& hierarchy = m_registry.get<Hierarchy>(id);
+  auto hierarchy = m_registry.get<Hierarchy>(id); // Copy so the child list doesn't get updated as we iterate it
   for (auto& childId: hierarchy.children) {
     removeNode(childId);
   }
