@@ -61,7 +61,12 @@ void AssetManager::render() {
           ImGui::SetNextItemSelectionUserData(itemIdx);
           bool isSelected = m_selection.Contains(ImGuiID(asset.id));
           bool isVisible = ImGui::IsRectVisible(m_layoutItemSize);
+
+          ImGui::PushStyleColor(ImGuiCol_Header, theme::imguiRGBA(theme->primary));
+          ImGui::PushStyleColor(ImGuiCol_HeaderHovered, theme::imguiRGBA(mix(theme->bgObject, theme->primary, float3(0.5))));
+          ImGui::PushStyleColor(ImGuiCol_NavCursor, 0);
           ImGui::Selectable("", isSelected, ImGuiSelectableFlags_None, m_layoutItemSize);
+          ImGui::PopStyleColor(3);
           
           // Update selection
           if (ImGui::IsItemToggledSelection())
@@ -77,6 +82,8 @@ void AssetManager::render() {
             // Asset content
             std::visit([&](const auto& asset) {
               using T = std::decay_t<decltype(asset)>;
+              
+              imguiDrawList->AddRectFilled(boxMin, boxMax, ImGui::GetColorU32(ImGuiCol_WindowBg), 2);
               if constexpr (std::is_same_v<T, Texture*>) {
                 imguiDrawList->AddImageRounded(
 									(ImTextureID) asset->texture(),
@@ -85,8 +92,6 @@ void AssetManager::render() {
 									ImGui::GetColorU32({1, 1, 1, 1}),
 									2
                 );
-              } else {
-                imguiDrawList->AddRectFilled(boxMin, boxMax, ImGui::GetColorU32(ImGuiCol_WindowBg), 2);
               }
             }, asset.asset);
             
@@ -129,7 +134,9 @@ void AssetManager::render() {
     
     ImGui::PopStyleVar();
     
-    ImGui::EndMultiSelect();
+    // Apply selection changes
+    msIo = ImGui::EndMultiSelect();
+    m_selection.ApplyRequests(msIo);
   }
   ImGui::EndChild();
   
