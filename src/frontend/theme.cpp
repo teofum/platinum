@@ -59,10 +59,10 @@ void apply(ImGuiStyle& style, const Theme& theme) {
   colors[ImGuiCol_ResizeGripActive]       = imguiRGBA(theme.primary, 1.00f);
   
   colors[ImGuiCol_TabHovered]             = imguiRGBA(theme.bgWindow);
-  colors[ImGuiCol_Tab]                    = imguiRGBA(theme.bgMenuBar);
+  colors[ImGuiCol_Tab]                    = imguiRGBA(mix(theme.bgObject, theme.bgWindow, float3(0.5)));
   colors[ImGuiCol_TabSelected]            = imguiRGBA(theme.bgWindow);
   colors[ImGuiCol_TabSelectedOverline]    = imguiRGBA(theme.primary);
-  colors[ImGuiCol_TabDimmed]              = imguiRGBA(theme.bgMenuBar);
+  colors[ImGuiCol_TabDimmed]              = imguiRGBA(mix(theme.bgObject, theme.bgWindow, float3(0.5)));
   colors[ImGuiCol_TabDimmedSelected]      = imguiRGBA(theme.bgWindow);
   colors[ImGuiCol_TabDimmedSelectedOverline] = imguiRGBA(theme.primary, 0.00f);
   

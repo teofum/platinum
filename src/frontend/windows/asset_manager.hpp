@@ -21,6 +21,8 @@ private:
     ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
     ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_AllowItemOverlap;
   
+  bool renderPanel();
+  
   void renderTexturesList();
   void renderMaterialsList();
   void renderMeshesList();
