@@ -26,6 +26,26 @@ bool& Scene::assetRetained(AssetID id) {
   return m_assets.at(id).retain;
 }
 
+size_t Scene::assetCount() {
+  return m_assets.size();
+}
+
+std::vector<Scene::AnyAssetData> Scene::getAllAssets() {
+  std::vector<AnyAssetData> data;
+  data.reserve(m_assets.size());
+  
+  for (auto& [id, asset]: m_assets) data.push_back({
+    .id = id,
+    .asset = std::visit<AnyAsset>([](const auto& it) { return it.get(); }, asset.asset),
+  });
+  
+  return data;
+}
+
+Scene::AnyAsset Scene::getAsset(AssetID id) {
+  return std::visit<AnyAsset>([](const auto& it) { return it.get(); }, m_assets.at(id).asset);
+}
+
 void Scene::updateMaterialTexture(Material *material, Material::TextureSlot slot, std::optional<AssetID> textureId) {
   if (material->textures.contains(slot)) {
     auto currentId = material->textures.at(slot);

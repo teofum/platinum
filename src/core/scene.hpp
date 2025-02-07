@@ -29,6 +29,7 @@ public:
   
   using AssetID = uint64_t;
   using AssetPtr = std::variant<std::unique_ptr<Texture>, std::unique_ptr<Mesh>, std::unique_ptr<Material>>;
+  using AnyAsset = std::variant<Texture*, Mesh*, Material*>;
   
   struct Asset {
     bool retain;
@@ -39,6 +40,11 @@ public:
   struct AssetData {
     AssetID id;
     T* asset;
+  };
+  
+  struct AnyAssetData {
+    AssetID id;
+    AnyAsset asset;
   };
   
   /*
@@ -173,6 +179,12 @@ public:
   uint32_t getAssetRc(AssetID id);
   
   bool& assetRetained(AssetID id);
+  
+  size_t assetCount();
+  
+  std::vector<AnyAssetData> getAllAssets();
+  
+  AnyAsset getAsset(AssetID id);
   
   void updateMaterialTexture(Material* material, Material::TextureSlot slot, std::optional<AssetID> textureId);
 

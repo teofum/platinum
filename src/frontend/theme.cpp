@@ -4,8 +4,23 @@
 
 namespace pt::frontend::theme {
 
+constexpr float inv_gamma = 1.0f / 2.4f;
+
+float3 sRGB(float3 rgb) {
+  float3 srgb{0};
+  for (size_t i = 0; i < 3; i++) {
+    srgb[i] = rgb[i] <= 0.0031308 ? rgb[i] * 12.92 : 1.055 * pow(rgb[i], inv_gamma) - 0.055;
+  }
+  
+  return srgb;
+}
+
 ImVec4 imguiRGBA(float3 rgb, float a) {
   return ImVec4(rgb.r, rgb.g, rgb.b, a);
+}
+
+ImU32 imguiU32(float3 rgb, float a) {
+  return ImGui::GetColorU32(imguiRGBA(rgb, a));
 }
 
 const Theme* Theme::currentTheme = nullptr;
@@ -102,7 +117,8 @@ Theme platinumDark = {
   .danger    	= {0.96, 0.24, 0.30},
   .viewportBackground = {0.08, 0.08, 0.08},
   .viewportGrid       = {0.02, 0.02, 0.02},
-  .viewportAxisX 			= {0.96, 0.00, 0.08},
+  .viewportAxisX      = {0.96, 0.00, 0.08},
+  .viewportAxisY 			= {0.02, 0.80, 0.05},
   .viewportAxisZ      = {0.00, 0.23, 0.96},
   .viewportModel      = {0.23, 0.23, 0.23},
   .viewportOutline    = {0.04, 0.04, 0.04},
@@ -121,6 +137,7 @@ Theme platinumLight = {
   .viewportBackground = {0.80, 0.80, 0.80},
   .viewportGrid       = {0.30, 0.30, 0.30},
   .viewportAxisX      = {0.40, 0.05, 0.08},
+  .viewportAxisY      = {0.05, 0.40, 0.08},
   .viewportAxisZ      = {0.05, 0.08, 0.40},
   .viewportModel      = {0.50, 0.50, 0.50},
   .viewportOutline 		= {0.15, 0.15, 0.15},

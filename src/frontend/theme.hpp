@@ -40,7 +40,11 @@ struct Theme {
 extern Theme platinumDark;
 extern Theme platinumLight;
 
+float3 sRGB(float3 rgb);
+
 ImVec4 imguiRGBA(float3 rgb, float a = 1.0f);
+
+ImU32 imguiU32(float3 rgb, float a = 1.0f);
 
 void apply(ImGuiStyle& style, const Theme& theme);
 

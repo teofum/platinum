@@ -4,132 +4,148 @@
 
 namespace pt::frontend::windows {
 
+AssetManager::AssetManager(Store& store, State& state, bool* open) noexcept
+: Window(store, state, open) {}
+
 void AssetManager::render() {
+  m_assets = m_store.scene().getAllAssets();
+  m_assetCount = m_assets.size();
+  
+  auto* theme = theme::Theme::currentTheme;
+  
   ImGui::Begin("Asset Manager");
   
-  auto& theme = *theme::Theme::currentTheme;
+ 	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+  bool showChild = ImGui::BeginChild("Assets", {0, 0}, ImGuiChildFlags_FrameStyle, ImGuiWindowFlags_NoMove);
+  ImGui::PopStyleVar();
   
-  /*
-   * Main panel
-   */
-  ImGui::PushStyleColor(ImGuiCol_TabActive, frontend::theme::imguiRGBA(theme.bgObject));
-  ImGui::PushStyleColor(ImGuiCol_TabHovered, frontend::theme::imguiRGBA(theme.bgObject));
-  if (ImGui::BeginTabBar("##AMTabs")) {
-    if (ImGui::BeginTabItem("Textures")) {
-      if (renderPanel()) {
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
-        renderTexturesList();
-        ImGui::PopStyleVar();
+  if (showChild) {
+    float availableWidth = ImGui::GetContentRegionAvail().x;
+    updateLayoutSizes(availableWidth);
+    
+    auto* imguiDrawList = ImGui::GetWindowDrawList();
+    
+    // Calculate grid start position
+    auto startPos = ImGui::GetCursorScreenPos();
+    startPos = {startPos.x + m_layoutOuterPadding, startPos.y + m_layoutOuterPadding};
+    ImGui::SetCursorScreenPos(startPos);
+    
+    // Multi select
+    ImGuiMultiSelectFlags msFlags = ImGuiMultiSelectFlags_ClearOnEscape | ImGuiMultiSelectFlags_ClearOnClickVoid | ImGuiMultiSelectFlags_BoxSelect2d;
+    auto* msIo = ImGui::BeginMultiSelect(msFlags, m_selection.Size, int(m_assetCount));
+    
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {m_layoutSelectableSpacing, m_layoutSelectableSpacing});
+    
+    // Draw grid
+    ImGuiListClipper clipper;
+    clipper.Begin(m_layoutRowCount, m_layoutItemStep.y);
+    
+    while (clipper.Step()) {
+      for (uint32_t rowIdx = clipper.DisplayStart; rowIdx < clipper.DisplayEnd; rowIdx++) {
+        const uint32_t rowBegin = rowIdx * m_layoutColumnCount;
+        const uint32_t rowEnd = MIN((rowIdx + 1) * m_layoutColumnCount, uint32_t(m_assetCount));
+        for (uint32_t itemIdx = rowBegin; itemIdx < rowEnd; itemIdx++) {
+          auto asset = m_assets[itemIdx];
+          
+          // Push ImGui ID to avoid name conflicts
+          ImGui::PushID(int(asset.id));
+          
+          // Calculate item position in grid
+          ImVec2 pos(
+            startPos.x + m_layoutItemStep.x * (itemIdx % m_layoutColumnCount),
+            startPos.y + m_layoutItemStep.y * rowIdx
+          );
+          ImGui::SetCursorScreenPos(pos);
+          
+          // Draw the actual selectable
+          ImGui::SetNextItemSelectionUserData(itemIdx);
+          bool isSelected = m_selection.Contains(ImGuiID(asset.id));
+          bool isVisible = ImGui::IsRectVisible(m_layoutItemSize);
+          ImGui::Selectable("", isSelected, ImGuiSelectableFlags_None, m_layoutItemSize);
+          
+          // Update selection
+          if (ImGui::IsItemToggledSelection())
+            isSelected = !isSelected;
+          
+          // TODO: drag-drop source
+          
+          // Draw item
+          if (isVisible) {
+            ImVec2 boxMin = pos;
+            ImVec2 boxMax(pos.x + m_layoutItemSize.x, pos.y + m_layoutItemSize.y);
+            
+            // Asset content
+            std::visit([&](const auto& asset) {
+              using T = std::decay_t<decltype(asset)>;
+              if constexpr (std::is_same_v<T, Texture*>) {
+                imguiDrawList->AddImageRounded(
+									(ImTextureID) asset->texture(),
+									boxMin, boxMax,
+									{0, 0}, {1, 1},
+									ImGui::GetColorU32({1, 1, 1, 1}),
+									2
+                );
+              } else {
+                imguiDrawList->AddRectFilled(boxMin, boxMax, ImGui::GetColorU32(ImGuiCol_WindowBg), 2);
+              }
+            }, asset.asset);
+            
+            // Type indicator
+            // TODO: replace this with an icon
+            std::visit([&](const auto& asset) {
+              using T = std::decay_t<decltype(asset)>;
+              
+              ImU32 color;
+              if constexpr (std::is_same_v<T, Texture*>) {
+                color = theme::imguiU32(theme::sRGB(theme->viewportAxisZ));
+              } else if constexpr (std::is_same_v<T, Material*>) {
+                color = theme::imguiU32(theme::sRGB(theme->viewportAxisY));
+              } else if constexpr (std::is_same_v<T, Mesh*>) {
+                color = theme::imguiU32(theme::sRGB(theme->viewportAxisX));
+              }
+              imguiDrawList->AddRectFilled(
+							  {boxMax.x - m_padding - 8, boxMin.y + m_padding},
+							  {boxMax.x - m_padding, boxMin.y + m_padding + 8},
+							  color,
+							  2
+							);
+              
+            }, asset.asset);
+            
+            // Asset ID
+            auto labelColor = ImGui::GetColorU32(isSelected ? ImGuiCol_Text : ImGuiCol_TextDisabled);
+            auto label = std::format("{}", asset.id);
+            imguiDrawList->AddText(
+							{boxMin.x + m_padding, boxMax.y - m_padding - ImGui::GetFontSize()},
+							labelColor,
+							label.data()
+            );
+          }
+          
+          ImGui::PopID();
+        }
       }
-      ImGui::EndChild();
-      ImGui::EndTabItem();
     }
-    if (ImGui::BeginTabItem("Materials")) {
-      if (renderPanel()) {
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
-        renderMaterialsList();
-        ImGui::PopStyleVar();
-      }
-      ImGui::EndChild();
-      ImGui::EndTabItem();
-    }
-    if (ImGui::BeginTabItem("Meshes")) {
-      if (renderPanel()) {
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
-        renderMeshesList();
-        ImGui::PopStyleVar();
-      }
-      ImGui::EndChild();
-      ImGui::EndTabItem();
-    }
-    ImGui::EndTabBar();
+    
+    ImGui::PopStyleVar();
+    
+    ImGui::EndMultiSelect();
   }
-  ImGui::PopStyleColor(2);
+  ImGui::EndChild();
   
   ImGui::End();
 }
 
-bool AssetManager::renderPanel() {
-  ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {4, 4});
-  auto childSize = ImGui::GetContentRegionAvail();
-  bool visible = ImGui::BeginChild("##AMView", childSize, ImGuiChildFlags_FrameStyle);
-  ImGui::PopStyleVar(2);
+void AssetManager::updateLayoutSizes(float availableWidth) {
+  m_layoutItemSpacing = float(m_spacing);
+  m_layoutSelectableSpacing = max(0.0f, m_layoutItemSpacing - m_hitSpacing);
+  m_layoutItemSize = {float(m_iconSize), float(m_iconSize)};
+  m_layoutItemStep = {m_layoutItemSize.x + m_layoutItemSpacing, m_layoutItemSize.y + m_layoutItemSpacing};
   
-  return visible;
-}
-
-void AssetManager::renderTexturesList() {
-  auto availableWidth = ImGui::GetContentRegionAvail().x;
-  auto columns = uint32_t((availableWidth - 4 - ImGui::GetStyle().ScrollbarSize) / 72);
+  m_layoutColumnCount = MAX(1u, uint32_t(availableWidth / m_layoutItemStep.x));
+  m_layoutRowCount = (uint32_t(m_assetCount) + m_layoutColumnCount - 1) / m_layoutColumnCount;
   
-  ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, {4, 4});
-  bool table = ImGui::BeginTable(
-		"AMTextureView",
-		columns,
-		ImGuiTableFlags_ScrollY,
-		{0, 0}
-	);
-  if (table) {
-    for (size_t i = 0; i < columns; i++) {
-      ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, i == 0 ? 68 : 64);
-    }
-    
-    for (const auto& texture: m_store.scene().getAll<Texture>()) {
-      ImGui::TableNextColumn();
-      
-      // Funny hack because imgui keeps clipping the first column for some reason
-      if (ImGui::TableGetColumnIndex() == 0) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 4);
-      
-      auto name = texture.asset->name();
-      if (name.empty()) name = std::format("[ID: {}]", texture.id);
-      
-      // Draw the actual selectable
-      auto cursorStart = ImGui::GetCursorPos();
-      auto label = std::format("##Texture_{}", texture.id);
-      widgets::selectable(label.data(), false, 0, { 64, 70 + ImGui::GetTextLineHeightWithSpacing() });
-      auto cursorEnd = ImGui::GetCursorPos();
-      
-      ImGui::SetCursorPos({cursorStart.x + 2, cursorStart.y + 4});
-      ImGui::Image((ImTextureID) texture.asset->texture(), { 60, 60 });
-      if (ImGui::TableGetColumnIndex() == 0) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 4);
-      ImGui::Text("%s", name.data());
-      ImGui::SetCursorPos(cursorEnd);
-    }
-    ImGui::EndTable();
-  }
-  ImGui::PopStyleVar();
-}
-
-void AssetManager::renderMaterialsList() {
-  for (const auto& material: m_store.scene().getAll<Material>()) {
-    auto flags = m_baseFlags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-
-    auto name = material.asset->name;
-    if (name.empty()) name = std::format("Material [{}]", material.id);
-    
-    ImGui::PushStyleColor(
-      ImGuiCol_Header,
-      ImGui::GetStyleColorVec4(ImGuiCol_FrameBg)
-    );
-    ImGui::TreeNodeEx(name.data(), flags);
-    ImGui::PopStyleColor();
-  }
-}
-
-void AssetManager::renderMeshesList() {
-  for (const auto& mesh: m_store.scene().getAll<Mesh>()) {
-    auto flags = m_baseFlags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-
-    auto name = std::format("Mesh [{}]", mesh.id);
-    
-    ImGui::PushStyleColor(
-      ImGuiCol_Header,
-      ImGui::GetStyleColorVec4(ImGuiCol_FrameBg)
-    );
-    ImGui::TreeNodeEx(name.data(), flags);
-    ImGui::PopStyleColor();
-  }
+  m_layoutOuterPadding = m_spacing * 0.5f;
 }
 
 }
