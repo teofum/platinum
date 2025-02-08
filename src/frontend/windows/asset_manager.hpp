@@ -23,6 +23,10 @@ private:
   size_t m_assetCount = 0;
   ImGuiSelectionBasicStorage m_selection;
   
+  bool m_showTextures = true;
+  bool m_showMaterials = true;
+  bool m_showMeshes = true;
+  
   uint32_t m_iconSize = 48;
   uint32_t m_spacing = 8;
   uint32_t m_hitSpacing = 4;

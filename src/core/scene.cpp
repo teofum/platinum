@@ -30,14 +30,31 @@ size_t Scene::assetCount() {
   return m_assets.size();
 }
 
+std::vector<Scene::AnyAssetData> Scene::getAllAssets(std::function<bool(const AssetPtr&)> filter) {
+  std::vector<AnyAssetData> data;
+  data.reserve(m_assets.size());
+  
+  for (auto& [id, asset]: m_assets) {
+    if (filter(asset.asset))
+    data.push_back({
+  	  .id = id,
+  	  .asset = std::visit<AnyAsset>([](const auto& it) { return it.get(); }, asset.asset),
+  	});
+  }
+  
+  return data;
+}
+
 std::vector<Scene::AnyAssetData> Scene::getAllAssets() {
   std::vector<AnyAssetData> data;
   data.reserve(m_assets.size());
   
-  for (auto& [id, asset]: m_assets) data.push_back({
-    .id = id,
-    .asset = std::visit<AnyAsset>([](const auto& it) { return it.get(); }, asset.asset),
-  });
+  for (auto& [id, asset]: m_assets) {
+    data.push_back({
+      .id = id,
+      .asset = std::visit<AnyAsset>([](const auto& it) { return it.get(); }, asset.asset),
+    });
+  }
   
   return data;
 }

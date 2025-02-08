@@ -8,13 +8,34 @@ AssetManager::AssetManager(Store& store, State& state, bool* open) noexcept
 : Window(store, state, open) {}
 
 void AssetManager::render() {
-  m_assets = m_store.scene().getAllAssets();
+  m_assets = m_store.scene().getAllAssets([&](const Scene::AssetPtr& asset) {
+    return (m_showMeshes && std::holds_alternative<std::unique_ptr<Mesh>>(asset))
+    		|| (m_showTextures && std::holds_alternative<std::unique_ptr<Texture>>(asset))
+    		|| (m_showMaterials && std::holds_alternative<std::unique_ptr<Material>>(asset));
+  });
   m_assetCount = m_assets.size();
   
   auto* theme = theme::Theme::currentTheme;
   
   ImGui::Begin("Asset Manager");
   
+  /*
+   * Filters and settings
+   */
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("Show");
+  ImGui::SameLine();
+  ImGui::Checkbox("Textures", &m_showTextures);
+  ImGui::SameLine();
+  ImGui::Checkbox("Materials", &m_showMaterials);
+  ImGui::SameLine();
+  ImGui::Checkbox("Meshes", &m_showMeshes);
+  
+  ImGui::Spacing();
+  
+  /*
+   * Main panel
+   */
  	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
   bool showChild = ImGui::BeginChild("Assets", {0, 0}, ImGuiChildFlags_FrameStyle, ImGuiWindowFlags_NoMove);
   ImGui::PopStyleVar();
