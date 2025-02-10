@@ -48,6 +48,8 @@ private:
   void renderTextureProperties(Scene::AnyAssetData& texture);
   void renderMaterialProperties(Scene::AnyAssetData& material);
   void renderMeshProperties(Scene::AnyAssetData& mesh);
+  
+  void assetPropertiesHeader(const char* assetTypeName, Scene::AssetID id);
 };
 
 }

@@ -214,7 +214,7 @@ void Frontend::start() {
     autoreleasePool->release();
   }
 
-  /**
+  /*
    * Cleanup
    */
   ImGui_ImplMetal_Shutdown();

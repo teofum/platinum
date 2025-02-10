@@ -31,8 +31,6 @@ private:
   void renderCameraProperties(Camera* camera);
 
   void renderMaterialProperties(Material* material, std::optional<Scene::AssetID> id);
-  
-  std::optional<Scene::AssetID> textureSelect(const char* label, std::optional<Scene::AssetID> selectedId);
 };
 
 }

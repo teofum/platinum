@@ -170,4 +170,40 @@ bool menuItem(const char* label, const char* shortcut, bool selected) {
   return open;
 }
 
+std::optional<Scene::AssetID> textureSelect(Scene& scene, const char* label, std::optional<Scene::AssetID> selectedId) {
+  auto newId = selectedId;
+  
+  auto selectedName = selectedId
+    .transform([&](auto id){ return scene.getAsset<Texture>(id)->name(); })
+    .value_or("No texture");
+  if (selectedName.empty()) selectedName = std::format("Texture [{}]", selectedId.value());
+  
+  if (ImGui::BeginCombo(label, selectedName.data())) {
+    if (widgets::comboItem("No texture", false)) {
+      newId = std::nullopt;
+    }
+    
+    auto textures = scene.getAll<Texture>();
+    if (!textures.empty()){
+      ImGui::Spacing();
+      ImGui::Separator();
+      ImGui::Spacing();
+    }
+    
+    for (const auto& td: textures) {
+      auto isSelected = selectedId == td.id;
+      auto name = td.asset->name();
+      if (name.empty()) name = std::format("Texture [{}]", td.id);
+      
+      if (widgets::comboItem(name.data(), isSelected)) {
+        newId = td.id;
+      }
+    }
+    
+    ImGui::EndCombo();
+  }
+  
+  return newId;
+}
+
 }

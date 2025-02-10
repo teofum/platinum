@@ -183,8 +183,18 @@ void AssetManager::renderAssetsPanel() {
                 color,
                 2
               );
-              
             }, asset.asset);
+            
+            // Retain indicator
+            // TODO: replace this with an icon
+            if (m_store.scene().assetRetained(asset.id)) {
+            	imguiDrawList->AddRectFilled(
+            	  {boxMin.x + m_padding, boxMin.y + m_padding},
+            	  {boxMin.x + m_padding + 8, boxMin.y + m_padding + 8},
+            	  theme::imguiU32(theme->primary),
+            	  2
+            	);
+            }
             
             // Asset ID
             auto labelColor = ImGui::GetColorU32(isSelected ? ImGuiCol_Text : ImGuiCol_TextDisabled);
@@ -239,16 +249,14 @@ void AssetManager::renderPropertiesPanel() {
 void AssetManager::renderTextureProperties(Scene::AnyAssetData& texture) {
   Texture* asset = std::get<Texture*>(texture.asset);
   
-  ImGui::AlignTextToFramePadding();
-  ImGui::Text("Texture [id: %llu]", texture.id);
-
-  ImGui::Spacing();
+  assetPropertiesHeader("Texture", texture.id);
 
   ImGui::Text("%s", getTextureFormatName(asset->texture()));
-  ImGui::SameLine(ImGui::GetContentRegionAvail().x - 80.0);
-  ImGui::Text("%lux%lu", asset->texture()->width(), asset->texture()->height());
+  auto size = std::format("{}x{}", asset->texture()->width(), asset->texture()->height());
+  ImGui::SameLine(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(size.c_str()).x);
+  ImGui::Text("%s", size.c_str());
 
-  ImGui::Separator();
+  ImGui::Spacing();
 
   const float width = ImGui::GetContentRegionAvail().x;
   ImGui::PushStyleColor(ImGuiCol_ChildBg, (ImVec4) ImColor::HSV(0.0f, 0.0f, 0.8f));
@@ -272,25 +280,33 @@ void AssetManager::renderTextureProperties(Scene::AnyAssetData& texture) {
 
 void AssetManager::renderMaterialProperties(Scene::AnyAssetData &material) {
   Material* asset = std::get<Material*>(material.asset);
-  materialProperties(asset, material.id);
+  
+  assetPropertiesHeader("Material", material.id);
+  materialProperties(m_store.scene(), asset, material.id);
 }
 
 void AssetManager::renderMeshProperties(Scene::AnyAssetData &mesh) {
   Mesh* asset = std::get<Mesh*>(mesh.asset);
   
-  ImGui::AlignTextToFramePadding();
-  ImGui::Text("Mesh [id: %llu]", mesh.id);
+  assetPropertiesHeader("Mesh", mesh.id);
 
-  auto users = std::format("{} users", m_store.scene().getAssetRc(mesh.id));
+  ImGui::Text("%lu vertices", asset->vertexCount());
+  ImGui::Text("%lu triangles", asset->indexCount() / 3);
+}
+
+void AssetManager::assetPropertiesHeader(const char *assetTypeName, Scene::AssetID id) {
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("%s [id: %llu]", assetTypeName, id);
+
+  auto users = std::format("{} users", m_store.scene().getAssetRc(id));
   auto availableWidth = ImGui::GetContentRegionAvail().x;
   ImGui::SameLine(availableWidth - ImGui::CalcTextSize(users.c_str()).x);
   ImGui::AlignTextToFramePadding();
   ImGui::Text("%s", users.c_str());
 
   ImGui::Spacing();
-
-  ImGui::Text("%lu vertices", asset->vertexCount());
-  ImGui::Text("%lu triangles", asset->indexCount() / 3);
+  ImGui::Separator();
+  ImGui::Spacing();
 }
 
 }

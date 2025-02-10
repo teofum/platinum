@@ -4,52 +4,46 @@
 
 namespace pt::frontend {
 
-void materialProperties(Material* material, std::optional<Scene::AssetID> id) {
+void materialProperties(Scene& scene, Material* material, std::optional<Scene::AssetID> id) {
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+  ImGui::BeginDisabled(!id);
   ImGui::InputText("##MaterialNameInput", &material->name);
-  
-  ImGui::AlignTextToFramePadding();
-  if (id) {
-    ImGui::Text("Material [id: %llu]", id.value());
-  } else {
-    ImGui::Text("Material [default]");
-  }
   
   ImGui::SeparatorText("Basic properties");
   
   auto buttonWidth = ImGui::CalcItemWidth();
   ImGui::ColorEdit3("Base color", (float*) &material->baseColor, COLOR_FLAGS, {buttonWidth, 0});
   
-  materialTextureSelect("Base texture", material, Material::TextureSlot::BaseColor);
+  materialTextureSelect(scene, "Base texture", material, Material::TextureSlot::BaseColor);
   
   ImGui::DragFloat("Roughness", &material->roughness, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Metallic", &material->metallic, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Transmission", &material->transmission, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("IOR", &material->ior, 0.01f, 0.1f, 5.0f);
   
-  materialTextureSelect("R/M texture", material, Material::TextureSlot::RoughnessMetallic);
-  materialTextureSelect("Trm. texture", material, Material::TextureSlot::Transmission);
+  materialTextureSelect(scene, "R/M texture", material, Material::TextureSlot::RoughnessMetallic);
+  materialTextureSelect(scene, "Trm. texture", material, Material::TextureSlot::Transmission);
     
   float alpha = material->baseColor[3];
   if (ImGui::DragFloat("Alpha", &alpha, 0.01f, 0.0f, 1.0f)) {
     material->baseColor[3] = alpha;
   }
   
-  materialTextureSelect("Normal map", material, Material::TextureSlot::Normal);
+  materialTextureSelect(scene, "Normal map", material, Material::TextureSlot::Normal);
   
   ImGui::SeparatorText("Emission");
   
   ImGui::ColorEdit3("Color", (float*) &material->emission, COLOR_FLAGS, {buttonWidth, 0});
   ImGui::DragFloat("Strength", &material->emissionStrength, 0.1f);
   
-  materialTextureSelect("Texture##EmissionTexture", material, Material::TextureSlot::Emission);
+  materialTextureSelect(scene, "Texture##EmissionTexture", material, Material::TextureSlot::Emission);
   
   ImGui::SeparatorText("Clearcoat");
   
   ImGui::DragFloat("Value", &material->clearcoat, 0.01f, 0.0f, 1.0f);
   ImGui::DragFloat("Roughness##CoatRoughness", &material->clearcoatRoughness, 0.01f, 0.0f, 1.0f);
   
-  materialTextureSelect("Texture##CoatTexture", material, Material::TextureSlot::Clearcoat);
+  materialTextureSelect(scene, "Texture##CoatTexture", material, Material::TextureSlot::Clearcoat);
   
   ImGui::SeparatorText("Anisotropy");
   
@@ -68,10 +62,11 @@ void materialProperties(Material* material, std::optional<Scene::AssetID> id) {
       ImGui::PopTextWrapPos();
       ImGui::EndTooltip();
   }
+  ImGui::EndDisabled();
 }
 
-void materialTextureSelect(const char* label, Material* material, Material::TextureSlot slot) {
-  
+void materialTextureSelect(Scene& scene, const char* label, Material* material, Material::TextureSlot slot) {
+  scene.updateMaterialTexture(material, slot, widgets::textureSelect(scene, label, material->getTexture(slot)));
 }
 
 }

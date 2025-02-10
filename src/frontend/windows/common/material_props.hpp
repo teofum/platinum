@@ -13,9 +13,9 @@ constexpr ImGuiColorEditFlags COLOR_FLAGS =
 	| ImGuiColorEditFlags_Float | ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_DisplayRGB
 	| ImGuiColorEditFlags_DisplayHSV;
 
-void materialProperties(Material* material, std::optional<Scene::AssetID> id);
+void materialProperties(Scene& scene, Material* material, std::optional<Scene::AssetID> id);
 
-void materialTextureSelect(const char* label, Material* material, Material::TextureSlot slot);
+void materialTextureSelect(Scene& scene, const char* label, Material* material, Material::TextureSlot slot);
 
 }
 
