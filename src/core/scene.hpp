@@ -47,6 +47,12 @@ public:
     AnyAsset asset;
   };
   
+  enum class RemoveMode {
+    Recursive,
+    MoveToParent,
+    MoveToRoot,
+  };
+  
   /*
    * Node class. Provides a public interface for interacting with scene nodes.
    */
@@ -68,6 +74,7 @@ public:
     std::optional<Node> parent() const;
     std::vector<Node> children() const;
     bool isRoot() const;
+    bool isLeaf() const;
     
     Node createChild(std::string_view name);
     
@@ -109,7 +116,7 @@ public:
 
   Node createNode(std::string_view name, NodeID parent = null);
 
-  void removeNode(NodeID id);
+  void removeNode(NodeID id, RemoveMode mode = RemoveMode::Recursive);
 
   bool moveNode(NodeID id, NodeID targetId);
 

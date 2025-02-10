@@ -237,6 +237,11 @@ bool Scene::Node::isRoot() const {
   return m_entity == m_scene->m_root;
 }
 
+bool Scene::Node::isLeaf() const {
+  auto& hierarchy = m_scene->m_registry.get<Hierarchy>(m_entity);
+  return hierarchy.children.empty();
+}
+
 Scene::Node Scene::Node::createChild(std::string_view name) {
   return m_scene->createNode(name, m_entity);
 }
@@ -261,7 +266,7 @@ Scene::Node Scene::createNode(std::string_view name, Scene::NodeID parent) {
   return node(id);
 }
 
-void Scene::removeNode(NodeID id) {
+void Scene::removeNode(NodeID id, RemoveMode mode) {
   if (!m_registry.valid(id)) return;
   
   // Clean up the node by removing any meshes and materials
@@ -271,7 +276,21 @@ void Scene::removeNode(NodeID id) {
   // Remove children recursively
   auto hierarchy = m_registry.get<Hierarchy>(id); // Copy so the child list doesn't get updated as we iterate it
   for (auto& childId: hierarchy.children) {
-    removeNode(childId);
+    switch (mode) {
+      case RemoveMode::Recursive: {
+        removeNode(childId, RemoveMode::Recursive);
+        break;
+      }
+      case RemoveMode::MoveToParent: {
+        auto parentId = hierarchy.parent == null ? m_root : hierarchy.parent;
+        moveNode(childId, parentId);
+        break;
+      }
+      case RemoveMode::MoveToRoot: {
+        moveNode(childId, m_root);
+        break;
+      }
+    }
   }
   
   // Remove the node from its parent's child list
@@ -301,9 +320,7 @@ bool Scene::moveNode(NodeID id, NodeID targetId) {
 
   // Move the node
   auto& oldParent = m_registry.get<Hierarchy>(hierarchy.parent);
-  oldParent.children.erase(
-    std::find(oldParent.children.begin(), oldParent.children.end(), id)
-  );
+  oldParent.children.erase(std::find(oldParent.children.begin(), oldParent.children.end(), id));
   
   target.children.push_back(id);
   hierarchy.parent = targetId;

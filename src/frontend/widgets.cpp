@@ -17,12 +17,12 @@ void removeNodePopup(pt::frontend::State& state, pt::Scene::NodeID id) {
     if (selectable("Remove")) {
       state.removeNode(id);
     }
-//    if (selectable("Move to root")) {
-//      state.removeNode(id, Scene::RemoveOptions_MoveChildrenToRoot);
-//    }
-//    if (selectable("Move to parent")) {
-//      state.removeNode(id, Scene::RemoveOptions_MoveChildrenToParent);
-//    }
+    if (selectable("Move to root")) {
+      state.removeNode(id, Scene::RemoveMode::MoveToRoot);
+    }
+    if (selectable("Move to parent")) {
+      state.removeNode(id, Scene::RemoveMode::MoveToParent);
+    }
     ImGui::PopStyleVar();
 
     ImGui::EndPopup();

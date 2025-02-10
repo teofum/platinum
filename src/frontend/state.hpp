@@ -22,8 +22,8 @@ public:
     return m_selectedNodeId;
   }
 
-  [[nodiscard]] constexpr int* removeOptions() {
-    return &m_removeOptions;
+  [[nodiscard]] constexpr Scene::RemoveMode& removeMode() {
+    return m_removeMode;
   }
 
   constexpr void selectNode(std::optional<Scene::NodeID> id) {
@@ -45,8 +45,8 @@ public:
     return {m_nodeAction, m_actionNodeId.value()};
   }
 
-  constexpr void removeNode(Scene::NodeID id, int options = 0) {
-    m_removeOptions |= options;
+  constexpr void removeNode(Scene::NodeID id, Scene::RemoveMode mode = Scene::RemoveMode::Recursive) {
+    m_removeMode = mode;
     setNodeAction(NodeAction_Remove, id);
   }
 
@@ -66,7 +66,7 @@ private:
   std::optional<Scene::NodeID> m_selectedNodeId, m_nextNodeId, m_actionNodeId;
 
   int m_nodeAction = NodeAction_None;
-  int m_removeOptions = 0;
+  Scene::RemoveMode m_removeMode = Scene::RemoveMode::Recursive;
   bool m_rendering;
 };
 
