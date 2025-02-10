@@ -226,6 +226,20 @@ void AssetManager::renderPropertiesPanel() {
       ImGui::Text("[No assets selected]");
     } else if (m_selection.Size > 1) {
       ImGui::Text("[%d assets selected]", m_selection.Size);
+      
+      bool allSelectedAssetsRetained = true;
+      void* it = nullptr;
+      ImGuiID id;
+      while (allSelectedAssetsRetained && m_selection.GetNextSelectedItem(&it, &id)) {
+        if (!m_store.scene().assetRetained(id)) allSelectedAssetsRetained = false;
+      }
+      
+      if (ImGui::Checkbox("Retain assets", &allSelectedAssetsRetained)) {
+        it = nullptr;
+        while (m_selection.GetNextSelectedItem(&it, &id)) {
+          m_store.scene().assetRetained(id) = allSelectedAssetsRetained;
+        }
+      }
     } else {
       void* it = nullptr;
       ImGuiID id;
@@ -303,6 +317,8 @@ void AssetManager::assetPropertiesHeader(const char *assetTypeName, Scene::Asset
   ImGui::SameLine(availableWidth - ImGui::CalcTextSize(users.c_str()).x);
   ImGui::AlignTextToFramePadding();
   ImGui::Text("%s", users.c_str());
+  
+  ImGui::Checkbox("Retain asset", &m_store.scene().assetRetained(id));
 
   ImGui::Spacing();
   ImGui::Separator();
