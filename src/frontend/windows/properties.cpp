@@ -1,25 +1,9 @@
 #include "properties.hpp"
 
 #include <misc/cpp/imgui_stdlib.h>
+#include <frontend/windows/common/material_props.hpp>
 
 namespace pt::frontend::windows {
-
-static const char* getTextureFormatName(MTL::Texture* texture) {
-  switch (texture->pixelFormat()) {
-    case MTL::PixelFormatRGBA8Unorm:
-      return "Linear RGBA 8bpc";
-    case MTL::PixelFormatRGBA8Unorm_sRGB:
-      return "sRGB RGBA 8bpc";
-    case MTL::PixelFormatRG8Unorm:
-      return "Roughness/Metallic (RG 8bpc)";
-    case MTL::PixelFormatR8Unorm:
-      return "Single channel";
-    case MTL::PixelFormatRGBA32Float:
-      return "HDR (RGBA 32bpc)";
-    default:
-      return "Unknown format";
-  }
-}
 
 void Properties::render() {
   ImGui::Begin("Properties");
@@ -210,104 +194,8 @@ void Properties::renderCameraProperties(Camera* camera) {
 }
 
 void Properties::renderMaterialProperties(Material* material, std::optional<Scene::AssetID> id) {
-  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-  ImGui::InputText("##MaterialNameInput", &material->name);
-  
-  ImGui::AlignTextToFramePadding();
-  if (id) {
-    ImGui::Text("Material [id: %llu]", id.value());
-  } else {
-    ImGui::Text("Material [default]");
-  }
-  
-  ImGui::SeparatorText("Basic properties");
-  
-  auto buttonWidth = ImGui::CalcItemWidth();
-  ImGui::ColorEdit3("Base color", (float*) &material->baseColor, m_colorFlags, {buttonWidth, 0});
-  
-  materialTextureSelect("Base texture", material, Material::TextureSlot::BaseColor);
-  
-  ImGui::DragFloat("Roughness", &material->roughness, 0.01f, 0.0f, 1.0f);
-  ImGui::DragFloat("Metallic", &material->metallic, 0.01f, 0.0f, 1.0f);
-  ImGui::DragFloat("Transmission", &material->transmission, 0.01f, 0.0f, 1.0f);
-  ImGui::DragFloat("IOR", &material->ior, 0.01f, 0.1f, 5.0f);
-  
-  materialTextureSelect("R/M texture", material, Material::TextureSlot::RoughnessMetallic);
-  materialTextureSelect("Trm. texture", material, Material::TextureSlot::Transmission);
-    
-  float alpha = material->baseColor[3];
-  if (ImGui::DragFloat("Alpha", &alpha, 0.01f, 0.0f, 1.0f)) {
-    material->baseColor[3] = alpha;
-  }
-  
-  materialTextureSelect("Normal map", material, Material::TextureSlot::Normal);
-  
-  ImGui::SeparatorText("Emission");
-  
-  ImGui::ColorEdit3("Color", (float*) &material->emission, m_colorFlags, {buttonWidth, 0});
-  ImGui::DragFloat("Strength", &material->emissionStrength, 0.1f);
-  
-  materialTextureSelect("Texture##EmissionTexture", material, Material::TextureSlot::Emission);
-  
-  ImGui::SeparatorText("Clearcoat");
-  
-  ImGui::DragFloat("Value", &material->clearcoat, 0.01f, 0.0f, 1.0f);
-  ImGui::DragFloat("Roughness##CoatRoughness", &material->clearcoatRoughness, 0.01f, 0.0f, 1.0f);
-  
-  materialTextureSelect("Texture##CoatTexture", material, Material::TextureSlot::Clearcoat);
-  
-  ImGui::SeparatorText("Anisotropy");
-  
-  ImGui::DragFloat("Anisotropy", &material->anisotropy, 0.01f, 0.0f, 1.0f);
-  ImGui::DragFloat("Rotation", &material->anisotropyRotation, 0.01f, 0.0f, 1.0f);
-  
-  ImGui::SeparatorText("Additional properties");
-  
-  ImGui::Checkbox("Thin transmission", &material->thinTransmission);
-  ImGui::SameLine();
-  ImGui::TextDisabled("[?]");
-  if (ImGui::BeginItemTooltip()) {
-      ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-      ImGui::TextUnformatted("Render the surface as a thin sheet, rather than the boundary "
-                             "of a solid object. Disables refraction for a transmissive material.");
-      ImGui::PopTextWrapPos();
-      ImGui::EndTooltip();
-  }
+  materialProperties(material, id);
 }
-
-//void Properties::renderTextureProperties(Scene::TextureID id) {
-//  MTL::Texture* texture = m_store.scene().texture(id);
-//
-//  ImGui::AlignTextToFramePadding();
-//  ImGui::Text("Texture [id: %u]", id);
-//  
-//  ImGui::Spacing();
-//
-//  ImGui::Text("%s", getTextureFormatName(texture));
-//  ImGui::SameLine(ImGui::GetContentRegionAvail().x - 80.0);
-//  ImGui::Text("%lux%lu", texture->width(), texture->height());
-//  
-//  ImGui::Separator();
-//  
-//  const float width = ImGui::GetContentRegionAvail().x;
-//  ImGui::PushStyleColor(ImGuiCol_ChildBg, (ImVec4) ImColor::HSV(0.0f, 0.0f, 0.8f));
-//  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
-//  ImGui::BeginChild(
-//    "TextureView",
-//    {width, width * texture->height() / texture->width()},
-//    ImGuiChildFlags_Borders,
-//    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
-//  );
-//  ImGui::PopStyleVar();
-//  ImGui::PopStyleColor();
-//  
-//  ImGui::Image(
-//    (ImTextureID) texture,
-//    {width, width * texture->height() / texture->width()}
-//  );
-//
-//  ImGui::EndChild();
-//}
 
 std::optional<Scene::AssetID> Properties::textureSelect(const char* label, std::optional<Scene::AssetID> selectedId) {
   auto newId = selectedId;
@@ -343,10 +231,6 @@ std::optional<Scene::AssetID> Properties::textureSelect(const char* label, std::
   }
   
   return newId;
-}
-
-void Properties::materialTextureSelect(const char *label, Material *material, Material::TextureSlot slot) {
-  m_store.scene().updateMaterialTexture(material, slot, textureSelect(label, material->getTexture(slot)));
 }
 
 }

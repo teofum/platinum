@@ -1,8 +1,26 @@
 #include "asset_manager.hpp"
 
 #include <frontend/theme.hpp>
+#include <frontend/windows/common/material_props.hpp>
 
 namespace pt::frontend::windows {
+
+static const char* getTextureFormatName(MTL::Texture* texture) {
+  switch (texture->pixelFormat()) {
+    case MTL::PixelFormatRGBA8Unorm:
+      return "Linear RGBA 8bpc";
+    case MTL::PixelFormatRGBA8Unorm_sRGB:
+      return "sRGB RGBA 8bpc";
+    case MTL::PixelFormatRG8Unorm:
+      return "Roughness/Metallic (RG 8bpc)";
+    case MTL::PixelFormatR8Unorm:
+      return "Single channel";
+    case MTL::PixelFormatRGBA32Float:
+      return "HDR (RGBA 32bpc)";
+    default:
+      return "Unknown format";
+  }
+}
 
 AssetManager::AssetManager(Store& store, State& state, bool* open) noexcept
 : Window(store, state, open) {}
@@ -14,8 +32,6 @@ void AssetManager::render() {
     		|| (m_showMaterials && std::holds_alternative<std::unique_ptr<Material>>(asset));
   });
   m_assetCount = m_assets.size();
-  
-  auto* theme = theme::Theme::currentTheme;
   
   ImGui::Begin("Asset Manager");
   
@@ -34,9 +50,41 @@ void AssetManager::render() {
   ImGui::Spacing();
   
   /*
-   * Main panel
+   * Main panels
    */
- 	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+  ImGui::PushStyleColor(ImGuiCol_TableBorderLight, 0);
+  if (ImGui::BeginTable("AMLayout", 2, ImGuiTableFlags_Resizable)) {
+    ImGui::TableSetupColumn("Assets", ImGuiTableColumnFlags_WidthStretch, 1);
+    ImGui::TableSetupColumn("Properties", ImGuiTableColumnFlags_WidthFixed, 250);
+    
+    ImGui::TableNextColumn();
+    renderAssetsPanel();
+    ImGui::TableNextColumn();
+    renderPropertiesPanel();
+    
+    ImGui::EndTable();
+  }
+  ImGui::PopStyleColor();
+  
+  ImGui::End();
+}
+
+void AssetManager::updateLayoutSizes(float availableWidth) {
+  m_layoutItemSpacing = float(m_spacing);
+  m_layoutSelectableSpacing = max(0.0f, m_layoutItemSpacing - m_hitSpacing);
+  m_layoutItemSize = {float(m_iconSize), float(m_iconSize)};
+  m_layoutItemStep = {m_layoutItemSize.x + m_layoutItemSpacing, m_layoutItemSize.y + m_layoutItemSpacing};
+  
+  m_layoutColumnCount = MAX(1u, uint32_t(availableWidth / m_layoutItemStep.x));
+  m_layoutRowCount = (uint32_t(m_assetCount) + m_layoutColumnCount - 1) / m_layoutColumnCount;
+  
+  m_layoutOuterPadding = m_spacing * 0.5f;
+}
+
+void AssetManager::renderAssetsPanel() {
+  auto* theme = theme::Theme::currentTheme;
+  
+  ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
   bool showChild = ImGui::BeginChild("Assets", {0, 0}, ImGuiChildFlags_FrameStyle, ImGuiWindowFlags_NoMove);
   ImGui::PopStyleVar();
   
@@ -107,11 +155,11 @@ void AssetManager::render() {
               imguiDrawList->AddRectFilled(boxMin, boxMax, ImGui::GetColorU32(ImGuiCol_WindowBg), 2);
               if constexpr (std::is_same_v<T, Texture*>) {
                 imguiDrawList->AddImageRounded(
-									(ImTextureID) asset->texture(),
-									boxMin, boxMax,
-									{0, 0}, {1, 1},
-									ImGui::GetColorU32({1, 1, 1, 1}),
-									2
+                  (ImTextureID) asset->texture(),
+                  boxMin, boxMax,
+                  {0, 0}, {1, 1},
+                  ImGui::GetColorU32({1, 1, 1, 1}),
+                  2
                 );
               }
             }, asset.asset);
@@ -130,11 +178,11 @@ void AssetManager::render() {
                 color = theme::imguiU32(theme::sRGB(theme->viewportAxisX));
               }
               imguiDrawList->AddRectFilled(
-							  {boxMax.x - m_padding - 8, boxMin.y + m_padding},
-							  {boxMax.x - m_padding, boxMin.y + m_padding + 8},
-							  color,
-							  2
-							);
+                {boxMax.x - m_padding - 8, boxMin.y + m_padding},
+                {boxMax.x - m_padding, boxMin.y + m_padding + 8},
+                color,
+                2
+              );
               
             }, asset.asset);
             
@@ -142,9 +190,9 @@ void AssetManager::render() {
             auto labelColor = ImGui::GetColorU32(isSelected ? ImGuiCol_Text : ImGuiCol_TextDisabled);
             auto label = std::format("{}", asset.id);
             imguiDrawList->AddText(
-							{boxMin.x + m_padding, boxMax.y - m_padding - ImGui::GetFontSize()},
-							labelColor,
-							label.data()
+              {boxMin.x + m_padding, boxMax.y - m_padding - ImGui::GetFontSize()},
+              labelColor,
+              label.data()
             );
           }
           
@@ -160,20 +208,89 @@ void AssetManager::render() {
     m_selection.ApplyRequests(msIo);
   }
   ImGui::EndChild();
-  
-  ImGui::End();
 }
 
-void AssetManager::updateLayoutSizes(float availableWidth) {
-  m_layoutItemSpacing = float(m_spacing);
-  m_layoutSelectableSpacing = max(0.0f, m_layoutItemSpacing - m_hitSpacing);
-  m_layoutItemSize = {float(m_iconSize), float(m_iconSize)};
-  m_layoutItemStep = {m_layoutItemSize.x + m_layoutItemSpacing, m_layoutItemSize.y + m_layoutItemSpacing};
+void AssetManager::renderPropertiesPanel() {
+  if (ImGui::BeginChild("Properties", {0, 0}, ImGuiChildFlags_None, ImGuiWindowFlags_NoMove)) {
+    if (m_selection.Size == 0) {
+      ImGui::Text("[No assets selected]");
+    } else if (m_selection.Size > 1) {
+      ImGui::Text("[%d assets selected]", m_selection.Size);
+    } else {
+      void* it = nullptr;
+      ImGuiID id;
+      if (m_selection.GetNextSelectedItem(&it, &id)) {
+        auto asset = m_assets[id];
+      	
+        if (std::holds_alternative<Texture*>(asset.asset)) {
+          renderTextureProperties(asset);
+        } else if (std::holds_alternative<Material*>(asset.asset)) {
+          renderMaterialProperties(asset);
+        } else {
+          renderMeshProperties(asset);
+        }
+      }
+    }
+  }
   
-  m_layoutColumnCount = MAX(1u, uint32_t(availableWidth / m_layoutItemStep.x));
-  m_layoutRowCount = (uint32_t(m_assetCount) + m_layoutColumnCount - 1) / m_layoutColumnCount;
+  ImGui::EndChild();
+}
+
+void AssetManager::renderTextureProperties(Scene::AnyAssetData& texture) {
+  Texture* asset = std::get<Texture*>(texture.asset);
   
-  m_layoutOuterPadding = m_spacing * 0.5f;
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("Texture [id: %llu]", texture.id);
+
+  ImGui::Spacing();
+
+  ImGui::Text("%s", getTextureFormatName(asset->texture()));
+  ImGui::SameLine(ImGui::GetContentRegionAvail().x - 80.0);
+  ImGui::Text("%lux%lu", asset->texture()->width(), asset->texture()->height());
+
+  ImGui::Separator();
+
+  const float width = ImGui::GetContentRegionAvail().x;
+  ImGui::PushStyleColor(ImGuiCol_ChildBg, (ImVec4) ImColor::HSV(0.0f, 0.0f, 0.8f));
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+  ImGui::BeginChild(
+    "TextureView",
+    {width, width * asset->texture()->height() / asset->texture()->width()},
+    ImGuiChildFlags_Borders,
+    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+  );
+  ImGui::PopStyleVar();
+  ImGui::PopStyleColor();
+
+  ImGui::Image(
+    (ImTextureID) asset->texture(),
+    {width, width * asset->texture()->height() / asset->texture()->width()}
+  );
+
+  ImGui::EndChild();
+}
+
+void AssetManager::renderMaterialProperties(Scene::AnyAssetData &material) {
+  Material* asset = std::get<Material*>(material.asset);
+  materialProperties(asset, material.id);
+}
+
+void AssetManager::renderMeshProperties(Scene::AnyAssetData &mesh) {
+  Mesh* asset = std::get<Mesh*>(mesh.asset);
+  
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("Mesh [id: %llu]", mesh.id);
+
+  auto users = std::format("{} users", m_store.scene().getAssetRc(mesh.id));
+  auto availableWidth = ImGui::GetContentRegionAvail().x;
+  ImGui::SameLine(availableWidth - ImGui::CalcTextSize(users.c_str()).x);
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("%s", users.c_str());
+
+  ImGui::Spacing();
+
+  ImGui::Text("%lu vertices", asset->vertexCount());
+  ImGui::Text("%lu triangles", asset->indexCount() / 3);
 }
 
 }

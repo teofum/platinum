@@ -115,6 +115,7 @@
 				frontend/theme.cpp,
 				frontend/widgets.cpp,
 				frontend/windows/asset_manager.cpp,
+				frontend/windows/common/material_props.cpp,
 				frontend/windows/properties.cpp,
 				frontend/windows/pt_viewport.cpp,
 				frontend/windows/scene_explorer.cpp,

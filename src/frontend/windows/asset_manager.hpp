@@ -41,6 +41,13 @@ private:
   uint32_t m_layoutRowCount = 0;
   
   void updateLayoutSizes(float availableWidth);
+  
+  void renderAssetsPanel();
+  void renderPropertiesPanel();
+  
+  void renderTextureProperties(Scene::AnyAssetData& texture);
+  void renderMaterialProperties(Scene::AnyAssetData& material);
+  void renderMeshProperties(Scene::AnyAssetData& mesh);
 };
 
 }
