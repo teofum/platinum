@@ -153,7 +153,7 @@ void Scene::Node::setMesh(std::optional<AssetID> id) {
     auto* asset = m_scene->getAsset<Mesh>(id.value());
     
     m_scene->retainAsset(id.value());
-    m_scene->m_registry.emplace<MeshComponent>(m_entity, id.value(), asset->materialCount());
+    m_scene->m_registry.emplace<MeshComponent>(m_entity, id.value());
   }
 }
 
@@ -188,9 +188,14 @@ void Scene::Node::setMaterial(size_t idx, std::optional<AssetID> id) {
   if (!hasMesh) return;
   
   auto& mesh = m_scene->m_registry.get<MeshComponent>(m_entity);
-  auto currentId = mesh.materials[idx];
   
-  if (currentId) m_scene->releaseAsset(id.value());
+  if (idx < mesh.materials.size()) {
+    auto currentId = mesh.materials[idx];
+    if (currentId) m_scene->releaseAsset(currentId.value());
+  } else {
+    mesh.materials.resize(idx + 1, std::nullopt);
+  }
+  
   if (id) m_scene->retainAsset(id.value());
   
   mesh.materials[idx] = id;

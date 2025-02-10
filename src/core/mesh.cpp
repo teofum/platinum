@@ -63,8 +63,8 @@ Mesh::Mesh(
   const std::vector<uint32_t>& indices,
   const std::vector<uint32_t>& materialIndices
 ) noexcept: m_indexCount(indices.size()),
-            m_vertexCount(vertexPositions.size()
-) {
+            m_vertexCount(vertexPositions.size())
+{
   size_t vpSize = vertexPositions.size() * sizeof(float3);
   m_vertexPositions = device->newBuffer(vpSize, MTL::ResourceStorageModeShared);
   memcpy(m_vertexPositions->contents(), vertexPositions.data(), vpSize);

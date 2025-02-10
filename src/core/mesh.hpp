@@ -47,7 +47,6 @@ public:
   
   [[nodiscard]] constexpr size_t indexCount() const { return m_indexCount; }
   [[nodiscard]] constexpr size_t vertexCount() const { return m_vertexCount; }
-  [[nodiscard]] constexpr size_t materialCount() const { return m_materialIndices->length() / sizeof(uint32_t); }
   
   void generateTangents();
 
