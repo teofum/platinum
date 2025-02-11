@@ -262,7 +262,7 @@ kernel void pathtracingKernel(
       if (intersection.type == intersection_type::none) {
         for (uint32_t i = 0; i < args.constants.envLightCount; i++) {
           device auto& envLight = args.envLights[i];
-          device auto& texture = args.textures[envLight.textureId];
+          device auto& texture = args.textures[envLight.textureIdx];
           
           constexpr sampler s(address::repeat, filter::linear);
           L += attenuation * texture.tex.sample(s, rayDirToUv(ray.direction)).rgb;
@@ -396,7 +396,7 @@ LightSample sampleAreaLight(thread const Hit& hit, thread Resources& res, device
  */
 LightSample sampleEnvironmentLight(thread const Hit& hit, const device Texture* textures, device EnvironmentLight& light, float2 r) {
   // Sample the alias table
-  auto texture = textures[light.textureId].tex;
+  auto texture = textures[light.textureIdx].tex;
   uint64_t w = texture.get_width(), h = texture.get_height();
   uint64_t n = w * h;
   uint64_t i = min(n - 1, size_t(r.x * n));
@@ -476,7 +476,7 @@ kernel void misKernel(
       if (intersection.type == intersection_type::none) {
         for (uint32_t i = 0; i < args.constants.envLightCount; i++) {
           device auto& envLight = args.envLights[i];
-          device auto& texture = args.textures[envLight.textureId].tex;
+          device auto& texture = args.textures[envLight.textureIdx].tex;
           
           constexpr sampler s(address::repeat, filter::linear);
           float2 uv = rayDirToUv(ray.direction);

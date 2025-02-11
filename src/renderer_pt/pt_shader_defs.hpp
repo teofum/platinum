@@ -63,7 +63,7 @@ struct AreaLight {
 };
 
 struct EnvironmentLight {
-  uint32_t textureId;
+  uint32_t textureIdx;
   metal_ptr(AliasEntry, device) alias;
 };
 

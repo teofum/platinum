@@ -168,9 +168,9 @@ void Renderer::startRender(
   
   m_postProcessOptions = ppOpts;
 
+  rebuildResourceBuffers();
   rebuildLightData();
   rebuildRenderTargets();
-  rebuildResourceBuffers();
   rebuildAccelerationStructures();
   updateConstants(cameraNodeId, flags);
   rebuildArgumentBuffer();
@@ -469,10 +469,10 @@ void Renderer::rebuildResourceBuffers() {
    */
   auto textures = m_store.scene().getAll<Texture>();
   std::vector<MTL::ResourceID> texturePointers;
-  ankerl::unordered_dense::map<Scene::AssetID, size_t> textureIndices;
   
+  m_textureIndices.clear();
   for (const auto& texture: textures) {
-    textureIndices[texture.id] = texturePointers.size();
+    m_textureIndices[texture.id] = texturePointers.size();
     texturePointers.push_back(texture.asset->texture()->gpuResourceID());
   }
   
@@ -511,7 +511,7 @@ void Renderer::rebuildResourceBuffers() {
       // Create BSDF struct from material
       auto getTextureIdx = [&](std::optional<Scene::AssetID> id) {
         return id
-          .transform([&](Scene::AssetID id) { return int32_t(textureIndices[id]); })
+          .transform([&](Scene::AssetID id) { return int32_t(m_textureIndices[id]); })
           .value_or(-1);
       };
       
@@ -815,7 +815,7 @@ void Renderer::rebuildLightData() {
   const auto& envmap = m_store.scene().envmap();
   if (envmap.textureId()) {
     envLights.push_back({
-      .textureId = uint32_t(envmap.textureId().value()),
+      .textureIdx = uint32_t(m_textureIndices.at(envmap.textureId().value())),
       .alias = envmap.aliasTable()->gpuAddress(),
     });
     m_envLightAliasTables.push_back(envmap.aliasTable());
