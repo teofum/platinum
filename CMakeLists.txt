@@ -39,41 +39,41 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_FLAGS "-Wall -fno-objc-arc")
 
 # Build metal-cpp library
-add_subdirectory(metal-cmake)
+add_subdirectory(deps/metal-cmake)
 
 # SDL2
-set(SDL2 "${CMAKE_SOURCE_DIR}/sdl2/SDL2.framework")
+set(SDL2 "${CMAKE_SOURCE_DIR}/deps/sdl2/SDL2.framework")
 
 # fastgltf
-set(fastgltf "${CMAKE_SOURCE_DIR}/fastgltf/lib")
+set(fastgltf "${CMAKE_SOURCE_DIR}/deps/fastgltf/lib")
 
 # Native file dialog
-set(NFD "${CMAKE_SOURCE_DIR}/nfd")
+set(NFD "${CMAKE_SOURCE_DIR}/deps/nfd")
 
 # ImGui
-file(GLOB IMGUI_SOURCES imgui/*.cpp)
+file(GLOB IMGUI_SOURCES deps/imgui/*.cpp)
 add_library(ImGui STATIC
         ${IMGUI_SOURCES}
-        imgui/backends/imgui_impl_sdl2.cpp
-        imgui/backends/imgui_impl_metal.mm
-        imgui/misc/cpp/imgui_stdlib.cpp
+        deps/imgui/backends/imgui_impl_sdl2.cpp
+        deps/imgui/backends/imgui_impl_metal.mm
+        deps/imgui/misc/cpp/imgui_stdlib.cpp
 )
 
-target_include_directories(ImGui PUBLIC imgui)
+target_include_directories(ImGui PUBLIC deps/imgui)
 target_include_directories(ImGui PRIVATE ${SDL2}/Headers)
 
 target_link_libraries(ImGui PRIVATE METAL_CPP)
 target_link_libraries(ImGui PRIVATE ${SDL2}/SDL2)
 
-# Tracy
-#option(TRACY_ENABLE " " ON)
-FetchContent_Declare(tracy
-        GIT_REPOSITORY https://github.com/wolfpld/tracy.git
-        GIT_TAG master
-        GIT_SHALLOW true
-        GIT_PROGRESS true
+# mikktspace
+add_library(mikktspace STATIC
+        deps/mikkt/mikktspace.c
 )
-FetchContent_MakeAvailable(tracy)
+
+target_include_directories(mikktspace PUBLIC deps/mikkt)
+
+# Homebrew dir (for OIIO)
+set(HOMEBREW_OIIO /opt/homebrew/Cellar/openimageio/3.0.1.0)
 
 # Build shaders
 build_shaders(renderer_studio.metallib
@@ -84,56 +84,54 @@ build_shaders(renderer_studio.metallib
 )
 
 build_shaders(renderer_pt.metallib
+        src/renderer_pt/shaders/bsdf.metal
+        src/renderer_pt/shaders/intersections.metal
+        src/renderer_pt/shaders/samplers.metal
         src/renderer_pt/shaders/kernel.metal
         src/renderer_pt/shaders/postprocess.metal
 )
 
+build_shaders(tools.metallib
+        src/frontend/windows/tools/shaders/ms_lut_gen.metal
+)
+
+build_shaders(loaders.metallib
+        src/loaders/texture_converter.metal
+)
+
 # Main executable
+file(GLOB_RECURSE PLATINUM_SOURCES src/*.cpp)
 add_executable(platinum
-        src/main.cpp
-        src/core/mesh.cpp
-        src/core/scene.cpp
-        src/core/store.cpp
-        src/core/primitives.cpp
+        ${PLATINUM_SOURCES}
+        src/utils/cocoa_utils.mm
         src/utils/metal_utils.mm
-        src/utils/matrices.cpp
-        src/utils/utils.cpp
-        src/frontend/frontend.cpp
-        src/renderer_studio/renderer_studio.cpp
-        src/renderer_studio/studio_camera.cpp
-        src/loaders/gltf.cpp
         renderer_studio.metallib
         renderer_pt.metallib
-        src/renderer_pt/renderer_pt.cpp
-        src/renderer_pt/renderer_pt.hpp
-        src/frontend/window.cpp
-        src/frontend/window.hpp
-        src/frontend/state.cpp
-        src/frontend/state.hpp
-        src/frontend/windows/properties.cpp
-        src/frontend/windows/properties.hpp
-        src/frontend/widgets.cpp
-        src/frontend/widgets.hpp
-        src/frontend/windows/scene_explorer.cpp
-        src/frontend/windows/scene_explorer.hpp
-        src/frontend/windows/studio_viewport.cpp
-        src/frontend/windows/studio_viewport.hpp
-        src/frontend/windows/pt_viewport.cpp
-        src/frontend/windows/pt_viewport.hpp
+        tools.metallib
+        loaders.metallib
 )
 
 target_include_directories(platinum PRIVATE src)
 target_include_directories(platinum PRIVATE ${SDL2}/Headers)
-target_include_directories(platinum PRIVATE ankerl)
-target_include_directories(platinum PRIVATE fastgltf/include)
-target_include_directories(platinum PRIVATE nfd)
+target_include_directories(platinum PRIVATE deps/ankerl)
+target_include_directories(platinum PRIVATE deps/fastgltf/include)
+target_include_directories(platinum PRIVATE deps/nfd)
+target_include_directories(platinum PRIVATE deps/entt)
+target_include_directories(platinum PRIVATE ${HOMEBREW_OIIO}/include)
 
 target_link_libraries(platinum PRIVATE METAL_CPP)
 target_link_libraries(platinum PRIVATE ${SDL2}/SDL2)
 target_link_libraries(platinum PRIVATE ImGui)
+target_link_libraries(platinum PRIVATE mikktspace)
 target_link_libraries(platinum PRIVATE ${fastgltf}/libfastgltf)
 target_link_libraries(platinum PRIVATE ${NFD}/libnfd)
-target_link_libraries(platinum PRIVATE Tracy::TracyClient)
+target_link_libraries(platinum PRIVATE ${HOMEBREW_OIIO}/lib/libOpenImageIO.dylib)
+target_link_libraries(platinum PRIVATE ${HOMEBREW_OIIO}/lib/libOpenImageIO_Util.dylib)
 
-# metal-cpp
-
+# Copy resource files
+add_custom_command(
+        TARGET platinum POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/resource
+        ${CMAKE_CURRENT_BINARY_DIR}/resource
+)

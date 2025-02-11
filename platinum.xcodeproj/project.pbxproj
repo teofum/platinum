@@ -166,8 +166,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				fastgltf/lib/libfastgltf,
-				imgui/backends/imgui_impl_metal.mm,
-				imgui/backends/imgui_impl_sdl2.cpp,
 				imgui/imgui_demo.cpp,
 				imgui/imgui_draw.cpp,
 				imgui/imgui_tables.cpp,
