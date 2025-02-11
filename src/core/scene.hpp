@@ -187,6 +187,8 @@ public:
   
   bool& assetRetained(AssetID id);
   
+  bool assetValid(AssetID id);
+  
   size_t assetCount();
   
   std::vector<AnyAssetData> getAllAssets(std::function<bool(const AssetPtr&)> filter);

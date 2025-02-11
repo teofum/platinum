@@ -26,6 +26,10 @@ bool& Scene::assetRetained(AssetID id) {
   return m_assets.at(id).retain;
 }
 
+bool Scene::assetValid(AssetID id) {
+  return m_assets.contains(id);
+}
+
 size_t Scene::assetCount() {
   return m_assets.size();
 }

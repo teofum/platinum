@@ -210,6 +210,11 @@ void Frontend::start() {
 
     cmd->presentDrawable(drawable);
     cmd->commit();
+    
+    // Update frontend shared state
+    //  We do this after the frame has been drawn to avoid issues with deleted assets being added
+    //  to drawlists. This introduces a 1-frame delay to see changes reflected in the viewport.
+    m_state.update();
 
     autoreleasePool->release();
   }
@@ -242,11 +247,6 @@ void Frontend::drawImGui() {
   
   // Additional windows
   if (m_toolMultiscatterLutGeneratorOpen) m_multiscatterLutGenerator.render();
-
-  // Update frontend shared state
-  //  We do this in between rendering the controls and display windows so any
-  //  changes are reflected immediately
-  m_state.update();
 
   // Render view windows
   m_studioViewport.render();

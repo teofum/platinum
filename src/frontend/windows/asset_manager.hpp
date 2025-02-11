@@ -45,9 +45,9 @@ private:
   void renderAssetsPanel();
   void renderPropertiesPanel();
   
-  void renderTextureProperties(Scene::AnyAssetData& texture);
-  void renderMaterialProperties(Scene::AnyAssetData& material);
-  void renderMeshProperties(Scene::AnyAssetData& mesh);
+  void renderTextureProperties(Scene::AnyAsset& texture, Scene::AssetID id);
+  void renderMaterialProperties(Scene::AnyAsset& material, Scene::AssetID id);
+  void renderMeshProperties(Scene::AnyAsset& mesh, Scene::AssetID id);
   
   void assetPropertiesHeader(const char* assetTypeName, Scene::AssetID id);
 };

@@ -35,6 +35,12 @@ void AssetManager::render() {
   
   ImGui::Begin("Asset Manager");
   
+  void* it = nullptr;
+  ImGuiID id;
+  while (m_selection.GetNextSelectedItem(&it, &id)) {
+    if (!m_store.scene().assetValid(id)) m_selection.SetItemSelected(id, false);
+  }
+  
   /*
    * Filters and settings
    */
@@ -127,7 +133,7 @@ void AssetManager::renderAssetsPanel() {
           ImGui::SetCursorScreenPos(pos);
           
           // Draw the actual selectable
-          ImGui::SetNextItemSelectionUserData(itemIdx);
+          ImGui::SetNextItemSelectionUserData(asset.id);
           bool isSelected = m_selection.Contains(ImGuiID(asset.id));
           bool isVisible = ImGui::IsRectVisible(m_layoutItemSize);
 
@@ -244,14 +250,14 @@ void AssetManager::renderPropertiesPanel() {
       void* it = nullptr;
       ImGuiID id;
       if (m_selection.GetNextSelectedItem(&it, &id)) {
-        auto asset = m_assets[id];
+        auto asset = m_store.scene().getAsset(id);
       	
-        if (std::holds_alternative<Texture*>(asset.asset)) {
-          renderTextureProperties(asset);
-        } else if (std::holds_alternative<Material*>(asset.asset)) {
-          renderMaterialProperties(asset);
+        if (std::holds_alternative<Texture*>(asset)) {
+          renderTextureProperties(asset, id);
+        } else if (std::holds_alternative<Material*>(asset)) {
+          renderMaterialProperties(asset, id);
         } else {
-          renderMeshProperties(asset);
+          renderMeshProperties(asset, id);
         }
       }
     }
@@ -260,10 +266,10 @@ void AssetManager::renderPropertiesPanel() {
   ImGui::EndChild();
 }
 
-void AssetManager::renderTextureProperties(Scene::AnyAssetData& texture) {
-  Texture* asset = std::get<Texture*>(texture.asset);
+void AssetManager::renderTextureProperties(Scene::AnyAsset& texture, Scene::AssetID id) {
+  Texture* asset = std::get<Texture*>(texture);
   
-  assetPropertiesHeader("Texture", texture.id);
+  assetPropertiesHeader("Texture", id);
 
   ImGui::Text("%s", getTextureFormatName(asset->texture()));
   auto size = std::format("{}x{}", asset->texture()->width(), asset->texture()->height());
@@ -292,17 +298,17 @@ void AssetManager::renderTextureProperties(Scene::AnyAssetData& texture) {
   ImGui::EndChild();
 }
 
-void AssetManager::renderMaterialProperties(Scene::AnyAssetData &material) {
-  Material* asset = std::get<Material*>(material.asset);
+void AssetManager::renderMaterialProperties(Scene::AnyAsset& material, Scene::AssetID id) {
+  Material* asset = std::get<Material*>(material);
   
-  assetPropertiesHeader("Material", material.id);
-  materialProperties(m_store.scene(), asset, material.id);
+  assetPropertiesHeader("Material", id);
+  materialProperties(m_store.scene(), asset, id);
 }
 
-void AssetManager::renderMeshProperties(Scene::AnyAssetData &mesh) {
-  Mesh* asset = std::get<Mesh*>(mesh.asset);
+void AssetManager::renderMeshProperties(Scene::AnyAsset& mesh, Scene::AssetID id) {
+  Mesh* asset = std::get<Mesh*>(mesh);
   
-  assetPropertiesHeader("Mesh", mesh.id);
+  assetPropertiesHeader("Mesh", id);
 
   ImGui::Text("%lu vertices", asset->vertexCount());
   ImGui::Text("%lu triangles", asset->indexCount() / 3);
