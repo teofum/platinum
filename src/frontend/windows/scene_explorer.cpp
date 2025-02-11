@@ -21,13 +21,13 @@ void SceneExplorer::render() {
   ImGui::PopStyleVar(2);
   if (visible) {
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
-		renderNode(m_store.scene().root());
+    renderNode(m_store.scene().root());
     ImGui::PopStyleVar();
   }
   ImGui::EndChild();
-  
+
   ImGui::Spacing();
-  
+
   /*
    * Create/import options
    */
@@ -36,44 +36,44 @@ void SceneExplorer::render() {
     ImGui::OpenPopup("Add_Popup");
   }
   if (widgets::popup("Add_Popup")) {
-//    if (widgets::selectable("Cube", false, 0, {100, 0})) {
-//      uint32_t parentId = m_state.selectedNode().value_or(0);
-//
-//      auto cube = pt::primitives::cube(m_store.device(), 2.0f);
-//      auto id = m_store.scene().addMesh(std::move(cube));
-//      pt::Scene::Node node("Cube", id);
-//      node.materials.push_back(0);
-//      m_store.scene().addNode(std::move(node), parentId);
-//    }
-//    if (widgets::selectable("Sphere", false, 0, {100, 0})) {
-//      uint32_t parentId = m_state.selectedNode().value_or(0);
-//
-//      auto sphere = pt::primitives::sphere(m_store.device(), 1.0f, 24, 32);
-//      auto id = m_store.scene().addMesh(std::move(sphere));
-//      pt::Scene::Node node("Sphere", id);
-//      node.materials.push_back(0);
-//      m_store.scene().addNode(std::move(node), parentId);
-//    }
-    
+    if (widgets::selectable("Cube", false, 0, {100, 0})) {
+      auto parentId = m_state.selectedNode().value_or(Scene::null);
+
+      auto cube = pt::primitives::cube(m_store.device(), 2.0f);
+      auto id = m_store.scene().createAsset(std::move(cube), false);
+
+      auto node = m_store.scene().createNode("Cube", parentId);
+      node.setMesh(id);
+    }
+
+    if (widgets::selectable("Sphere", false, 0, {100, 0})) {
+      auto parentId = m_state.selectedNode().value_or(Scene::null);
+
+      auto sphere = pt::primitives::sphere(m_store.device(), 1.0f, 48, 64);
+      auto id = m_store.scene().createAsset(std::move(sphere), false);
+
+      auto node = m_store.scene().createNode("Sphere", parentId);
+      node.setMesh(id);
+    }
+
     ImGui::Separator();
-    
-//    if (widgets::selectable("Material", false, 0, {100, 0})) {
-//      auto name = std::format("Material {}", m_store.scene().getAllMaterials().size() + 1);
-//      m_store.scene().addMaterial(name, BSDF{ .baseColor = {0.8, 0.8, 0.8} });
-//    }
-    
+
+    if (widgets::selectable("Material", false, 0, {100, 0})) {
+      auto name = std::format("Material {}", m_store.scene().getAll<Material>().size() + 1);
+      Material material = {.name = name};
+      m_store.scene().createAsset(std::move(material));
+    }
+
     ImGui::Separator();
-    
-//    if (widgets::selectable("Camera", false, 0, {100, 0})) {
-//      uint32_t parentId = m_state.selectedNode().value_or(0);
-//
-//      auto id = m_store.scene().addCamera(Camera::withFocalLength(28.0f));
-//      pt::Scene::Node node("Camera");
-//      node.cameraId = id;
-//      node.transform.translation = {-5, 5, 5};
-//      node.transform.track = true;
-//      m_store.scene().addNode(std::move(node), parentId);
-//    }
+
+    if (widgets::selectable("Camera", false, 0, {100, 0})) {
+      auto parentId = m_state.selectedNode().value_or(Scene::null);
+
+      auto node = m_store.scene().createNode("Camera", parentId);
+      node.transform().translation = {-5, 5, 5};
+      node.transform().track = true;
+      node.set(Camera::withFocalLength(28.0f));
+    }
     ImGui::EndPopup();
   }
 
@@ -83,9 +83,9 @@ void SceneExplorer::render() {
   }
   if (widgets::popup("Import_Popup")) {
     if (widgets::menuItem("glTF")) m_store.importGltf();
-    
+
     ImGui::Separator();
-    
+
     if (widgets::menu("Texture")) {
       if (widgets::menuItem("Color")) m_store.importTexture(loaders::texture::TextureType::sRGB);
       if (widgets::menuItem("Normal map")) m_store.importTexture(loaders::texture::TextureType::LinearRGB);
@@ -93,7 +93,7 @@ void SceneExplorer::render() {
       if (widgets::menuItem("Grayscale")) m_store.importTexture(loaders::texture::TextureType::Mono);
       ImGui::EndMenu();
     }
-    
+
     ImGui::EndPopup();
   }
 
@@ -191,8 +191,8 @@ void SceneExplorer::renderNode(const Scene::Node& node, uint32_t level) {
   bool& visible = node.visible();
   auto visibleLabel = std::format("{}##Node_{}", visible ? 'V' : '-', uint32_t(node.id()));
   auto inlineButtonWidth = ImGui::GetFrameHeight();
-  auto offset = ImGui::GetStyle().IndentSpacing * (isOpen ? level + 1 : level);
-  
+  auto offset = ImGui::GetStyle().IndentSpacing * float(isOpen ? level + 1 : level);
+
   ImGui::SameLine(ImGui::GetContentRegionAvail().x + offset - inlineButtonWidth);
   if (widgets::button(visibleLabel.c_str(), {inlineButtonWidth, 0})) {
     visible = !visible;
@@ -208,53 +208,5 @@ void SceneExplorer::renderNode(const Scene::Node& node, uint32_t level) {
 
   ImGui::PopID();
 }
-
-//void SceneExplorer::renderMeshesList() {
-//  for (const auto& md: m_store.scene().getAllMeshes()) {
-//    auto flags = m_baseFlags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-//    
-//    bool selected = m_state.selectedMesh() == md.meshId;
-//    if (selected) {
-//      flags |= ImGuiTreeNodeFlags_Selected;
-//    } else {
-//      ImGui::PushStyleColor(
-//        ImGuiCol_Header,
-//        ImGui::GetStyleColorVec4(ImGuiCol_FrameBg)
-//      );
-//    }
-//    
-//    auto label = std::format("Mesh [{}]", md.meshId);
-//    ImGui::TreeNodeEx(label.c_str(), flags);
-//    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-//      m_state.selectMesh(md.meshId);
-//    }
-//
-//    if (!selected) ImGui::PopStyleColor();
-//  }
-//}
-
-//void SceneExplorer::renderMaterialsList() {
-//  for (const auto& md: m_store.scene().getAllMaterials()) {
-//    auto flags = m_baseFlags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-//    
-//    bool selected = m_state.selectedMaterial() == md.materialId;
-//    if (selected) {
-//      flags |= ImGuiTreeNodeFlags_Selected;
-//    } else {
-//      ImGui::PushStyleColor(
-//        ImGuiCol_Header,
-//        ImGui::GetStyleColorVec4(ImGuiCol_FrameBg)
-//      );
-//    }
-//    
-//    auto name = std::format("{}{}", md.name, md.material->flags & Material::Material_UseAlpha ? " *" : "");
-//    ImGui::TreeNodeEx(name.c_str(), flags);
-//    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-//      m_state.selectMaterial(md.materialId);
-//    }
-//
-//    if (!selected) ImGui::PopStyleColor();
-//  }
-//}
 
 }

@@ -26,10 +26,10 @@ Frontend::Frontend(Store& store) noexcept
   : m_store(store), m_state(store),
     m_properties(m_store, m_state),
     m_sceneExplorer(m_store, m_state),
-		m_assetManager(m_store, m_state),
+    m_assetManager(m_store, m_state),
     m_studioViewport(m_store, m_state, m_dpiScaling),
-		m_renderViewport(m_store, m_state, m_dpiScaling),
-		m_multiscatterLutGenerator(m_store, m_state, &m_toolMultiscatterLutGeneratorOpen) {
+    m_renderViewport(m_store, m_state, m_dpiScaling),
+    m_multiscatterLutGenerator(m_store, m_state, &m_toolMultiscatterLutGeneratorOpen) {
 }
 
 Frontend::~Frontend() {
@@ -59,7 +59,7 @@ Frontend::InitResult Frontend::init() {
   style.GrabRounding = 4.0f;
   style.GrabMinSize = 0.0f;
   style.WindowMenuButtonPosition = ImGuiDir_None;
-  
+
   theme::apply(style, isSystemDarkModeEnabled() ? theme::platinumDark : theme::platinumLight);
 
   SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
@@ -89,7 +89,7 @@ Frontend::InitResult Frontend::init() {
     std::println(stderr, "SDL create window failed: {}", SDL_GetError());
     return Frontend::InitResult_SDLCreateWindowFailed;
   }
-  
+
   setupWindowStyle(m_sdlWindow);
 
   m_sdlRenderer = SDL_CreateRenderer(
@@ -136,7 +136,7 @@ Frontend::InitResult Frontend::init() {
   ImGui_ImplSDL2_InitForMetal(m_sdlWindow);
 
   m_commandQueue = m_device->newCommandQueue();
-  
+
   /*
    * Initialize store
    */
@@ -210,7 +210,7 @@ void Frontend::start() {
 
     cmd->presentDrawable(drawable);
     cmd->commit();
-    
+
     // Update frontend shared state
     //  We do this after the frame has been drawn to avoid issues with deleted assets being added
     //  to drawlists. This introduces a 1-frame delay to see changes reflected in the viewport.
@@ -244,7 +244,7 @@ void Frontend::drawImGui() {
   m_sceneExplorer.render();
   m_assetManager.render();
   m_properties.render();
-  
+
   // Additional windows
   if (m_toolMultiscatterLutGeneratorOpen) m_multiscatterLutGenerator.render();
 
@@ -313,11 +313,16 @@ void Frontend::mainDockSpace() {
         dockIdRight, ImGuiDir_Down, 0.6f,
         nullptr, &dockIdRight
       );
+      auto dockIdBottom = ImGui::DockBuilderSplitNode(
+        dockSpaceId, ImGuiDir_Down, 0.25f,
+        nullptr, &dockSpaceId
+      );
 
       ImGui::DockBuilderDockWindow("Scene Explorer", dockIdLeft);
       ImGui::DockBuilderDockWindow("Properties", dockIdLeftLower);
       ImGui::DockBuilderDockWindow("Render", dockIdRight);
       ImGui::DockBuilderDockWindow("Render Settings", dockIdRightLower);
+      ImGui::DockBuilderDockWindow("Asset Manager", dockIdBottom);
       ImGui::DockBuilderDockWindow("Viewport", dockSpaceId);
       ImGui::DockBuilderFinish(dockSpaceId);
     }
@@ -335,15 +340,15 @@ void Frontend::renderMenuBar() {
     // File
     if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_I))
       m_store.importGltf();
-    
+
     // Render
     if (ImGui::IsKeyPressed(ImGuiKey_Space, ImGuiInputFlags_None))
       m_renderViewport.startRender();
-    
+
     if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_E))
       m_renderViewport.exportImage();
   }
-  
+
   /*
    * Render menu bar
    */
@@ -354,16 +359,16 @@ void Frontend::renderMenuBar() {
     if (!isFullscreenEnabled(m_sdlWindow)) {
       ImGui::SetCursorPosX(80.0f);
     }
-    
+
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {8, 6});
-    
+
     ImGui::SetNextWindowSize({160, 0});
     if (widgets::menu("File")) {
       if (widgets::menu("Import")) {
         if (widgets::menuItem("glTF", "Cmd + I")) m_store.importGltf();
-        
+
         ImGui::Separator();
-        
+
         if (widgets::menu("Texture")) {
           if (widgets::menuItem("Color")) m_store.importTexture(loaders::texture::TextureType::sRGB);
           if (widgets::menuItem("Normal map")) m_store.importTexture(loaders::texture::TextureType::LinearRGB);
@@ -371,51 +376,51 @@ void Frontend::renderMenuBar() {
           if (widgets::menuItem("Grayscale")) m_store.importTexture(loaders::texture::TextureType::Mono);
           ImGui::EndMenu();
         }
-        
+
         ImGui::EndMenu();
       }
-      
+
       ImGui::EndMenu();
     }
-    
+
     ImGui::SetNextWindowSize({160, 0});
     if (widgets::menu("View")) {
       if (widgets::menu("Theme")) {
-        if (widgets::menuItem("Light", NULL, theme::Theme::currentTheme == &theme::platinumLight)) {
+        if (widgets::menuItem("Light", nullptr, theme::Theme::currentTheme == &theme::platinumLight)) {
           theme::apply(ImGui::GetStyle(), theme::platinumLight);
         }
-        if (widgets::menuItem("Dark", NULL, theme::Theme::currentTheme == &theme::platinumDark)) {
+        if (widgets::menuItem("Dark", nullptr, theme::Theme::currentTheme == &theme::platinumDark)) {
           theme::apply(ImGui::GetStyle(), theme::platinumDark);
         }
-        
+
         ImGui::EndMenu();
       }
-      
+
       ImGui::EndMenu();
     }
-    
+
     ImGui::SetNextWindowSize({160, 0});
     if (widgets::menu("Render")) {
       ImGui::BeginDisabled(!m_renderViewport.canRender());
       if (widgets::menuItem("Render", "Space")) m_renderViewport.startRender();
       ImGui::EndDisabled();
-      
+
       ImGui::Separator();
-      
+
       ImGui::BeginDisabled(!m_renderViewport.hasImage());
       if (widgets::menuItem("Export to PNG", "Cmd + E")) m_renderViewport.exportImage();
       ImGui::EndDisabled();
-      
+
       ImGui::EndMenu();
     }
-    
+
     ImGui::SetNextWindowSize({160, 0});
     if (widgets::menu("Tools")) {
       if (widgets::menuItem("Multiscatter GGX LUTs")) m_toolMultiscatterLutGeneratorOpen = true;
-      
+
       ImGui::EndMenu();
     }
-    
+
     ImGui::PopStyleVar();
     ImGui::EndMenuBar();
   }

@@ -135,3 +135,14 @@ add_custom_command(
         ${CMAKE_SOURCE_DIR}/resource
         ${CMAKE_CURRENT_BINARY_DIR}/resource
 )
+
+#test
+file(GLOB_RECURSE METAL_SOURCES src/*.metal)
+add_library(metal_dummy
+        src/main.cpp
+        ${METAL_SOURCES}
+)
+
+#set_target_properties(metal_dummy PROPERTIES LINKER_LANGUAGE CXX)
+target_include_directories(metal_dummy PRIVATE /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/metal/32023/lib/clang/32023.404/include/metal)
+target_compile_definitions(metal_dummy PUBLIC device= constant= thread= ray_data= object_data= __METAL__ __HAVE_RAYTRACING__ __HAVE_RAYTRACING_MULTI_LEVEL_INSTANCING__ __HAVE_RAYTRACING_INTERSECTION_QUERY__ __HAVE_RAYTRACING_USER_INSTANCE_ID__ __HAVE_RAYTRACING_MOTION__ __HAVE_RAYTRACING_INDIRECT_INSTANCE_BUILD__ __HAVE_RAYTRACING_CURVES__ __HAVE_INDIRECT_ARGUMENT_BUFFER__ __HAVE_MESH__ __METAL_VERSION__= METAL_FUNC=)
