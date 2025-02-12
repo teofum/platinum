@@ -487,7 +487,30 @@ void Scene::saveToFile(const fs::path& path) {
   };
 
   for (const auto& texture: getAll<Texture>()) {
-    textureBufferData[texture.id] = dumpBuffer(texture.asset->texture()->buffer());
+    // Copy the texture's data so we can access it
+    auto format = texture.asset->texture()->pixelFormat();
+    size_t bytesPerPixel = 0;
+    if (format == MTL::PixelFormatRGBA32Float) bytesPerPixel = 4 * sizeof(float);
+    if (format == MTL::PixelFormatRGBA8Unorm) bytesPerPixel = 4 * sizeof(uint8_t);
+    if (format == MTL::PixelFormatRG8Unorm) bytesPerPixel = 2 * sizeof(uint8_t);
+    if (format == MTL::PixelFormatR8Unorm) bytesPerPixel = 1 * sizeof(uint8_t);
+
+    size_t width = texture.asset->texture()->width();
+    size_t height = texture.asset->texture()->height();
+
+    size_t bytesPerRow = bytesPerPixel * width;
+    size_t totalBytes = bytesPerRow * height;
+
+    void* data = malloc(totalBytes);
+    texture.asset->texture()->getBytes(data, bytesPerRow, MTL::Region(0, 0, width, height), 0);
+    binaryFile.write((const char*) data, std::streamsize(totalBytes));
+    free(data);
+
+    textureBufferData[texture.id] = {
+      .offset = cumulativeOffset,
+      .length = totalBytes,
+    };
+    cumulativeOffset += totalBytes;
   }
   for (const auto& mesh: getAll<Mesh>()) {
     meshBufferData[mesh.id].positions = dumpBuffer(mesh.asset->vertexPositions());
