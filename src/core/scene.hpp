@@ -4,8 +4,11 @@
 #include <utility>
 #include <vector>
 #include <optional>
+#include <filesystem>
+#include <fstream>
 #include <unordered_dense.h>
 #include <entt.hpp>
+#include <json.hpp>
 
 #include "camera.hpp"
 #include "material.hpp"
@@ -13,6 +16,8 @@
 #include "mesh.hpp"
 #include "transform.hpp"
 #include "environment.hpp"
+
+namespace fs = std::filesystem;
 
 namespace pt {
 
@@ -58,33 +63,33 @@ public:
    */
   class Node {
   public:
-    constexpr NodeID id() const {
+    [[nodiscard]] constexpr NodeID id() const {
       return m_entity;
     }
 
-    std::optional<AssetData<Mesh>> mesh() const;
+    [[nodiscard]] std::optional<AssetData<Mesh>> mesh() const;
 
     void setMesh(std::optional<AssetID> id);
 
-    std::optional<std::vector<std::optional<AssetID>>*> materialIds() const;
+    [[nodiscard]] std::optional<std::vector<std::optional<AssetID>>*> materialIds() const;
 
-    std::optional<AssetData<Material>> material(size_t idx) const;
+    [[nodiscard]] std::optional<AssetData<Material>> material(size_t idx) const;
 
     void setMaterial(size_t idx, std::optional<AssetID> id);
 
-    std::string& name() const;
+    [[nodiscard]] std::string& name() const;
 
-    bool& visible() const;
+    [[nodiscard]] bool& visible() const;
 
-    Transform& transform() const;
+    [[nodiscard]] Transform& transform() const;
 
-    std::optional<Node> parent() const;
+    [[nodiscard]] std::optional<Node> parent() const;
 
-    std::vector<Node> children() const;
+    [[nodiscard]] std::vector<Node> children() const;
 
-    bool isRoot() const;
+    [[nodiscard]] bool isRoot() const;
 
-    bool isLeaf() const;
+    [[nodiscard]] bool isLeaf() const;
 
     Node createChild(std::string_view name);
 
@@ -187,7 +192,7 @@ public:
 
     m_assets[id] = {
       .retain = retain,
-      .asset = AssetPtr(std::make_unique<T>(std::move(asset))),
+      .asset = AssetPtr(std::make_unique<T>(std::forward<T>(asset))),
     };
     m_assetRc[id] = 0;
 
@@ -212,6 +217,8 @@ public:
   AnyAsset getAsset(AssetID id);
 
   void updateMaterialTexture(Material* material, Material::TextureSlot slot, std::optional<AssetID> textureId);
+
+  void saveToFile(const fs::path& path);
 
 private:
   /*
@@ -269,6 +276,13 @@ private:
     const std::function<void(Node, const float4x4&)>& cb,
     const std::function<bool(const Node&)>& filter
   );
+
+  [[nodiscard]] nlohmann::json nodeToJson(Scene::Node node);
+
+  [[nodiscard]] nlohmann::json toJson(const AnyAssetData& asset);
+  [[nodiscard]] nlohmann::json toJson(const AssetData<Texture>& texture);
+  [[nodiscard]] nlohmann::json toJson(const AssetData<Material>& material);
+  [[nodiscard]] nlohmann::json toJson(const AssetData<Mesh>& mesh);
 };
 
 }

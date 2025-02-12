@@ -109,6 +109,7 @@ add_executable(platinum
         renderer_pt.metallib
         tools.metallib
         loaders.metallib
+        src/utils/json.hpp
 )
 
 target_include_directories(platinum PRIVATE src)
@@ -117,6 +118,7 @@ target_include_directories(platinum PRIVATE deps/ankerl)
 target_include_directories(platinum PRIVATE deps/fastgltf/include)
 target_include_directories(platinum PRIVATE deps/nfd)
 target_include_directories(platinum PRIVATE deps/entt)
+target_include_directories(platinum PRIVATE deps/json)
 target_include_directories(platinum PRIVATE ${HOMEBREW_OIIO}/include)
 
 target_link_libraries(platinum PRIVATE METAL_CPP)

@@ -1,9 +1,13 @@
 #include "scene.hpp"
 
+#include <utils/json.hpp>
+
+using json = nlohmann::json;
+
 namespace pt {
 
 Scene::Scene() noexcept
-: m_nextAssetId(0), m_assets() {
+  : m_nextAssetId(0), m_assets() {
   /*
    * Initialize the scene
    */
@@ -14,7 +18,7 @@ Scene::Scene() noexcept
 
 void Scene::removeAsset(AssetID id) {
   // Any cleanup specific to manually deleting assets should be done here
-  
+
   removeAssetImpl(id);
 }
 
@@ -37,29 +41,33 @@ size_t Scene::assetCount() {
 std::vector<Scene::AnyAssetData> Scene::getAllAssets(std::function<bool(const AssetPtr&)> filter) {
   std::vector<AnyAssetData> data;
   data.reserve(m_assets.size());
-  
+
   for (auto& [id, asset]: m_assets) {
     if (filter(asset.asset))
-    data.push_back({
-  	  .id = id,
-  	  .asset = std::visit<AnyAsset>([](const auto& it) { return it.get(); }, asset.asset),
-  	});
+      data.push_back(
+        {
+          .id = id,
+          .asset = std::visit<AnyAsset>([](const auto& it) { return it.get(); }, asset.asset),
+        }
+      );
   }
-  
+
   return data;
 }
 
 std::vector<Scene::AnyAssetData> Scene::getAllAssets() {
   std::vector<AnyAssetData> data;
   data.reserve(m_assets.size());
-  
+
   for (auto& [id, asset]: m_assets) {
-    data.push_back({
-      .id = id,
-      .asset = std::visit<AnyAsset>([](const auto& it) { return it.get(); }, asset.asset),
-    });
+    data.push_back(
+      {
+        .id = id,
+        .asset = std::visit<AnyAsset>([](const auto& it) { return it.get(); }, asset.asset),
+      }
+    );
   }
-  
+
   return data;
 }
 
@@ -67,14 +75,14 @@ Scene::AnyAsset Scene::getAsset(AssetID id) {
   return std::visit<AnyAsset>([](const auto& it) { return it.get(); }, m_assets.at(id).asset);
 }
 
-void Scene::updateMaterialTexture(Material *material, Material::TextureSlot slot, std::optional<AssetID> textureId) {
+void Scene::updateMaterialTexture(Material* material, Material::TextureSlot slot, std::optional<AssetID> textureId) {
   if (material->textures.contains(slot)) {
     auto currentId = material->textures.at(slot);
     if (textureId == currentId) return;
-    
+
     releaseAsset(currentId);
   }
-  
+
   if (textureId) {
     retainAsset(textureId.value());
     material->textures[slot] = textureId.value();
@@ -93,7 +101,7 @@ void Scene::retainAsset(AssetID id) {
 bool Scene::releaseAsset(AssetID id) {
   uint32_t rc = --m_assetRc[id];
   bool remove = rc == 0 && !m_assets[id].retain;
-  
+
   // Because the refcount is 0 we know there are no dependencies, so we can safely remove the asset.
   if (remove) removeAssetImpl(id);
   return remove;
@@ -104,12 +112,12 @@ void Scene::removeAssetImpl(AssetID id) {
   // to release
   auto* pMaterial = std::get_if<std::unique_ptr<Material>>(&m_assets[id].asset);
   if (pMaterial) {
-    auto& mat = *(pMaterial->get());
+    auto& mat = *(*pMaterial);
     for (const auto& [slot, textureId]: mat.textures) {
       releaseAsset(textureId);
     }
   }
-  
+
   // Remove the asset and force reset refcount to 0. A missing asset with RC 0 is interpreted as
   // an invalid ID.
   m_assets.erase(id);
@@ -119,17 +127,18 @@ void Scene::removeAssetImpl(AssetID id) {
 /*
  * Node interface
  */
-Scene::Node::Node(entt::entity entity, Scene* scene) noexcept: m_entity(entity), m_scene(scene) {}
+Scene::Node::Node(entt::entity entity, Scene* scene) noexcept: m_entity(entity), m_scene(scene) {
+}
 
 std::optional<Scene::AssetData<Mesh>> Scene::Node::mesh() const {
   bool exists = m_scene->m_registry.all_of<MeshComponent>(m_entity);
   if (!exists) return std::nullopt;
-  
+
   auto& mesh = m_scene->m_registry.get<MeshComponent>(m_entity);
   auto* asset = std::get_if<std::unique_ptr<Mesh>>(&m_scene->m_assets[mesh.id].asset);
   if (!asset) return std::nullopt;
-  
-  AssetData<Mesh> data {
+
+  AssetData<Mesh> data{
     .id = mesh.id,
     .asset = asset->get(),
   };
@@ -141,21 +150,19 @@ void Scene::Node::setMesh(std::optional<AssetID> id) {
   bool exists = m_scene->m_registry.all_of<MeshComponent>(m_entity);
   if (exists) {
     auto mesh = m_scene->m_registry.get<MeshComponent>(m_entity);
-    
+
     for (auto materialId: mesh.materials) {
       if (materialId) m_scene->releaseAsset(materialId.value());
     }
-    
+
     m_scene->releaseAsset(mesh.id);
     m_scene->m_registry.erase<MeshComponent>(m_entity);
   }
-  
+
   // Retain a reference to the new mesh (if present) and set it
   // We lose any material references, but this makes ref counting simpler and any materials are
   // unlikely to work with the previous mesh anyway
   if (id) {
-    auto* asset = m_scene->getAsset<Mesh>(id.value());
-    
     m_scene->retainAsset(id.value());
     m_scene->m_registry.emplace<MeshComponent>(m_entity, id.value());
   }
@@ -164,7 +171,7 @@ void Scene::Node::setMesh(std::optional<AssetID> id) {
 std::optional<std::vector<std::optional<Scene::AssetID>>*> Scene::Node::materialIds() const {
   bool hasMesh = m_scene->m_registry.all_of<MeshComponent>(m_entity);
   if (!hasMesh) return std::nullopt;
-  
+
   auto& mesh = m_scene->m_registry.get<MeshComponent>(m_entity);
   return &mesh.materials;
 }
@@ -172,15 +179,15 @@ std::optional<std::vector<std::optional<Scene::AssetID>>*> Scene::Node::material
 std::optional<Scene::AssetData<Material>> Scene::Node::material(size_t idx) const {
   bool hasMesh = m_scene->m_registry.all_of<MeshComponent>(m_entity);
   if (!hasMesh) return std::nullopt;
-  
+
   auto& mesh = m_scene->m_registry.get<MeshComponent>(m_entity);
   auto materialId = mesh.materials[idx];
   if (!materialId) return std::nullopt;
-  
+
   auto* asset = std::get_if<std::unique_ptr<Material>>(&m_scene->m_assets[materialId.value()].asset);
   if (!asset) return std::nullopt;
-  
-  AssetData<Material> data {
+
+  AssetData<Material> data{
     .id = materialId.value(),
     .asset = asset->get(),
   };
@@ -190,18 +197,18 @@ std::optional<Scene::AssetData<Material>> Scene::Node::material(size_t idx) cons
 void Scene::Node::setMaterial(size_t idx, std::optional<AssetID> id) {
   bool hasMesh = m_scene->m_registry.all_of<MeshComponent>(m_entity);
   if (!hasMesh) return;
-  
+
   auto& mesh = m_scene->m_registry.get<MeshComponent>(m_entity);
-  
+
   if (idx < mesh.materials.size()) {
     auto currentId = mesh.materials[idx];
     if (currentId) m_scene->releaseAsset(currentId.value());
   } else {
     mesh.materials.resize(idx + 1, std::nullopt);
   }
-  
+
   if (id) m_scene->retainAsset(id.value());
-  
+
   mesh.materials[idx] = id;
 }
 
@@ -219,21 +226,21 @@ Transform& Scene::Node::transform() const {
 
 std::optional<Scene::Node> Scene::Node::parent() const {
   auto& hierarchy = m_scene->m_registry.get<Hierarchy>(m_entity);
-  
+
   if (hierarchy.parent == entt::null) return std::nullopt;
   return m_scene->node(hierarchy.parent);
 }
 
 std::vector<Scene::Node> Scene::Node::children() const {
   std::vector<Scene::Node> children;
-  
+
   auto& hierarchy = m_scene->m_registry.get<Hierarchy>(m_entity);
   children.reserve(hierarchy.children.size());
 
   for (auto child: hierarchy.children) {
     children.push_back(m_scene->node(child));
   }
-  
+
   return children;
 }
 
@@ -255,28 +262,28 @@ Scene::Node Scene::Node::createChild(std::string_view name) {
  */
 Scene::Node Scene::createNode(std::string_view name, Scene::NodeID parent) {
   auto id = m_registry.create();
-  
+
   // Create transform component
   m_registry.emplace<Transform>(id);
-  
+
   // Create hierarchy component
   auto parentId = parent == null ? m_root : parent;
   m_registry.emplace<Hierarchy>(id, name, parentId);
-  
+
   // Append to children of parent node
   auto& parentHierarchy = m_registry.get<Hierarchy>(parentId);
   parentHierarchy.children.push_back(id);
-  
+
   return node(id);
 }
 
 void Scene::removeNode(NodeID id, RemoveMode mode) {
   if (!m_registry.valid(id)) return;
-  
+
   // Clean up the node by removing any meshes and materials
   auto removed = node(id);
   removed.setMesh(std::nullopt);
-  
+
   // Remove children recursively
   auto hierarchy = m_registry.get<Hierarchy>(id); // Copy so the child list doesn't get updated as we iterate it
   for (auto& childId: hierarchy.children) {
@@ -296,12 +303,16 @@ void Scene::removeNode(NodeID id, RemoveMode mode) {
       }
     }
   }
-  
+
   // Remove the node from its parent's child list
   // We don't need to check if it has a parent because the root cannot be removed
   auto& parent = m_registry.get<Hierarchy>(hierarchy.parent);
-  std::erase_if(parent.children, [&](NodeID child) { return child == id; });
-  
+  std::erase_if(
+    parent.children, [&](NodeID child) {
+      return child == id;
+    }
+  );
+
   m_registry.destroy(id);
 }
 
@@ -325,7 +336,7 @@ bool Scene::moveNode(NodeID id, NodeID targetId) {
   // Move the node
   auto& oldParent = m_registry.get<Hierarchy>(hierarchy.parent);
   oldParent.children.erase(std::find(oldParent.children.begin(), oldParent.children.end(), id));
-  
+
   target.children.push_back(id);
   hierarchy.parent = targetId;
 
@@ -346,12 +357,12 @@ bool Scene::cloneNode(Scene::NodeID id, Scene::NodeID targetId) {
   auto children = hierarchy.children;
   auto clone = createNode(hierarchy.name, targetId);
   clone.transform() = node(id).transform();
-  
+
   // Clone any mesh components
   if (m_registry.all_of<MeshComponent>(id)) {
     auto& mesh = m_registry.get<MeshComponent>(id);
     clone.setMesh(mesh.id);
-    
+
     for (size_t i = 0; i < mesh.materials.size(); i++) {
       clone.setMaterial(i, mesh.materials[i]);
     }
@@ -407,7 +418,7 @@ std::vector<Scene::Instance> Scene::getInstances(const std::function<bool(const 
 }
 
 std::vector<Scene::Instance> Scene::getInstances() {
-  return getInstances([](const Node& node){ return node.visible(); });
+  return getInstances([](const Node& node) { return node.visible(); });
 }
 
 std::vector<Scene::CameraInstance> Scene::getCameras(const std::function<bool(const Scene::Node&)>& filter) {
@@ -425,7 +436,7 @@ std::vector<Scene::CameraInstance> Scene::getCameras(const std::function<bool(co
 }
 
 std::vector<Scene::CameraInstance> Scene::getCameras() {
-  return getCameras([](const Node& node){ return node.visible(); });
+  return getCameras([](const Node& node) { return node.visible(); });
 }
 
 void Scene::traverseHierarchy(
@@ -447,6 +458,174 @@ void Scene::traverseHierarchy(
       stack.emplace_back(child, transformMatrix);
     }
   }
+}
+
+void Scene::saveToFile(const fs::path& path) {
+  auto rootNode = root();
+  json objectJson = nodeToJson(rootNode);
+
+  json assetJson = {
+    {"nextId", m_nextAssetId},
+    {"assets", json::array()},
+  };
+  auto& assets = assetJson["assets"];
+  for (const auto& asset: getAllAssets()) {
+    assets.push_back(toJson(asset));
+  }
+
+  json sceneJson = {
+    {"root",   objectJson},
+    {"assets", assetJson},
+  };
+
+  /*
+   * Store environment map texture ID, if there is one
+   */
+  if (m_envmap.textureId()) {
+    sceneJson["envmap"] = {
+      {"texture",    m_envmap.textureId().value()},
+      {"aliasTable", {0, 0}}, // TODO alias table buffer
+    };
+  }
+
+  std::ofstream file(path);
+  file << sceneJson;
+}
+
+json Scene::nodeToJson(Scene::Node node) {
+  /*
+   * Basic node data
+   */
+  json nodeJson = {
+    {"id",        uint64_t(node.id())},
+    {"name",      node.name()},
+    {"visible",   node.visible()},
+    {"transform", json_utils::transform(node.transform())},
+    {"children",  json::array()},
+  };
+
+  /*
+   * Serialize mesh/material data, if present
+   */
+  if (node.mesh()) {
+    auto mesh = node.mesh().value();
+    json meshJson = {
+      {"id",        mesh.id},
+      {"materials", json::array()},
+    };
+
+    auto& materials = meshJson["materials"];
+    const auto& materialIds = *node.materialIds().value();
+    for (const auto& id: materialIds) {
+      if (id) materials.push_back(id.value());
+      else materials.push_back("default");
+    }
+
+    nodeJson["mesh"] = meshJson;
+  }
+
+  /*
+   * Serialize camera, if present
+   */
+  if (node.get<Camera>()) {
+    auto* camera = node.get<Camera>().value();
+    nodeJson["camera"] = {
+      {"f",        camera->focalLength},
+      {"aperture", camera->aperture},
+      {"sensor",   json_utils::vec(camera->sensorSize)},
+    };
+  }
+
+  /*
+   * Recursively serialize children
+   */
+  auto& children = nodeJson["children"];
+  for (auto& child: node.children())
+    children.push_back(nodeToJson(child));
+
+  return nodeJson;
+}
+
+json Scene::toJson(const Scene::AnyAssetData& data) {
+  json assetJson{
+    {"id",     data.id},
+    {"retain", assetRetained(data.id)},
+    {"rc",     m_assetRc.at(data.id)},
+  };
+
+  json dataJson = std::visit(
+    [&](const auto& asset) {
+      using T = std::decay_t<decltype(asset)>;
+
+      if constexpr (std::is_same_v<T, Texture*>) {
+        assetJson["type"] = "texture";
+        AssetData<Texture> texture{data.id, asset};
+        return toJson(texture);
+      } else if constexpr (std::is_same_v<T, Material*>) {
+        assetJson["type"] = "material";
+        AssetData<Material> material{data.id, asset};
+        return toJson(material);
+      } else if constexpr (std::is_same_v<T, Mesh*>) {
+        assetJson["type"] = "mesh";
+        AssetData<Mesh> mesh{data.id, asset};
+        return toJson(mesh);
+      }
+    },
+    data.asset
+  );
+
+  assetJson["data"] = dataJson;
+  return assetJson;
+}
+
+[[nodiscard]] json Scene::toJson(const Scene::AssetData<Texture>& texture) {
+  uint32_t width = texture.asset->texture()->width();
+  uint32_t height = texture.asset->texture()->height();
+
+  return {
+    {"name",   texture.asset->name()},
+    {"alpha",  texture.asset->hasAlpha()},
+    {"size",   {width, height}},
+    {"format", texture.asset->texture()->pixelFormat()},
+    {"data",   {0,     texture.asset->texture()->arrayLength()}}, // TODO texture data buffers
+  };
+}
+
+[[nodiscard]] json Scene::toJson(const Scene::AssetData<Material>& material) {
+  json materialJson{
+    {"name",               material.asset->name},
+    {"baseColor",          json_utils::vec(material.asset->baseColor)},
+    {"roughness",          material.asset->roughness},
+    {"metallic",           material.asset->metallic},
+    {"transmission",       material.asset->transmission},
+    {"ior",                material.asset->ior},
+    {"aniso",              material.asset->anisotropy},
+    {"anisoRotation",      material.asset->anisotropyRotation},
+    {"clearcoat",          material.asset->clearcoat},
+    {"clearcoatRoughness", material.asset->clearcoatRoughness},
+    {"emission",           json_utils::vec(material.asset->emission)},
+    {"emissionStrength",   material.asset->emissionStrength},
+    {"thinTransmission",   material.asset->thinTransmission},
+    {"textures",           json::array()}
+  };
+
+  auto& textures = materialJson["textures"];
+  for (const auto& [slot, textureId]: material.asset->textures) {
+    textures.push_back({slot, textureId});
+  }
+
+  return materialJson;
+}
+
+[[nodiscard]] json Scene::toJson(const Scene::AssetData<Mesh>& mesh) {
+  return {
+    {"indexCount",  mesh.asset->indexCount()},
+    {"vertexCount", mesh.asset->vertexCount()},
+    {"positions",   {0, 0}}, // TODO mesh data buffers
+    {"vertexData",  {0, 0}},
+    {"indices",     {0, 0}},
+    {"materials",   {0, 0}},
+  };
 }
 
 }

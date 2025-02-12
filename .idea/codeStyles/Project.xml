@@ -13,6 +13,7 @@
       <option name="INDENT_C_STRUCT_MEMBERS" value="2" />
       <option name="INDENT_CLASS_MEMBERS" value="2" />
       <option name="INDENT_INSIDE_CODE_BLOCK" value="2" />
+      <option name="KEEP_CASE_EXPRESSIONS_IN_ONE_LINE" value="true" />
       <option name="FUNCTION_NON_TOP_AFTER_RETURN_TYPE_WRAP" value="0" />
       <option name="FUNCTION_TOP_AFTER_RETURN_TYPE_WRAP" value="0" />
       <option name="FUNCTION_PARAMETERS_WRAP" value="5" />
@@ -41,11 +42,12 @@
     </files>
     <codeStyleSettings language="ObjectiveC">
       <option name="RIGHT_MARGIN" value="120" />
+      <option name="BLANK_LINES_AROUND_METHOD" value="0" />
+      <option name="BLANK_LINES_AROUND_METHOD_IN_INTERFACE" value="0" />
       <option name="ALIGN_MULTILINE_CHAINED_METHODS" value="true" />
       <option name="METHOD_CALL_CHAIN_WRAP" value="1" />
-      <option name="KEEP_SIMPLE_BLOCKS_IN_ONE_LINE" value="false" />
-      <option name="KEEP_SIMPLE_METHODS_IN_ONE_LINE" value="false" />
-      <option name="SOFT_MARGINS" value="80,120" />
+      <option name="ARRAY_INITIALIZER_WRAP" value="5" />
+      <option name="SOFT_MARGINS" value="80,100,120" />
       <indentOptions>
         <option name="INDENT_SIZE" value="2" />
         <option name="CONTINUATION_INDENT_SIZE" value="2" />

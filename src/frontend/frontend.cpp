@@ -6,6 +6,7 @@
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_metal.h>
 
+#include <utils/utils.hpp>
 #include <utils/metal_utils.hpp>
 #include <utils/cocoa_utils.h>
 
@@ -364,6 +365,13 @@ void Frontend::renderMenuBar() {
 
     ImGui::SetNextWindowSize({160, 0});
     if (widgets::menu("File")) {
+      if (widgets::menuItem("Save As...")) {
+        auto path = utils::fileSave("/", "json");
+        if (path) m_store.scene().saveToFile(path.value());
+      }
+
+      ImGui::Separator();
+
       if (widgets::menu("Import")) {
         if (widgets::menuItem("glTF", "Cmd + I")) m_store.importGltf();
 
