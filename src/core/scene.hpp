@@ -19,6 +19,9 @@
 
 namespace fs = std::filesystem;
 
+template<typename K, typename V>
+using hashmap = ankerl::unordered_dense::map<K, V>;
+
 namespace pt {
 
 template<typename T, typename ... U>
@@ -257,8 +260,8 @@ private:
    */
   AssetID m_nextAssetId;
 
-  ankerl::unordered_dense::map<AssetID, Asset> m_assets;
-  ankerl::unordered_dense::map<AssetID, uint32_t> m_assetRc;
+  hashmap <AssetID, Asset> m_assets;
+  hashmap <AssetID, uint32_t> m_assetRc;
 
   void retainAsset(AssetID id);
 
@@ -277,12 +280,34 @@ private:
     const std::function<bool(const Node&)>& filter
   );
 
+  /*
+   * Save/load internals
+   */
+  struct BufferData {
+    size_t offset = 0;
+    size_t length = 0;
+  };
+
+  struct MeshBufferData {
+    BufferData positions, vertexData, indices, materials;
+  };
+
   [[nodiscard]] nlohmann::json nodeToJson(Scene::Node node);
 
-  [[nodiscard]] nlohmann::json toJson(const AnyAssetData& asset);
-  [[nodiscard]] nlohmann::json toJson(const AssetData<Texture>& texture);
+  [[nodiscard]] nlohmann::json toJson(
+    const AnyAssetData& asset,
+    const hashmap <AssetID, BufferData>& textureBufferData,
+    const hashmap <AssetID, MeshBufferData>& meshBufferData
+  );
+  [[nodiscard]] nlohmann::json toJson(
+    const AssetData<Texture>& texture,
+    const hashmap <AssetID, BufferData>& textureBufferData
+  );
+  [[nodiscard]] nlohmann::json toJson(
+    const AssetData<Mesh>& mesh,
+    const hashmap <AssetID, MeshBufferData>& meshBufferData
+  );
   [[nodiscard]] nlohmann::json toJson(const AssetData<Material>& material);
-  [[nodiscard]] nlohmann::json toJson(const AssetData<Mesh>& mesh);
 };
 
 }

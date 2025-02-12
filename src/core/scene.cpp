@@ -461,6 +461,44 @@ void Scene::traverseHierarchy(
 }
 
 void Scene::saveToFile(const fs::path& path) {
+  auto binaryFilename = std::format("{}_data.bin", path.stem().string());
+  auto binaryPath = path.parent_path() / binaryFilename;
+
+  std::ofstream binaryFile(binaryPath, std::ios::out | std::ios::binary);
+
+  /*
+   * Dump all mesh/texture data to a binary file, and store its byte
+   * offset/length to write in the scene json
+   */
+  hashmap<AssetID, BufferData> textureBufferData;
+  hashmap<AssetID, MeshBufferData> meshBufferData;
+
+  size_t cumulativeOffset = 0;
+  auto dumpBuffer = [&cumulativeOffset, &binaryFile](MTL::Buffer* buf) {
+    size_t len = buf->length();
+    binaryFile.write((const char*) buf->contents(), std::streamsize(len));
+    BufferData data{
+      .offset = cumulativeOffset,
+      .length = len,
+    };
+
+    cumulativeOffset += len;
+    return data;
+  };
+
+  for (const auto& texture: getAll<Texture>()) {
+    textureBufferData[texture.id] = dumpBuffer(texture.asset->texture()->buffer());
+  }
+  for (const auto& mesh: getAll<Mesh>()) {
+    meshBufferData[mesh.id].positions = dumpBuffer(mesh.asset->vertexPositions());
+    meshBufferData[mesh.id].vertexData = dumpBuffer(mesh.asset->vertexData());
+    meshBufferData[mesh.id].indices = dumpBuffer(mesh.asset->indices());
+    meshBufferData[mesh.id].materials = dumpBuffer(mesh.asset->materialIndices());
+  }
+
+  /*
+   * Serialize scene structure as JSON
+   */
   auto rootNode = root();
   json objectJson = nodeToJson(rootNode);
 
@@ -470,7 +508,7 @@ void Scene::saveToFile(const fs::path& path) {
   };
   auto& assets = assetJson["assets"];
   for (const auto& asset: getAllAssets()) {
-    assets.push_back(toJson(asset));
+    assets.push_back(toJson(asset, textureBufferData, meshBufferData));
   }
 
   json sceneJson = {
@@ -482,9 +520,11 @@ void Scene::saveToFile(const fs::path& path) {
    * Store environment map texture ID, if there is one
    */
   if (m_envmap.textureId()) {
+    auto envmapBufferData = dumpBuffer(m_envmap.aliasTable());
+
     sceneJson["envmap"] = {
       {"texture",    m_envmap.textureId().value()},
-      {"aliasTable", {0, 0}}, // TODO alias table buffer
+      {"aliasTable", {envmapBufferData.offset, envmapBufferData.length}},
     };
   }
 
@@ -546,7 +586,11 @@ json Scene::nodeToJson(Scene::Node node) {
   return nodeJson;
 }
 
-json Scene::toJson(const Scene::AnyAssetData& data) {
+json Scene::toJson(
+  const Scene::AnyAssetData& data,
+  const hashmap<AssetID, BufferData>& textureBufferData,
+  const hashmap<AssetID, MeshBufferData>& meshBufferData
+) {
   json assetJson{
     {"id",     data.id},
     {"retain", assetRetained(data.id)},
@@ -560,7 +604,7 @@ json Scene::toJson(const Scene::AnyAssetData& data) {
       if constexpr (std::is_same_v<T, Texture*>) {
         assetJson["type"] = "texture";
         AssetData<Texture> texture{data.id, asset};
-        return toJson(texture);
+        return toJson(texture, textureBufferData);
       } else if constexpr (std::is_same_v<T, Material*>) {
         assetJson["type"] = "material";
         AssetData<Material> material{data.id, asset};
@@ -568,7 +612,7 @@ json Scene::toJson(const Scene::AnyAssetData& data) {
       } else if constexpr (std::is_same_v<T, Mesh*>) {
         assetJson["type"] = "mesh";
         AssetData<Mesh> mesh{data.id, asset};
-        return toJson(mesh);
+        return toJson(mesh, meshBufferData);
       }
     },
     data.asset
@@ -578,16 +622,21 @@ json Scene::toJson(const Scene::AnyAssetData& data) {
   return assetJson;
 }
 
-[[nodiscard]] json Scene::toJson(const Scene::AssetData<Texture>& texture) {
+[[nodiscard]] json Scene::toJson(
+  const Scene::AssetData<Texture>& texture,
+  const hashmap<AssetID, BufferData>& textureBufferData
+) {
   uint32_t width = texture.asset->texture()->width();
   uint32_t height = texture.asset->texture()->height();
+
+  const auto& bd = textureBufferData.at(texture.id);
 
   return {
     {"name",   texture.asset->name()},
     {"alpha",  texture.asset->hasAlpha()},
-    {"size",   {width, height}},
+    {"size",   {width,     height}},
     {"format", texture.asset->texture()->pixelFormat()},
-    {"data",   {0,     texture.asset->texture()->arrayLength()}}, // TODO texture data buffers
+    {"data",   {bd.offset, bd.length}},
   };
 }
 
@@ -617,14 +666,19 @@ json Scene::toJson(const Scene::AnyAssetData& data) {
   return materialJson;
 }
 
-[[nodiscard]] json Scene::toJson(const Scene::AssetData<Mesh>& mesh) {
+[[nodiscard]] json Scene::toJson(
+  const Scene::AssetData<Mesh>& mesh,
+  const hashmap<AssetID, MeshBufferData>& meshBufferData
+) {
+  const auto& bd = meshBufferData.at(mesh.id);
+
   return {
     {"indexCount",  mesh.asset->indexCount()},
     {"vertexCount", mesh.asset->vertexCount()},
-    {"positions",   {0, 0}}, // TODO mesh data buffers
-    {"vertexData",  {0, 0}},
-    {"indices",     {0, 0}},
-    {"materials",   {0, 0}},
+    {"positions",   {bd.positions.offset,  bd.positions.length}},
+    {"vertexData",  {bd.vertexData.offset, bd.vertexData.length}},
+    {"indices",     {bd.indices.offset,    bd.indices.length}},
+    {"materials",   {bd.materials.offset,  bd.materials.length}},
   };
 }
 
