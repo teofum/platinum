@@ -109,11 +109,13 @@
 				core/primitives.cpp,
 				core/scene.cpp,
 				core/store.cpp,
+				core/texture.cpp,
 				frontend/frontend.cpp,
 				frontend/state.cpp,
 				frontend/theme.cpp,
 				frontend/widgets.cpp,
-				frontend/window.cpp,
+				frontend/windows/asset_manager.cpp,
+				frontend/windows/common/material_props.cpp,
 				frontend/windows/properties.cpp,
 				frontend/windows/pt_viewport.cpp,
 				frontend/windows/scene_explorer.cpp,
@@ -164,8 +166,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				fastgltf/lib/libfastgltf,
-				imgui/backends/imgui_impl_metal.mm,
-				imgui/backends/imgui_impl_sdl2.cpp,
 				imgui/imgui_demo.cpp,
 				imgui/imgui_draw.cpp,
 				imgui/imgui_tables.cpp,
@@ -843,6 +843,7 @@
 					"$(PROJECT_DIR)/deps/sdl2/include",
 					/opt/homebrew/Cellar/openimageio/3.0.1.0/include,
 					"$(PROJECT_DIR)/deps/mikkt",
+					"$(PROJECT_DIR)/deps/entt",
 				);
 				INSTALL_ROOT = /;
 				LIBRARY_SEARCH_PATHS = (
@@ -929,6 +930,7 @@
 					"$(PROJECT_DIR)/deps/sdl2/include",
 					/opt/homebrew/Cellar/openimageio/3.0.1.0/include,
 					"$(PROJECT_DIR)/deps/mikkt",
+					"$(PROJECT_DIR)/deps/entt",
 				);
 				INSTALL_ROOT = /;
 				LIBRARY_SEARCH_PATHS = (

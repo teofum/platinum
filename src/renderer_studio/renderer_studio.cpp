@@ -16,8 +16,8 @@ Renderer::Renderer(
   MTL::CommandQueue* commandQueue,
   Store& store
 ) noexcept
-  : m_store(store), m_camera(float3{2, 3, 5}),
-    m_device(device), m_commandQueue(commandQueue) {
+: m_store(store), m_camera(float3{2, 3, 5}),
+m_device(device), m_commandQueue(commandQueue) {
   /*
    * Build the constants buffer
    */
@@ -93,8 +93,8 @@ Renderer::~Renderer() {
   m_postPassSso->release();
 
   m_constantsBuffer->release();
-  m_dataBuffer->release();
-  m_cameraDataBuffer->release();
+  m_instanceBuffer->release();
+  m_cameraBuffer->release();
   m_cameraVertexBuffer->release();
   m_cameraIndexBuffer->release();
   m_simpleQuadVertexBuffer->release();
@@ -156,7 +156,7 @@ Scene::NodeID Renderer::readbackObjectIdAt(uint32_t x, uint32_t y) const {
   auto contents = m_objectIdReadbackBuffer->contents();
   memcpy(&objectId, contents, m_objectIdPixelSize);
 
-  return objectId;
+  return Scene::NodeID(objectId);
 }
 
 void Renderer::render(Scene::NodeID selectedNodeId) {
@@ -220,15 +220,15 @@ void Renderer::render(Scene::NodeID selectedNodeId) {
   enc->setFragmentBuffer(m_constantsBuffer, m_constantsOffset, 1);
 
   size_t dataOffset = 0;
-  for (const auto& md: m_meshData) {
-    enc->setVertexBuffer(md.mesh->vertexPositions(), 0, 0);
-    enc->setVertexBuffer(md.mesh->vertexData(), 0, 1);
-    enc->setVertexBuffer(m_dataBuffer, dataOffset, 2);
+  for (const auto& md: m_instances) {
+    enc->setVertexBuffer(md.mesh.asset->vertexPositions(), 0, 0);
+    enc->setVertexBuffer(md.mesh.asset->vertexData(), 0, 1);
+    enc->setVertexBuffer(m_instanceBuffer, dataOffset, 2);
     enc->drawIndexedPrimitives(
       MTL::PrimitiveTypeTriangle,
-      md.mesh->indexCount(),
+      md.mesh.asset->indexCount(),
       MTL::IndexTypeUInt32,
-      md.mesh->indices(),
+			md.mesh.asset->indices(),
       0
     );
 
@@ -270,8 +270,8 @@ void Renderer::render(Scene::NodeID selectedNodeId) {
   // TODO this can use instanced rendering
   // probably no big deal because we won't ever have more than a few cameras
   dataOffset = 0;
-  for ([[maybe_unused]] const auto& cd: m_cameraData) {
-    enc->setVertexBuffer(m_cameraDataBuffer, dataOffset, 1);
+  for ([[maybe_unused]] const auto& camera: m_cameras) {
+    enc->setVertexBuffer(m_cameraBuffer, dataOffset, 1);
     enc->drawIndexedPrimitives(
       MTL::PrimitiveTypeLine,
       16,
@@ -565,34 +565,32 @@ void Renderer::rebuildDataBuffers() {
   /*
    * Discard existing buffers
    */
-  if (m_dataBuffer != nullptr) m_dataBuffer->release();
-  if (m_cameraDataBuffer != nullptr) m_cameraDataBuffer->release();
+  if (m_instanceBuffer != nullptr) m_instanceBuffer->release();
+  if (m_cameraBuffer != nullptr) m_cameraBuffer->release();
 
   /*
    * Calculate buffer sizes and create buffers
    */
-  m_meshData = m_store.scene().getAllInstances(Scene::NodeFlags_Visible);
-  size_t meshCount = m_meshData.size();
+  m_instances = m_store.scene().getInstances();
+  m_instanceBuffer = m_device->newBuffer(
+		m_instances.size() * sizeof(shaders_studio::NodeData),
+		MTL::ResourceStorageModeShared
+  );
 
-  size_t dataBufferSize = meshCount * sizeof(shaders_studio::NodeData);
-  m_dataBuffer = m_device
-    ->newBuffer(dataBufferSize, MTL::ResourceStorageModeShared);
-
-  m_cameraData = m_store.scene().getAllCameras(Scene::NodeFlags_Visible);
-  size_t cameraCount = m_cameraData.size();
-
-  size_t cameraDataBufferSize = cameraCount * sizeof(shaders_studio::NodeData);
-  m_cameraDataBuffer = m_device
-    ->newBuffer(cameraDataBufferSize, MTL::ResourceStorageModeShared);
+  m_cameras = m_store.scene().getCameras();
+  m_cameraBuffer = m_device->newBuffer(
+		m_cameras.size() * sizeof(shaders_studio::NodeData),
+		MTL::ResourceStorageModeShared
+	);
 
   /*
    * Fill transform buffers
    */
   float4x4 view = m_camera.view();
-  for (size_t i = 0; i < m_meshData.size(); i++) {
-    const auto& md = m_meshData[i];
+  for (size_t i = 0; i < m_instances.size(); i++) {
+    const auto& instance = m_instances[i];
 
-    float4x4 vmit = transpose(inverse(view * md.transform));
+    float4x4 vmit = transpose(inverse(view * instance.transformMatrix));
     float3x3 normalViewModel(
       vmit.columns[0].xyz,
       vmit.columns[1].xyz,
@@ -600,43 +598,43 @@ void Renderer::rebuildDataBuffers() {
     );
 
     const shaders_studio::NodeData nodeData = {
-      .model = md.transform,
+      .model = instance.transformMatrix,
       .normalViewModel = normalViewModel,
-      .nodeIdx = md.nodeId,
+      .nodeIdx = uint16_t(instance.node.id()), // TODO: upgrade to i32
     };
 
     // Transform
-    void* dbw = (char*) m_dataBuffer->contents() + i * sizeof(shaders_studio::NodeData);
+    void* dbw = (char*) m_instanceBuffer->contents() + i * sizeof(shaders_studio::NodeData);
     memcpy(dbw, &nodeData, sizeof(shaders_studio::NodeData));
   }
 
-  for (size_t i = 0; i < m_cameraData.size(); i++) {
-    const auto& cd = m_cameraData[i];
+  for (size_t i = 0; i < m_cameras.size(); i++) {
+    const auto& camera = m_cameras[i];
 
     // Rescale the camera according to its parameters
     const float3 scale = {
-      length(cd.transform.columns[0]),
-      length(cd.transform.columns[1]),
-      length(cd.transform.columns[2]),
+      length(camera.transformMatrix.columns[0]),
+      length(camera.transformMatrix.columns[1]),
+      length(camera.transformMatrix.columns[2]),
     };
     float4x4 transform = {
-      cd.transform.columns[0] / scale.x,
-      cd.transform.columns[1] / scale.y,
-      cd.transform.columns[2] / scale.z,
-      cd.transform.columns[3],
+      camera.transformMatrix.columns[0] / scale.x,
+      camera.transformMatrix.columns[1] / scale.y,
+      camera.transformMatrix.columns[2] / scale.z,
+      camera.transformMatrix.columns[3],
     };
 
-    auto newScale = make_float3(cd.camera->sensorSize, cd.camera->focalLength) * 0.1f;
+    auto newScale = make_float3(camera.camera.sensorSize, camera.camera.focalLength) * 0.1f;
     transform *= mat::scaling(newScale);
 
     // Don't need a normal transform matrix, leave it empty
     const shaders_studio::NodeData nodeData = {
       .model = transform,
-      .nodeIdx = cd.nodeId,
+      .nodeIdx = uint16_t(camera.node.id()),
     };
 
     // Transform
-    void* dbw = (char*) m_cameraDataBuffer->contents() + i * sizeof(shaders_studio::NodeData);
+    void* dbw = (char*) m_cameraBuffer->contents() + i * sizeof(shaders_studio::NodeData);
     memcpy(dbw, &nodeData, sizeof(shaders_studio::NodeData));
   }
 }

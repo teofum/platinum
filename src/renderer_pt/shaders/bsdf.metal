@@ -9,7 +9,7 @@ using namespace metal;
  * Loosely based on Enterprise PBR and Blender's Principled BSDF
  */
 namespace bsdf {
-  ShadingContext::ShadingContext(device const pt::Material& mat, float2 uv, device Texture* textures) {
+  ShadingContext::ShadingContext(device const MaterialGPU& mat, float2 uv, device Texture* textures) {
     albedo = mat.baseColor.rgb;
     emission = mat.emission * mat.emissionStrength;
     roughness = mat.roughness;
@@ -357,7 +357,7 @@ namespace bsdf {
    */
   __attribute__((always_inline))
   Eval BSDF::evalTransparentDielectric(float3 wo, float3 wi, float3 wm, float fresnel_ss, float ior) {
-    const bool thin = m_ctx.flags & pt::Material::Material_ThinDielectric;
+    const bool thin = m_ctx.flags & MaterialGPU::Material_ThinDielectric;
     
     const auto isReflection = wo.z * wi.z > 0.0f;
     
@@ -402,7 +402,7 @@ namespace bsdf {
    */
   Eval BSDF::evalTransparentDielectric(float3 wo, float3 wi) {
     if (m_ggx.isSmooth()) return {};
-    const bool thin = m_ctx.flags & pt::Material::Material_ThinDielectric;
+    const bool thin = m_ctx.flags & MaterialGPU::Material_ThinDielectric;
     const float ior = (!thin && wo.z < 0.0f && wi.z < 0.0f) ? 1.0f / m_ctx.ior : m_ctx.ior;
     
     float3 wm = ior * wi + wo;
@@ -521,7 +521,7 @@ namespace bsdf {
   Sample BSDF::sampleTransparentDielectric(float3 wo, float3 r) {
     m_ctx.lobe = Lobe_Transparent;
     
-    const bool thin = m_ctx.flags & pt::Material::Material_ThinDielectric;
+    const bool thin = m_ctx.flags & MaterialGPU::Material_ThinDielectric;
     auto ior = (wo.z < 0.0f && !thin) ? 1.0f / m_ctx.ior : m_ctx.ior;
     
     // Handle the perfect specular edge case
@@ -636,7 +636,7 @@ namespace bsdf {
       const auto cDiffuse = diffuseFactor(wo, wi);
       
       auto flags = Sample_Reflected | Sample_Diffuse;
-      if (m_ctx.flags & pt::Material::Material_Emissive) flags |= Sample_Emitted;
+      if (m_ctx.flags & MaterialGPU::Material_Emissive) flags |= Sample_Emitted;
       return {
         .flags  = flags,
         .wi     = wi,

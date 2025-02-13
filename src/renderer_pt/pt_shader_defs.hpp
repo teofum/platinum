@@ -62,28 +62,38 @@ struct AreaLight {
   float3 emission;
 };
 
-struct Distribution1D {
-  metal_ptr(float, device) f;
-  metal_ptr(float, device) cdf;
-  float min, max, integral;
-  uint32_t size;
-};
-
-struct Distribution2D {
-  float2 min, max;
-  Distribution1D marginal;
-  metal_ptr(Distribution1D, device) conditional;
-  uint32_t size;
-};
-
 struct EnvironmentLight {
-  uint32_t textureId;
+  uint32_t textureIdx;
   metal_ptr(AliasEntry, device) alias;
 };
 
 enum RendererFlags {
   RendererFlags_None = 0,
   RendererFlags_MultiscatterGGX = 1 << 0,
+};
+
+/*
+ * Material struct used GPU side for rendering
+ */
+struct MaterialGPU {
+  enum MaterialFlags {
+    Material_ThinDielectric = 1 << 0,
+    Material_UseAlpha = 1 << 1,
+    Material_Emissive = 1 << 2,
+    Material_Anisotropic = 1 << 3,
+  };
+  
+  float4 baseColor = {0.8, 0.8, 0.8, 1.0};
+  float3 emission;
+  float emissionStrength = 0.0f;
+  float roughness = 1.0f, metallic = 0.0f, transmission = 0.0f;
+  float ior = 1.5f;
+  float anisotropy = 0.0f, anisotropyRotation = 0.0f;
+  float clearcoat = 0.0f, clearcoatRoughness = 0.05f;
+  
+  int flags = 0;
+  
+  int32_t baseTextureId = -1, rmTextureId = -1, transmissionTextureId = -1, clearcoatTextureId = -1, emissionTextureId = -1, normalTextureId = -1;
 };
 
 struct Constants {
@@ -107,7 +117,7 @@ struct PrimitiveResource {
 };
 
 struct InstanceResource {
-  metal_ptr(Material, device) materials;
+  metal_ptr(MaterialGPU, device) materials;
 };
 
 struct Luts {

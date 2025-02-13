@@ -59,13 +59,13 @@ TextureLoader::TextureLoader(MTL::Device* device, MTL::CommandQueue* commandQueu
   }
 }
 
-Scene::TextureID TextureLoader::loadFromFile(const fs::path &path, std::string_view name, TextureType type) {
+Scene::AssetID TextureLoader::loadFromFile(const fs::path &path, std::string_view name, TextureType type) {
   const auto in = OIIO::ImageInput::open(path.string());
   
   return load(in, name, type);
 }
 
-Scene::TextureID TextureLoader::loadFromMemory(const uint8_t *data, uint32_t len, std::string_view name, TextureType type) {
+Scene::AssetID TextureLoader::loadFromMemory(const uint8_t *data, uint32_t len, std::string_view name, TextureType type) {
   /*
    * Create a temporary read buffer and decode the image from memory
    * We set the x-stride to four channels so our buffer can take any type of input image. This
@@ -78,7 +78,7 @@ Scene::TextureID TextureLoader::loadFromMemory(const uint8_t *data, uint32_t len
   return load(in, name, type);
 }
 
-Scene::TextureID TextureLoader::load(const std::unique_ptr<OIIO::ImageInput>& in, std::string_view name, TextureType type) {
+Scene::AssetID TextureLoader::load(const std::unique_ptr<OIIO::ImageInput>& in, std::string_view name, TextureType type) {
   const auto& spec = in->spec();
   
   // We use this later to fill the alpha channel with 1 if it's not present.
@@ -174,7 +174,8 @@ Scene::TextureID TextureLoader::load(const std::unique_ptr<OIIO::ImageInput>& in
    * Store the actual texture in our scene and return the ID so it can be set on the materials that
    * use it, replacing the placeholder
    */
-  return m_scene.addTexture(name, NS::TransferPtr(texture), hasAlpha);
+  Texture asset(texture, name, hasAlpha);
+  return m_scene.createAsset(std::move(asset));
 }
 
 }

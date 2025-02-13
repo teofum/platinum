@@ -13,6 +13,7 @@
 #include <frontend/state.hpp>
 #include <frontend/windows/properties.hpp>
 #include <frontend/windows/scene_explorer.hpp>
+#include <frontend/windows/asset_manager.hpp>
 #include <frontend/windows/studio_viewport.hpp>
 #include <frontend/windows/pt_viewport.hpp>
 #include <frontend/windows/tools/ms_lut_gen.hpp>
@@ -56,6 +57,7 @@ private:
   // Windows
   windows::Properties m_properties;
   windows::SceneExplorer m_sceneExplorer;
+  windows::AssetManager m_assetManager;
   windows::StudioViewport m_studioViewport;
   windows::RenderViewport m_renderViewport;
   

@@ -27,13 +27,13 @@ void RenderViewport::render() {
     m_cameraNodeId = std::nullopt;
   }
 
-  auto cameras = m_store.scene().getAllCameras();
+  auto cameras = m_store.scene().getCameras();
   if (!m_cameraNodeId && !cameras.empty()) {
-    m_cameraNodeId = cameras[0].nodeId;
+    m_cameraNodeId = cameras[0].node.id();
   }
   
  const auto& label = m_cameraNodeId
-                     ? m_store.scene().node(m_cameraNodeId.value())->name
+  									 ? m_store.scene().node(m_cameraNodeId.value()).name()
                      : "[No camera selected]";
 
   auto open = ImGui::Begin("Render");
@@ -44,10 +44,10 @@ void RenderViewport::render() {
     ImGui::SetNextItemWidth(160);
     ImGui::BeginDisabled(cameras.empty());
     if (ImGui::BeginCombo("##CameraSelect", label.c_str())) {
-      for (const auto& cd: cameras) {
-        auto name = std::format("{}##Camera_{}", m_store.scene().node(cd.nodeId)->name, cd.nodeId);
-        const bool isSelected = cd.nodeId == m_cameraNodeId;
-        if (widgets::comboItem(name.c_str(), isSelected)) m_cameraNodeId = cd.nodeId;
+      for (const auto& camera: cameras) {
+        auto name = std::format("{}##Camera_{}", camera.node.name(), uint32_t(camera.node.id()));
+        const bool isSelected = camera.node.id() == m_cameraNodeId;
+        if (widgets::comboItem(name.c_str(), isSelected)) m_cameraNodeId = camera.node.id();
         
         if (isSelected) ImGui::SetItemDefaultFocus();
       }
@@ -140,10 +140,10 @@ void RenderViewport::render() {
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
   ImGui::BeginDisabled(cameras.empty());
   if (ImGui::BeginCombo("##CameraSelect", label.c_str())) {
-    for (const auto& cd: cameras) {
-      auto name = std::format("{}##Camera_{}", m_store.scene().node(cd.nodeId)->name, cd.nodeId);
-      const bool isSelected = cd.nodeId == m_cameraNodeId;
-      if (widgets::comboItem(name.c_str(), isSelected)) m_cameraNodeId = cd.nodeId;
+    for (const auto& camera: cameras) {
+      auto name = std::format("{}##Camera_{}", camera.node.name(), uint32_t(camera.node.id()));
+      const bool isSelected = camera.node.id() == m_cameraNodeId;
+      if (widgets::comboItem(name.c_str(), isSelected)) m_cameraNodeId = camera.node.id();
       
       if (isSelected) ImGui::SetItemDefaultFocus();
     }

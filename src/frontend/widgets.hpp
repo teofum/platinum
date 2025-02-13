@@ -43,6 +43,8 @@ bool menuItem(const char* label, const char* shortcut = nullptr, bool* selected 
 
 bool menuItem(const char* label, const char* shortcut, bool selected);
 
+std::optional<Scene::AssetID> textureSelect(Scene& scene, const char* label, std::optional<Scene::AssetID> selectedId);
+
 }
 
 #endif //PLATINUM_WIDGETS_HPP

@@ -116,6 +116,7 @@ private:
   MTL::Buffer* m_instanceResourcesBuffer = nullptr;
   std::vector<MTL::Buffer*> m_instanceMaterialBuffers;
   
+  ankerl::unordered_dense::map<Scene::AssetID, size_t> m_textureIndices;
   MTL::Buffer* m_texturesBuffer = nullptr;
   MTL::Buffer* m_argumentBuffer = nullptr;
   
@@ -168,6 +169,8 @@ private:
   void rebuildLightData();
 
   void updateConstants(Scene::NodeID cameraNodeId, int flags);
+  
+  Material* getMaterialOrDefault(std::optional<Scene::AssetID> id);
 };
 
 }

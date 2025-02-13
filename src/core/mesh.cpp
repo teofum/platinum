@@ -20,7 +20,7 @@ static int getNumVerticesOfFace(const SMikkTSpaceContext* ctx, int face) {
 static void getPosition(const SMikkTSpaceContext* ctx, float* outPos, int face, int vert) {
   auto mesh = static_cast<Mesh*>(ctx->m_pUserData);
   uint32_t vertexIdx = static_cast<uint32_t*>(mesh->indices()->contents())[face * 3 + vert];
-  
+
   auto vertexPos = static_cast<float3*>(mesh->vertexPositions()->contents())[vertexIdx];
   outPos[0] = vertexPos.x;
   outPos[1] = vertexPos.y;
@@ -30,7 +30,7 @@ static void getPosition(const SMikkTSpaceContext* ctx, float* outPos, int face, 
 static void getNormal(const SMikkTSpaceContext* ctx, float* outNormal, int face, int vert) {
   auto mesh = static_cast<Mesh*>(ctx->m_pUserData);
   uint32_t vertexIdx = static_cast<uint32_t*>(mesh->indices()->contents())[face * 3 + vert];
-  
+
   auto vertexData = static_cast<VertexData*>(mesh->vertexData()->contents())[vertexIdx];
   outNormal[0] = vertexData.normal.x;
   outNormal[1] = vertexData.normal.y;
@@ -40,7 +40,7 @@ static void getNormal(const SMikkTSpaceContext* ctx, float* outNormal, int face,
 static void getTexCoord(const SMikkTSpaceContext* ctx, float* outTexCoord, int face, int vert) {
   auto mesh = static_cast<Mesh*>(ctx->m_pUserData);
   uint32_t vertexIdx = static_cast<uint32_t*>(mesh->indices()->contents())[face * 3 + vert];
-  
+
   auto vertexData = static_cast<VertexData*>(mesh->vertexData()->contents())[vertexIdx];
   outTexCoord[0] = vertexData.texCoords.x;
   outTexCoord[1] = vertexData.texCoords.y;
@@ -49,9 +49,9 @@ static void getTexCoord(const SMikkTSpaceContext* ctx, float* outTexCoord, int f
 static void setTSpaceBasic(const SMikkTSpaceContext* ctx, const float* tangent, float sign, int face, int vert) {
   auto mesh = static_cast<Mesh*>(ctx->m_pUserData);
   uint32_t vertexIdx = static_cast<uint32_t*>(mesh->indices()->contents())[face * 3 + vert];
-  
+
   auto vertexData = static_cast<VertexData*>(mesh->vertexData()->contents()) + vertexIdx;
-  vertexData->tangent = float4{ tangent[0], tangent[1], tangent[2], sign };
+  vertexData->tangent = float4{tangent[0], tangent[1], tangent[2], sign};
 }
 
 }
@@ -63,8 +63,7 @@ Mesh::Mesh(
   const std::vector<uint32_t>& indices,
   const std::vector<uint32_t>& materialIndices
 ) noexcept: m_indexCount(indices.size()),
-            m_vertexCount(vertexPositions.size()
-) {
+            m_vertexCount(vertexPositions.size()) {
   size_t vpSize = vertexPositions.size() * sizeof(float3);
   m_vertexPositions = device->newBuffer(vpSize, MTL::ResourceStorageModeShared);
   memcpy(m_vertexPositions->contents(), vertexPositions.data(), vpSize);
@@ -76,11 +75,26 @@ Mesh::Mesh(
   size_t iSize = indices.size() * sizeof(uint32_t);
   m_indices = device->newBuffer(iSize, MTL::ResourceStorageModeShared);
   memcpy(m_indices->contents(), indices.data(), iSize);
-              
+
   size_t miSize = materialIndices.size() * sizeof(uint32_t);
   m_materialIndices = device->newBuffer(miSize, MTL::ResourceStorageModeShared);
   memcpy(m_materialIndices->contents(), materialIndices.data(), miSize);
 }
+
+Mesh::Mesh(
+  MTL::Buffer* vertexPositions,
+  MTL::Buffer* vertexData,
+  MTL::Buffer* indices,
+  MTL::Buffer* materialIndices,
+  size_t indexCount,
+  size_t vertexCount
+) noexcept
+  : m_indexCount(indexCount),
+    m_vertexCount(vertexCount),
+    m_vertexPositions(vertexPositions),
+    m_vertexData(vertexData),
+    m_indices(indices),
+    m_materialIndices(materialIndices) {}
 
 Mesh::~Mesh() {
   m_vertexPositions->release();
@@ -124,7 +138,7 @@ void Mesh::generateTangents() {
    * We run tangent generation on index vertices for simplicity. This is wrong, and may result in
    * incorrect tangents for some cases. It mostly works, but we should fix it later.
    */
-  SMikkTSpaceInterface interface {
+  SMikkTSpaceInterface interface{
     .m_getNumFaces = mikkt::getNumFaces,
     .m_getNumVerticesOfFace = mikkt::getNumVerticesOfFace,
     .m_getPosition = mikkt::getPosition,
@@ -133,12 +147,12 @@ void Mesh::generateTangents() {
     .m_setTSpaceBasic = mikkt::setTSpaceBasic,
     .m_setTSpace = nullptr,
   };
-  
-  SMikkTSpaceContext ctx {
+
+  SMikkTSpaceContext ctx{
     .m_pInterface = &interface,
     .m_pUserData = static_cast<void*>(this),
   };
-  
+
   genTangSpaceDefault(&ctx);
 }
 

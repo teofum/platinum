@@ -34,7 +34,7 @@ void StudioViewport::render() {
     m_renderer->handleResizeViewport(m_viewportSize * m_dpiScaling);
 
     if (!m_state.rendering()) {
-      m_renderer->render(m_state.selectedNode().value_or(0));
+      m_renderer->render(m_state.selectedNode().value_or(Scene::null));
     }
 
     ImGui::Image(
@@ -97,7 +97,7 @@ bool StudioViewport::handleInputs(const SDL_Event& event) {
       uint32_t y = button.y - static_cast<uint32_t>(m_viewportTopLeft.y);
 
       auto objectId = m_renderer->readbackObjectIdAt(x, y);
-      if (objectId != 0) {
+      if (objectId != Scene::NodeID(0)) {
         m_state.selectNode(objectId);
       } else {
         m_state.selectNode(std::nullopt);

@@ -1,6 +1,5 @@
 #include "gltf.hpp"
 
-#include <OpenImageIO/imageio.h>
 #include <OpenImageIO/filesystem.h>
 
 #include <utils/metal_utils.hpp>
@@ -26,12 +25,14 @@ static float3 eulerFromQuat(fastgltf::math::fquat q) {
 }
 
 GltfLoader::GltfLoader(MTL::Device* device, MTL::CommandQueue* commandQueue, Scene& scene) noexcept
-: m_device(device), m_commandQueue(commandQueue), m_scene(scene), m_textureLoader(device, commandQueue, scene) {}
+  : m_device(device), m_commandQueue(commandQueue), m_textureLoader(device, commandQueue, scene), m_scene(scene) {}
 
 /*
  * Load a scene from glTF.
  */
 void GltfLoader::load(const fs::path& path, int options) {
+  auto start = std::chrono::high_resolution_clock::now();
+
   auto gltfFile = fastgltf::GltfDataBuffer::FromPath(path);
   if (gltfFile.error() != fastgltf::Error::None) {
     std::println(
@@ -71,46 +72,36 @@ void GltfLoader::load(const fs::path& path, int options) {
   }
   m_asset = std::make_unique<fastgltf::Asset>(std::move(asset.get()));
   m_options = options;
-  
+
   m_materialIds.reserve(m_asset->materials.size());
   for (const auto& material: m_asset->materials)
     loadMaterial(material);
-  
+
   m_textureIds.reserve(m_texturesToLoad.size());
-  for (const auto& [idx, type]: m_texturesToLoad) {
-    auto textureId = loadTexture(m_asset->textures[idx], type);
-    
-    // Replace the index with the real ID on any materials using the texture
-    for (auto mid: m_materialIds) {
-      auto* material = m_scene.material(mid);
-      if (material->baseTextureId == -2 - idx) material->baseTextureId = textureId;
-      if (material->rmTextureId == -2 - idx) material->rmTextureId = textureId;
-      if (material->transmissionTextureId == -2 - idx) material->transmissionTextureId = textureId;
-      if (material->emissionTextureId == -2 - idx) material->emissionTextureId = textureId;
-      if (material->clearcoatTextureId == -2 - idx) material->clearcoatTextureId = textureId;
-      if (material->normalTextureId == -2 - idx) material->normalTextureId = textureId;
+  for (const auto& [idx, desc]: m_texturesToLoad) {
+    auto textureId = loadTexture(m_asset->textures[idx], desc.type);
+
+    // Set texture ID on materials using the texture
+    for (const auto& [materialId, slot]: desc.users) {
+      auto* material = m_scene.getAsset<Material>(materialId);
+      m_scene.updateMaterialTexture(material, slot, textureId);
     }
-  }
-  
-  for (auto mid: m_materialIds) {
-    m_scene.recalculateMaterialFlags(mid);
   }
 
   m_meshIds.reserve(m_asset->meshes.size());
   for (const auto& mesh: m_asset->meshes)
     loadMesh(mesh);
 
-  m_cameraIds.reserve(m_asset->cameras.size());
+  m_cameras.reserve(m_asset->cameras.size());
   for (const auto& camera: m_asset->cameras) {
     auto perspective = std::get_if<fastgltf::Camera::Perspective>(&camera.camera);
     if (perspective) {
       float2 size{24.0f * perspective->aspectRatio.value_or(1.5f), 24.0f};
-      auto id = m_scene.addCamera(Camera::withFov(perspective->yfov, size));
-      m_cameraIds.push_back(id);
+      m_cameras.push_back(Camera::withFov(perspective->yfov, size));
     }
   }
 
-  Scene::NodeID localRoot = 0;
+  Scene::NodeID localRoot = m_scene.root().id();
   auto filename = path.stem().string();
   uint32_t sceneIdx = 0;
   for (const auto& scene: m_asset->scenes) {
@@ -118,13 +109,18 @@ void GltfLoader::load(const fs::path& path, int options) {
       auto nodeName = m_asset->scenes.size() > 1
                       ? std::format("{}.{:3}", filename, sceneIdx++)
                       : filename;
-      localRoot = m_scene.addNode(Scene::Node(nodeName));
+      localRoot = m_scene.createNode(nodeName).id();
     }
 
     for (auto nodeIdx: scene.nodeIndices) {
       loadNode(m_asset->nodes[nodeIdx], localRoot);
     }
   }
+
+  auto end = std::chrono::high_resolution_clock::now();
+  auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+  std::println("Import glTF {} in {} ms", path.stem().string(), millis.count());
 }
 
 /*
@@ -135,13 +131,13 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
   std::vector<VertexData> vertexData;
   std::vector<uint32_t> indices;
   std::vector<uint32_t> materialSlotIndices;
-  std::vector<Scene::MaterialID> materialSlots;
+  std::vector<Scene::AssetID> materialSlots;
 
   std::vector<float3> primitiveVertexPositions;
   std::vector<VertexData> primitiveVertexData;
   std::vector<uint32_t> primitiveIndices;
   std::vector<uint32_t> primitiveMaterialSlotIndices;
-  
+
   bool didLoadTangents = false;
 
   uint32_t materialSlotIdx = 0;
@@ -179,7 +175,7 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
     const auto nmlAttrib = prim.findAttribute("NORMAL");
     if (nmlAttrib != prim.attributes.end()) {
       const auto& nmlAccessor = m_asset->accessors[nmlAttrib->accessorIndex];
-      
+
       size_t i = 0;
       auto normalIt = fastgltf::iterateAccessor<float3>(*m_asset, nmlAccessor);
       for (auto normal: normalIt) primitiveVertexData[i++].normal = normal;
@@ -192,26 +188,26 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
     const auto texAttrib = prim.findAttribute("TEXCOORD_0");
     if (texAttrib != prim.attributes.end()) {
       const auto& texAccessor = m_asset->accessors[texAttrib->accessorIndex];
-      
+
       size_t i = 0;
       auto texCoordIt = fastgltf::iterateAccessor<float2>(*m_asset, texAccessor);
       for (auto texCoords: texCoordIt) primitiveVertexData[i++].texCoords = texCoords;
     }
-    
+
     /*
      * Copy primitive vertex tangents, if present
      */
     const auto tanAttrib = prim.findAttribute("TANGENT");
     if (tanAttrib != prim.attributes.end()) {
       const auto& tanAccessor = m_asset->accessors[tanAttrib->accessorIndex];
-      
+
       size_t i = 0;
       auto tangentIt = fastgltf::iterateAccessor<float4>(*m_asset, tanAccessor);
       for (auto tangent: tangentIt) primitiveVertexData[i++].tangent = tangent;
-      
+
       didLoadTangents = true;
     }
-    
+
     /*
      * Copy primitive data into mesh data buffers
      */
@@ -224,13 +220,14 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
     const auto& idxAccesor = m_asset->accessors[prim.indicesAccessor.value()];
     primitiveIndices.reserve(idxAccesor.count);
     auto idxIt = fastgltf::iterateAccessor<uint32_t>(*m_asset, idxAccesor);
-    for (uint32_t idx: idxIt) primitiveIndices.push_back(idx + (uint32_t)offset);
-    
+    for (uint32_t idx: idxIt) primitiveIndices.push_back(idx + (uint32_t) offset);
+
     primitiveMaterialSlotIndices.resize(idxAccesor.count / 3, materialSlotIdx++);
 
     indices.insert(indices.end(), primitiveIndices.begin(), primitiveIndices.end());
-    materialSlotIndices.insert(materialSlotIndices.end(), primitiveMaterialSlotIndices.begin(), primitiveMaterialSlotIndices.end());
-    
+    materialSlotIndices
+      .insert(materialSlotIndices.end(), primitiveMaterialSlotIndices.begin(), primitiveMaterialSlotIndices.end());
+
     /*
      * Set material ID for slot
      */
@@ -240,50 +237,54 @@ void GltfLoader::loadMesh(const fastgltf::Mesh& gltfMesh) {
   /*
    * Create the mesh and store its ID and materials
    */
-  auto id = m_scene.addMesh({m_device, vertexPositions, vertexData, indices, materialSlotIndices});
+  Mesh mesh(m_device, vertexPositions, vertexData, indices, materialSlotIndices);
+  if (!didLoadTangents) mesh.generateTangents();
+
+  auto id = m_scene.createAsset(std::move(mesh));
+  m_scene.assetRetained(id) = false;
   m_meshIds.push_back(id);
   m_meshMaterials[id] = materialSlots;
-  
-  if (!didLoadTangents) m_scene.mesh(id)->generateTangents();
 }
 
 /*
  * Load a glTF scene node and all its children recursively
  */
-void GltfLoader::loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent) {
-  std::optional<Scene::MeshID> meshId = std::nullopt;
+void GltfLoader::loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parentId) {
+  std::optional<Scene::AssetID> meshId = std::nullopt;
   if (gltfNode.meshIndex) meshId = m_meshIds[gltfNode.meshIndex.value()];
 
-  std::optional<Scene::CameraID> cameraId = std::nullopt;
-  if (gltfNode.cameraIndex) cameraId = m_cameraIds[gltfNode.cameraIndex.value()];
-
   // Skip adding empty nodes
-  if ((m_options & LoadOptions_SkipEmptyNodes) && !meshId && !cameraId && gltfNode.children.empty()) {
+  if ((m_options & LoadOptions_SkipEmptyNodes) && !meshId && !gltfNode.cameraIndex && gltfNode.children.empty()) {
     return;
   }
 
   // Create node
-  std::string_view name(gltfNode.name);
-  Scene::Node node(name, meshId);
-  node.cameraId = cameraId;
+  auto node = m_scene.createNode(gltfNode.name, parentId);
+  if (gltfNode.cameraIndex) node.set(m_cameras[gltfNode.cameraIndex.value()]);
 
   // Node transform
   auto trs = std::get_if<fastgltf::TRS>(&gltfNode.transform);
   if (trs) {
     auto& t = trs->translation;
-    node.transform.translation = float3{t.x(), t.y(), t.z()};
+    node.transform().translation = float3{t.x(), t.y(), t.z()};
     auto& s = trs->scale;
-    node.transform.scale = float3{s.x(), s.y(), s.z()};
-    node.transform.rotation = eulerFromQuat(trs->rotation);
+    node.transform().scale = float3{s.x(), s.y(), s.z()};
+    node.transform().rotation = eulerFromQuat(trs->rotation);
   }
-  
-  // Node material slots
-  if (meshId) node.materials = m_meshMaterials[meshId.value()];
 
-  // Add node and load children
-  auto id = m_scene.addNode(std::move(node), parent);
+  // Node mesh and material slots
+  if (meshId) {
+    node.setMesh(meshId);
+
+    auto& materials = m_meshMaterials[meshId.value()];
+    for (size_t i = 0; i < materials.size(); i++) {
+      node.setMaterial(i, materials[i]);
+    }
+  }
+
+  // Load children
   for (auto childIdx: gltfNode.children) {
-    loadNode(m_asset->nodes[childIdx], id);
+    loadNode(m_asset->nodes[childIdx], node.id());
   }
 }
 
@@ -294,89 +295,95 @@ void GltfLoader::loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent) 
  * Textures are later loaded and the indices are replaced with the actual IDs. This lets us avoid
  * duplicating textures if they are used by multiple materials.
  */
-void GltfLoader::loadMaterial(const fastgltf::Material &gltfMat) {
+void GltfLoader::loadMaterial(const fastgltf::Material& gltfMat) {
   Material material;
-  
+  material.name = gltfMat.name;
+
   // Assign base color
   for (uint32_t i = 0; i < 4; i++)
     material.baseColor[i] = gltfMat.pbrData.baseColorFactor[i];
-  
-  // Load base color texture
-  if (gltfMat.pbrData.baseColorTexture) {
-    uint16_t id = gltfMat.pbrData.baseColorTexture->textureIndex;
-    material.baseTextureId = -2 - id; // Hacky way to encode non-ids, TODO: do something less shit
-    m_texturesToLoad[id] = texture::TextureType::sRGB;
-  }
-  
+
   // Assign PBR parameters
   material.roughness = gltfMat.pbrData.roughnessFactor;
   material.metallic = gltfMat.pbrData.metallicFactor;
-  
-  // Load roughness/metallic texture
-  if (gltfMat.pbrData.metallicRoughnessTexture) {
-    uint16_t id = gltfMat.pbrData.metallicRoughnessTexture->textureIndex;
-    material.rmTextureId = -2 - id;
-    m_texturesToLoad[id] = texture::TextureType::RoughnessMetallic;
-  }
-  
+
   if (gltfMat.transmission != nullptr) {
     material.transmission = gltfMat.transmission->transmissionFactor;
-    
-    if (gltfMat.transmission->transmissionTexture) {
-      uint16_t id = gltfMat.transmission->transmissionTexture->textureIndex;
-      material.transmissionTextureId = -2 - id;
-      m_texturesToLoad[id] = texture::TextureType::Mono;
-    }
   }
-  
+
   // Assign emission
   material.emissionStrength = gltfMat.emissiveStrength;
   for (uint32_t i = 0; i < 3; i++) material.emission[i] = gltfMat.emissiveFactor[i];
-  
-  // Load emission texture
-  if (gltfMat.emissiveTexture) {
-    uint16_t id = gltfMat.emissiveTexture->textureIndex;
-    material.emissionTextureId = -2 - id;
-    m_texturesToLoad[id] = texture::TextureType::sRGB;
-  }
-  
+
   // Assign additional parameters
   material.ior = gltfMat.ior;
-  
+
   if (gltfMat.anisotropy != nullptr) {
     material.anisotropy = gltfMat.anisotropy->anisotropyStrength;
     material.anisotropyRotation = gltfMat.anisotropy->anisotropyRotation;
   }
-  
+
   if (gltfMat.clearcoat != nullptr) {
     material.clearcoat = gltfMat.clearcoat->clearcoatFactor;
     material.clearcoatRoughness = gltfMat.clearcoat->clearcoatRoughnessFactor;
-    
-    if (gltfMat.clearcoat->clearcoatTexture) {
-      uint16_t id = gltfMat.clearcoat->clearcoatTexture->textureIndex;
-      material.clearcoatTextureId = -2 - id;
-      m_texturesToLoad[id] = texture::TextureType::Mono;
-    }
   }
-  
+
+  Scene::AssetID materialId = m_scene.createAsset(std::move(material));
+  m_scene.assetRetained(materialId) = false;
+  m_materialIds.push_back(materialId);
+
+  /*
+   * Load textures
+   */
+
+  // Load base color texture
+  if (gltfMat.pbrData.baseColorTexture) {
+    uint16_t textureIdx = gltfMat.pbrData.baseColorTexture->textureIndex;
+    m_texturesToLoad[textureIdx].type = texture::TextureType::sRGB;
+    m_texturesToLoad[textureIdx].users.emplace_back(materialId, Material::TextureSlot::BaseColor);
+  }
+
+  // Load roughness/metallic texture
+  if (gltfMat.pbrData.metallicRoughnessTexture) {
+    uint16_t textureIdx = gltfMat.pbrData.metallicRoughnessTexture->textureIndex;
+    m_texturesToLoad[textureIdx].type = texture::TextureType::RoughnessMetallic;
+    m_texturesToLoad[textureIdx].users.emplace_back(materialId, Material::TextureSlot::RoughnessMetallic);
+  }
+
   // Load normal texture
   if (gltfMat.normalTexture) {
-    uint16_t id = gltfMat.normalTexture->textureIndex;
-    material.normalTextureId = -2 - id;
-    m_texturesToLoad[id] = texture::TextureType::LinearRGB;
+    uint16_t textureIdx = gltfMat.normalTexture->textureIndex;
+    m_texturesToLoad[textureIdx].type = texture::TextureType::LinearRGB;
+    m_texturesToLoad[textureIdx].users.emplace_back(materialId, Material::TextureSlot::Normal);
   }
-  
-  auto id = m_scene.addMaterial(gltfMat.name, material);
-  m_materialIds.push_back(id);
+
+  // Load emission texture
+  if (gltfMat.emissiveTexture) {
+    uint16_t textureIdx = gltfMat.emissiveTexture->textureIndex;
+    m_texturesToLoad[textureIdx].type = texture::TextureType::sRGB;
+    m_texturesToLoad[textureIdx].users.emplace_back(materialId, Material::TextureSlot::Emission);
+  }
+
+  if (gltfMat.transmission != nullptr && gltfMat.transmission->transmissionTexture) {
+    uint16_t textureIdx = gltfMat.transmission->transmissionTexture->textureIndex;
+    m_texturesToLoad[textureIdx].type = texture::TextureType::Mono;
+    m_texturesToLoad[textureIdx].users.emplace_back(materialId, Material::TextureSlot::Transmission);
+  }
+
+  if (gltfMat.clearcoat != nullptr && gltfMat.clearcoat->clearcoatTexture) {
+    uint16_t textureIdx = gltfMat.clearcoat->clearcoatTexture->textureIndex;
+    m_texturesToLoad[textureIdx].type = texture::TextureType::Mono;
+    m_texturesToLoad[textureIdx].users.emplace_back(materialId, Material::TextureSlot::Clearcoat);
+  }
 }
 
 /*
  * Load a texture from the glTF file.
  */
-Scene::TextureID GltfLoader::loadTexture(const fastgltf::Texture &gltfTex, texture::TextureType type) {
+Scene::AssetID GltfLoader::loadTexture(const fastgltf::Texture& gltfTex, texture::TextureType type) {
   // Assume the texture has an image index: we don't support any of the image type extensions for now
   const auto& image = m_asset->images[gltfTex.imageIndex.value()];
-  
+
   // Get through all the levels of indirection to the actual texture bytes
   const auto* bvi = std::get_if<fastgltf::sources::BufferView>(&image.data);
   const auto& bv = m_asset->bufferViews[bvi->bufferViewIndex];
@@ -384,10 +391,12 @@ Scene::TextureID GltfLoader::loadTexture(const fastgltf::Texture &gltfTex, textu
 
   // This only supports one type of data source. TODO: support other data source types
   const auto* bytes = std::get_if<fastgltf::sources::Array>(&buf.data);
-  const uint8_t* data = reinterpret_cast<const uint8_t*>(&bytes->bytes[bv.byteOffset]);
-  int32_t len = int32_t(bv.byteLength);
-  
-  return m_textureLoader.loadFromMemory(data, len, gltfTex.name, type);
+  const auto* data = reinterpret_cast<const uint8_t*>(&bytes->bytes[bv.byteOffset]);
+  auto len = int32_t(bv.byteLength);
+
+  auto id = m_textureLoader.loadFromMemory(data, len, gltfTex.name, type);
+  m_scene.assetRetained(id) = false;
+  return id;
 }
 
 }

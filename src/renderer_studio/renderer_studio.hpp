@@ -19,7 +19,7 @@ public:
 
   ~Renderer();
 
-  void render(Scene::NodeID selectedNodeId = 0);
+  void render(Scene::NodeID selectedNodeId = Scene::null);
 
   void handleScrollEvent(const float2& delta);
 
@@ -70,16 +70,16 @@ private:
   // Main pass pipeline state and buffers
   MTL::RenderPipelineState* m_pso = nullptr;
   MTL::DepthStencilState* m_dsso = nullptr;
-  MTL::Buffer* m_dataBuffer = nullptr;
-  std::vector<Scene::InstanceData> m_meshData;
+  MTL::Buffer* m_instanceBuffer = nullptr;
+  std::vector<Scene::Instance> m_instances;
 
   // Camera pass pipeline state and buffers
   MTL::RenderPipelineState* m_cameraPso = nullptr;
   MTL::DepthStencilState* m_cameraDsso = nullptr;
   MTL::Buffer* m_cameraVertexBuffer = nullptr;
   MTL::Buffer* m_cameraIndexBuffer = nullptr;
-  MTL::Buffer* m_cameraDataBuffer = nullptr;
-  std::vector<Scene::CameraData> m_cameraData;
+  MTL::Buffer* m_cameraBuffer = nullptr;
+  std::vector<Scene::CameraInstance> m_cameras;
 
   // Grid pass pipeline state
   MTL::RenderPipelineState* m_gridPassPso = nullptr;
