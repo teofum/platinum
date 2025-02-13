@@ -339,6 +339,12 @@ void Frontend::renderMenuBar() {
    */
   if (!ImGui::IsItemActive()) {
     // File
+    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_O))
+      m_store.open();
+
+    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S))
+      m_store.saveAs();
+    
     if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_I))
       m_store.importGltf();
 
@@ -365,14 +371,8 @@ void Frontend::renderMenuBar() {
 
     ImGui::SetNextWindowSize({160, 0});
     if (widgets::menu("File")) {
-      if (widgets::menuItem("Open")) {
-        auto path = utils::fileOpen("/", "json");
-        if (path) m_store.open(path.value());
-      }
-      if (widgets::menuItem("Save As...")) {
-        auto path = utils::fileSave("/", "json");
-        if (path) m_store.saveAs(path.value());
-      }
+      if (widgets::menuItem("Open", "Cmd + O")) m_store.open();
+      if (widgets::menuItem("Save As...", "Cmd + S")) m_store.saveAs();
 
       ImGui::Separator();
 

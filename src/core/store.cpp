@@ -14,12 +14,14 @@ Store::~Store() {
   m_commandQueue->release();
 }
 
-void Store::open(const fs::path& path) {
-  m_scene = std::make_unique<Scene>(path, m_device);
+void Store::open() {
+  auto path = utils::fileOpen("/", "json");
+  if (path) m_scene = std::make_unique<Scene>(path.value(), m_device);
 }
 
-void Store::saveAs(const fs::path& path) {
-  m_scene->saveToFile(path);
+void Store::saveAs() {
+  auto path = utils::fileSave("/", "json");
+  if (path) m_scene->saveToFile(path.value());
 }
 
 void Store::importGltf() {
