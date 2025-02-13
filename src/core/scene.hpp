@@ -216,7 +216,7 @@ public:
 
   size_t assetCount();
 
-  std::vector<AnyAssetData> getAllAssets(std::function<bool(const AssetPtr&)> filter);
+  std::vector<AnyAssetData> getAllAssets(const std::function<bool(const AssetPtr&)>& filter);
 
   std::vector<AnyAssetData> getAllAssets();
 

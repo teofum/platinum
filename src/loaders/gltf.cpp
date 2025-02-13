@@ -31,6 +31,8 @@ GltfLoader::GltfLoader(MTL::Device* device, MTL::CommandQueue* commandQueue, Sce
  * Load a scene from glTF.
  */
 void GltfLoader::load(const fs::path& path, int options) {
+  auto start = std::chrono::high_resolution_clock::now();
+
   auto gltfFile = fastgltf::GltfDataBuffer::FromPath(path);
   if (gltfFile.error() != fastgltf::Error::None) {
     std::println(
@@ -114,6 +116,11 @@ void GltfLoader::load(const fs::path& path, int options) {
       loadNode(m_asset->nodes[nodeIdx], localRoot);
     }
   }
+
+  auto end = std::chrono::high_resolution_clock::now();
+  auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+  std::println("Import glTF {} in {} ms", path.stem().string(), millis.count());
 }
 
 /*

@@ -23,6 +23,8 @@ Scene::Scene() noexcept: m_nextAssetId(0), m_assets() {
 }
 
 Scene::Scene(const fs::path& path, MTL::Device* device) noexcept: m_nextAssetId(0), m_assets() {
+  auto start = std::chrono::high_resolution_clock::now();
+
   auto binaryFilename = std::format("{}_data.bin", path.stem().string());
   auto binaryPath = path.parent_path() / binaryFilename;
 
@@ -47,10 +49,7 @@ Scene::Scene(const fs::path& path, MTL::Device* device) noexcept: m_nextAssetId(
       .asset = assetFromJson(type, asset.at("data"), binaryFile, device),
     };
     m_assetRc[id] = asset.at("rc");
-    std::println("Load {} id: {}", type, id);
-
     m_nextAssetId = m_nextAssetId <= id ? id + 1 : m_nextAssetId;
-
   }
 
   /*
@@ -58,6 +57,11 @@ Scene::Scene(const fs::path& path, MTL::Device* device) noexcept: m_nextAssetId(
    */
   json scene = data.at("root");
   m_root = nodeFromJson(scene);
+
+  auto end = std::chrono::high_resolution_clock::now();
+  auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+  std::println("Loaded scene {} in {} ms", path.stem().string(), millis.count());
 }
 
 void Scene::removeAsset(AssetID id) {
@@ -82,7 +86,7 @@ size_t Scene::assetCount() {
   return m_assets.size();
 }
 
-std::vector<Scene::AnyAssetData> Scene::getAllAssets(std::function<bool(const AssetPtr&)> filter) {
+std::vector<Scene::AnyAssetData> Scene::getAllAssets(const std::function<bool(const AssetPtr&)>& filter) {
   std::vector<AnyAssetData> data;
   data.reserve(m_assets.size());
 
