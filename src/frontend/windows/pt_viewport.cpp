@@ -173,7 +173,7 @@ void RenderViewport::renderSettingsWindow(const std::vector<Scene::CameraInstanc
 
   auto selectedKernel = m_renderer->selectedKernel();
   std::array<std::string, 2> kernelNames = {"Simple BSDF sampler", "MIS + NEE"};
-  if (ImGui::BeginCombo("Render kernel", kernelNames[selectedKernel].c_str())) {
+  if (widgets::combo("Render kernel", kernelNames[selectedKernel].c_str())) {
     if (widgets::comboItem(kernelNames[0].c_str(), selectedKernel == 0))
       m_renderer->selectKernel(renderer_pt::Renderer::Integrator_Simple);
     if (selectedKernel == 0) ImGui::SetItemDefaultFocus();
@@ -185,13 +185,14 @@ void RenderViewport::renderSettingsWindow(const std::vector<Scene::CameraInstanc
     ImGui::EndCombo();
   }
 
-  ImGui::DragInt("Samples", &m_nextRenderSampleCount, 1, 0, 1 << 16);
+  widgets::dragInt("Samples", &m_nextRenderSampleCount, 1, 0, 1 << 16);
 
   ImGui::SeparatorText("Options");
 
   ImGui::CheckboxFlags("Multiscatter GGX", &m_renderFlags, shaders_pt::RendererFlags_MultiscatterGGX);
 
   ImGui::EndDisabled();
+  ImGui::Spacing();
 
   if (ImGui::CollapsingHeader("Post processing", ImGuiTreeNodeFlags_DefaultOpen)) {
     renderPostprocessSettings();
@@ -204,16 +205,17 @@ void RenderViewport::renderSettingsWindow(const std::vector<Scene::CameraInstanc
 void RenderViewport::renderPostprocessSettings() {
   auto& ppOptions = m_renderer->postProcessOptions();
 
-  ImGui::DragFloat("Exposure", &ppOptions.exposure, 0.1f, -5.0f, 5.0f, "%.1f EV");
+  ImGui::SeparatorText("Exposure");
+
+  widgets::dragFloat("Exposure", &ppOptions.exposure, 0.1f, -5.0f, 5.0f, "%.1f EV");
 
   ImGui::Spacing();
   ImGui::SeparatorText("Tone mapping");
-  ImGui::Spacing();
 
   /*
    * Tonemapper select
    */
-  if (ImGui::BeginCombo("Tonemap", m_tonemappers.at(ppOptions.tonemap.tonemapper).c_str())) {
+  if (widgets::combo("Tonemap", m_tonemappers.at(ppOptions.tonemap.tonemapper).c_str())) {
     for (const auto& [tonemapper, name]: m_tonemappers) {
       bool isSelected = ppOptions.tonemap.tonemapper == tonemapper;
       if (widgets::comboItem(name.c_str(), isSelected)) ppOptions.tonemap.tonemapper = tonemapper;
@@ -227,21 +229,30 @@ void RenderViewport::renderPostprocessSettings() {
    * Tonemap options
    */
   if (ppOptions.tonemap.tonemapper == postprocess::Tonemap::AgX) {
-    ImGui::Spacing();
     auto& look = ppOptions.tonemap.agxOptions.look;
-    ImGui::DragFloat3("Offset", (float*) &look.offset, 0.01f, 0.0f, 0.0f, "%.2f");
-    ImGui::DragFloat3("Slope", (float*) &look.slope, 0.01f, 0.0f, 0.0f, "%.2f");
-    ImGui::DragFloat3("Power", (float*) &look.power, 0.01f, 0.0f, 0.0f, "%.2f");
-    ImGui::DragFloat("Saturation", &look.saturation, 0.01f, 0.0f, 0.0f, "%.2f");
 
-    float buttonWidth = (ImGui::GetContentRegionAvail().x - 2 * ImGui::GetStyle().ItemSpacing.x) / 3;
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
     ImGui::Text("Presets");
 
+    float w = ImGui::CalcItemWidth();
+    float available = ImGui::GetContentRegionAvail().x;
+    ImGui::SameLine(available - w);
+    float buttonWidth = (w - ImGui::GetStyle().ItemSpacing.x) / 3;
     if (widgets::button("None", {buttonWidth, 0})) look = postprocess::agx::looks::none;
     ImGui::SameLine();
     if (widgets::button("Golden", {buttonWidth, 0})) look = postprocess::agx::looks::golden;
     ImGui::SameLine();
     if (widgets::button("Punchy", {buttonWidth, 0})) look = postprocess::agx::looks::punchy;
+
+    ImGui::Spacing();
+
+    widgets::dragVec3("Offset", (float*) &look.offset, 0.01f, 0.0f, 0.0f, "%.2f");
+    widgets::dragVec3("Slope", (float*) &look.slope, 0.01f, 0.0f, 0.0f, "%.2f");
+    widgets::dragVec3("Power", (float*) &look.power, 0.01f, 0.0f, 0.0f, "%.2f");
+    widgets::dragFloat("Saturation", &look.saturation, 0.01f, 0.0f, 0.0f, "%.2f");
   }
 }
 
