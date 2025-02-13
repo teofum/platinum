@@ -19,7 +19,7 @@ void RenderViewport::init(MTL::Device* device, MTL::CommandQueue* commandQueue) 
 
 void RenderViewport::render() {
   updateScrollAndZoomState();
-  
+
   /*
    * Auto select camera if necessary
    */
@@ -31,10 +31,10 @@ void RenderViewport::render() {
   if (!m_cameraNodeId && !cameras.empty()) {
     m_cameraNodeId = cameras[0].node.id();
   }
-  
- const auto& label = m_cameraNodeId
-  									 ? m_store.scene().node(m_cameraNodeId.value()).name()
-                     : "[No camera selected]";
+
+  const auto& label = m_cameraNodeId
+                      ? m_store.scene().node(m_cameraNodeId.value()).name()
+                      : "[No camera selected]";
 
   auto open = ImGui::Begin("Render");
   if (open && ImGui::IsItemVisible()) {
@@ -48,38 +48,38 @@ void RenderViewport::render() {
         auto name = std::format("{}##Camera_{}", camera.node.name(), uint32_t(camera.node.id()));
         const bool isSelected = camera.node.id() == m_cameraNodeId;
         if (widgets::comboItem(name.c_str(), isSelected)) m_cameraNodeId = camera.node.id();
-        
+
         if (isSelected) ImGui::SetItemDefaultFocus();
       }
       ImGui::EndCombo();
     }
     ImGui::EndDisabled();
-    
+
     ImGui::SameLine(ImGui::GetContentRegionAvail().x - 160);
     ImGui::BeginDisabled(!canRender());
     bool render = ImGui::Button("Render", {80, 0});
     ImGui::EndDisabled();
-    
+
     ImGui::SameLine();
     ImGui::BeginDisabled(!hasImage());
     if (ImGui::Button("Export", {80, 0})) exportImage();
     ImGui::EndDisabled();
-    
+
     ImGui::Spacing();
-    
+
     /*
      * Start or continue render
      */
     auto pos = ImGui::GetCursorScreenPos();
     m_viewportTopLeft = {pos.x, pos.y};
-    
+
     auto size = ImGui::GetContentRegionAvail();
     size.y -= ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.y;
     m_viewportSize = {size.x, size.y};
-    
+
     if (render) startRender();
     m_renderer->render();
-    
+
     /*
      * Render viewport
      */
@@ -94,36 +94,36 @@ void RenderViewport::render() {
     m_mouseInViewport = ImGui::IsWindowHovered();
     ImGui::PopStyleVar();
     ImGui::PopStyleColor();
-    
+
     auto renderTarget = m_renderer->presentRenderTarget();
     if (renderTarget != nullptr) {
       ImGui::SetCursorPos({m_offset.x, m_offset.y});
       ImGui::Image(
-       (ImTextureID) renderTarget,
-       {
-         m_renderSize.x * m_zoomFactor / m_dpiScaling,
-         m_renderSize.y * m_zoomFactor / m_dpiScaling
-       }
-     );
+        (ImTextureID) renderTarget,
+        {
+          m_renderSize.x * m_zoomFactor / m_dpiScaling,
+          m_renderSize.y * m_zoomFactor / m_dpiScaling
+        }
+      );
     }
-    
+
     ImGui::EndChild();
-    
+
     /*
      * Progress info
      */
     auto [accumulated, total] = m_renderer->renderProgress();
     auto progress = (float) accumulated / (float) total;
     auto progressStr = accumulated == total
-    									 ? "Done!"
-    									 : accumulated == 0
-    										 ? "Ready"
-    										 : std::format("{} / {}", accumulated, total);
+                       ? "Done!"
+                       : accumulated == 0
+                         ? "Ready"
+                         : std::format("{} / {}", accumulated, total);
     auto width = min(ImGui::GetContentRegionAvail().x - 80.0f, 300.0f);
     ImGui::ProgressBar(progress, {width, 0}, progressStr.c_str());
-    
+
     if (accumulated == total) m_state.setRendering(false);
-    
+
     auto time = std::format("{:.3f}s", (float) m_renderer->renderTime() / 1000.0f);
     auto textWidth = ImGui::CalcTextSize(time.c_str()).x;
     ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetStyle().ItemSpacing.x - textWidth);
@@ -131,12 +131,16 @@ void RenderViewport::render() {
   }
 
   ImGui::End();
-  
+
   /*
    * Render settings window
    */
+  renderSettingsWindow(cameras, label);
+}
+
+void RenderViewport::renderSettingsWindow(const std::vector<Scene::CameraInstance>& cameras, const std::string& label) {
   ImGui::Begin("Render Settings");
-  
+
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
   ImGui::BeginDisabled(cameras.empty());
   if (ImGui::BeginCombo("##CameraSelect", label.c_str())) {
@@ -144,15 +148,15 @@ void RenderViewport::render() {
       auto name = std::format("{}##Camera_{}", camera.node.name(), uint32_t(camera.node.id()));
       const bool isSelected = camera.node.id() == m_cameraNodeId;
       if (widgets::comboItem(name.c_str(), isSelected)) m_cameraNodeId = camera.node.id();
-      
+
       if (isSelected) ImGui::SetItemDefaultFocus();
     }
     ImGui::EndCombo();
   }
   ImGui::EndDisabled();
-  
+
   ImGui::SeparatorText("Output size");
-  
+
   auto scaledSize = m_viewportSize * m_dpiScaling;
   ImGui::BeginDisabled(m_useViewportSizeForRender);
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
@@ -160,36 +164,42 @@ void RenderViewport::render() {
   ImGui::EndDisabled();
 
   ImGui::Checkbox("Use viewport size", &m_useViewportSizeForRender);
-  
+
   ImGui::SeparatorText("Renderer");
-  
+
   auto selectedKernel = m_renderer->selectedKernel();
   std::array<std::string, 2> kernelNames = {"Simple BSDF sampler", "MIS + NEE"};
   if (ImGui::BeginCombo("Render kernel", kernelNames[selectedKernel].c_str())) {
     if (widgets::comboItem(kernelNames[0].c_str(), selectedKernel == 0))
       m_renderer->selectKernel(renderer_pt::Renderer::Integrator_Simple);
     if (selectedKernel == 0) ImGui::SetItemDefaultFocus();
-    
+
     if (widgets::comboItem(kernelNames[1].c_str(), selectedKernel == 1))
       m_renderer->selectKernel(renderer_pt::Renderer::Integrator_MIS);
     if (selectedKernel == 1) ImGui::SetItemDefaultFocus();
-    
+
     ImGui::EndCombo();
   }
-  
+
   ImGui::DragInt("Samples", &m_nextRenderSampleCount, 1, 0, 1 << 16);
-  
+
   ImGui::SeparatorText("Options");
-  
+
   ImGui::CheckboxFlags("Multiscatter GGX", &m_renderFlags, shaders_pt::RendererFlags_MultiscatterGGX);
-  
-  ImGui::SeparatorText("Post Processing");
-  
-  ImGui::Checkbox("Enable Tonemapping", &m_postProcessOptions.enableTonemapping);
-  
-  ImGui::DragFloat("Exposure", &m_postProcessOptions.exposure, 0.1f, -5.0f, 5.0f, "%.1f EV");
-  
+
+  renderPostprocessSettings();
+
   ImGui::End();
+}
+
+void RenderViewport::renderPostprocessSettings() {
+  auto& ppOptions = m_renderer->postProcessOptions();
+
+  ImGui::SeparatorText("Post Processing");
+
+  ImGui::Checkbox("Enable Tonemapping", &ppOptions.enableTonemapping);
+
+  ImGui::DragFloat("Exposure", &ppOptions.exposure, 0.1f, -5.0f, 5.0f, "%.1f EV");
 }
 
 void RenderViewport::startRender() {
@@ -199,7 +209,6 @@ void RenderViewport::startRender() {
       m_cameraNodeId.value(),
       m_renderSize,
       (uint32_t) m_nextRenderSampleCount,
-			m_postProcessOptions,
       m_renderFlags
     );
     m_state.setRendering(true);
@@ -216,13 +225,13 @@ bool RenderViewport::hasImage() const {
 
 void RenderViewport::exportImage() const {
   const auto savePath = utils::fileSave("../out", "png");
-  if (savePath){
+  if (savePath) {
     auto out = OIIO::ImageOutput::create(savePath->string());
-    
+
     if (out) {
       uint2 size;
       auto readbackBuffer = m_renderer->readbackRenderTarget(&size);
-      
+
       OIIO::ImageSpec spec(size.x, size.y, 4, OIIO::TypeDesc::UINT8);
       out->open(savePath->string(), spec);
       out->write_image(OIIO::TypeDesc::UINT8, readbackBuffer->contents());

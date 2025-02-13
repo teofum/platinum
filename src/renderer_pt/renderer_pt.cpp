@@ -32,7 +32,7 @@ Renderer::~Renderer() {
   for (auto ift: m_intersectionFunctionTables) ift->release();
   if (m_postprocessPipeline != nullptr) m_postprocessPipeline->release();
   if (m_constantsBuffer != nullptr) m_constantsBuffer->release();
-  
+
   for (auto lut: m_luts) lut->release();
 }
 
@@ -62,11 +62,11 @@ void Renderer::render() {
     auto computeEnc = cmd->computeCommandEncoder();
 
     computeEnc->setBuffer(m_argumentBuffer, 0, 0);
-    
+
     computeEnc->setTexture(m_accumulator[0], 0);
     computeEnc->setTexture(m_accumulator[1], 1);
     computeEnc->setTexture(m_randomSource, 2);
-    
+
     /*
      * Use resources
      * TODO: clean this up using residency sets
@@ -80,7 +80,7 @@ void Renderer::render() {
     computeEnc->useResource(m_lightDataBuffer, MTL::ResourceUsageRead);
     computeEnc->useResource(m_envLightDataBuffer, MTL::ResourceUsageRead);
     computeEnc->useResource(m_texturesBuffer, MTL::ResourceUsageRead);
-    
+
     for (uint32_t i = 0; i < m_luts.size(); i++) {
       computeEnc->useResource(m_luts[i], MTL::ResourceUsageRead);
     }
@@ -91,27 +91,27 @@ void Renderer::render() {
         MTL::ResourceUsageRead
       );
     }
-    
+
     for (auto meshVertexPositionBuffer: m_meshVertexPositionBuffers) {
       computeEnc->useResource(meshVertexPositionBuffer, MTL::ResourceUsageRead);
     }
-    
+
     for (auto meshVertexDataBuffer: m_meshVertexDataBuffers) {
       computeEnc->useResource(meshVertexDataBuffer, MTL::ResourceUsageRead);
     }
-    
+
     for (auto meshMaterialIdxBuffer: m_meshMaterialIndexBuffers) {
       computeEnc->useResource(meshMaterialIdxBuffer, MTL::ResourceUsageRead);
     }
-    
+
     for (auto instanceMaterialBuffer: m_instanceMaterialBuffers) {
       computeEnc->useResource(instanceMaterialBuffer, MTL::ResourceUsageRead);
     }
-    
+
     for (const auto& texture: m_store.scene().getAll<Texture>()) {
       computeEnc->useResource(texture.asset->texture(), MTL::ResourceUsageRead);
     }
-    
+
     for (const auto& aliasTable: m_envLightAliasTables) {
       computeEnc->useResource(aliasTable, MTL::ResourceUsageRead);
     }
@@ -121,13 +121,13 @@ void Renderer::render() {
     computeEnc->endEncoding();
 
     m_accumulatedFrames++;
-    
+
     auto now = std::chrono::high_resolution_clock::now();
     auto time = now - m_renderStart;
     auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(time);
     m_timer = millis.count();
   }
-  
+
   if (m_accumulatedFrames <= m_accumulationFrames) {
     std::swap(m_accumulator[0], m_accumulator[1]);
   }
@@ -158,15 +158,12 @@ void Renderer::startRender(
   Scene::NodeID cameraNodeId,
   float2 viewportSize,
   uint32_t sampleCount,
-  const shaders_pt::PostProcessOptions& ppOpts,
   int flags
 ) {
   if (!equal(viewportSize, m_currentRenderSize)) {
     m_currentRenderSize = viewportSize;
     m_aspect = m_currentRenderSize.x / m_currentRenderSize.y;
   }
-  
-  m_postProcessOptions = ppOpts;
 
   rebuildResourceBuffers();
   rebuildLightData();
@@ -272,7 +269,8 @@ void Renderer::buildPipelines() {
   NS::Error* error = nullptr;
   MTL::Library* lib = m_device->newLibrary("renderer_pt.metallib"_ns, &error);
   if (!lib) {
-    std::println(stderr,
+    std::println(
+      stderr,
       "renderer_pt: Failed to load shader library: {}",
       error->localizedDescription()->utf8String()
     );
@@ -283,16 +281,16 @@ void Renderer::buildPipelines() {
    * Load the PT kernel functions and build the compute pipelines
    */
   auto alphaTestIntersectionFunction = metal_utils::getFunction(lib, "alphaTestIntersectionFunction");
-  
+
   for (const auto& kernelName: m_pathtracingPipelineFunctions) {
     auto desc = metal_utils::makeComputePipelineDescriptor(
-     {
-       .function = metal_utils::getFunction(lib, kernelName.c_str()),
-       .linkedFunctions = { alphaTestIntersectionFunction },
-       .threadGroupSizeIsMultipleOfExecutionWidth = true,
-     }
-   );
-    
+      {
+        .function = metal_utils::getFunction(lib, kernelName.c_str()),
+        .linkedFunctions = {alphaTestIntersectionFunction},
+        .threadGroupSizeIsMultipleOfExecutionWidth = true,
+      }
+    );
+
     auto pipeline = m_device->newComputePipelineState(
       desc,
       MTL::PipelineOptionNone,
@@ -300,21 +298,22 @@ void Renderer::buildPipelines() {
       &error
     );
     if (!pipeline) {
-      std::println(stderr,
-       	"renderer_pt: Failed to create pathtracing pipeline {}: {}",
+      std::println(
+        stderr,
+        "renderer_pt: Failed to create pathtracing pipeline {}: {}",
         kernelName,
-       	error->localizedDescription()->utf8String()
-     	);
+        error->localizedDescription()->utf8String()
+      );
       assert(false);
     }
-    
+
     auto iftDesc = MTL::IntersectionFunctionTableDescriptor::alloc()->init();
     iftDesc->setFunctionCount(1);
     auto intersectionFunctionTable = pipeline->newIntersectionFunctionTable(iftDesc);
     iftDesc->release();
-    
+
     intersectionFunctionTable->setFunction(pipeline->functionHandle(alphaTestIntersectionFunction), 0);
-    
+
     m_pathtracingPipelines.push_back(pipeline);
     m_intersectionFunctionTables.push_back(intersectionFunctionTable);
   }
@@ -332,7 +331,8 @@ void Renderer::buildPipelines() {
 
   m_postprocessPipeline = m_device->newRenderPipelineState(postDesc, &error);
   if (!m_postprocessPipeline) {
-    std::println(stderr,
+    std::println(
+      stderr,
       "renderer_pt: Failed to create postprocess pipeline:",
       error->localizedDescription()->utf8String()
     );
@@ -366,35 +366,37 @@ void Renderer::loadGgxLutTextures() {
       assert(false);
     }
     const auto& spec = in->spec();
-    
+
     // Create temp buffer for reading the image to
     auto buffer = m_device->newBuffer(
       sizeof(float) * spec.width * spec.height,
       MTL::ResourceStorageModeShared
     );
     in->read_image(0, 0, 0, -1, spec.format, buffer->contents());
-    
+
     // Create the texture
-    auto texd = metal_utils::makeTextureDescriptor({
-      .type = lut.type,
-      .format = MTL::PixelFormatR32Float,
-      .width = (uint32_t) spec.width,
-      .height = (uint32_t) spec.height,
-      .depth = (uint32_t) lut.depth,
-    });
+    auto texd = metal_utils::makeTextureDescriptor(
+      {
+        .type = lut.type,
+        .format = MTL::PixelFormatR32Float,
+        .width = (uint32_t) spec.width,
+        .height = (uint32_t) spec.height,
+        .depth = (uint32_t) lut.depth,
+      }
+    );
     auto texture = m_device->newTexture(texd);
-    
+
     // Load the first slice
     auto region = MTL::Region(0, 0, 0, spec.width, spec.height, 1);
     texture->replaceRegion(region, 0, buffer->contents(), sizeof(float) * spec.width);
-    
+
     /*
      * For 3d LUTs, load each subsequent slice and copy it to the texture
      */
     for (uint32_t zSlice = 1; zSlice < lut.depth; zSlice++) {
       filename = std::format("resource/lut/{}_{}.exr", lut.filename, zSlice);
       path = fs::current_path() / filename;
-      
+
       in = OIIO::ImageInput::open(path.string());
       if (!in) {
         std::println(stderr, "renderer_pt: Failed to open file {}", path.string());
@@ -402,11 +404,11 @@ void Renderer::loadGgxLutTextures() {
       }
       const auto& spec = in->spec();
       in->read_image(0, 0, 0, -1, spec.format, buffer->contents());
-      
+
       auto region = MTL::Region(0, 0, zSlice, spec.width, spec.height, 1);
       texture->replaceRegion(region, 0, buffer->contents(), sizeof(float) * spec.width);
     }
-    
+
     m_luts.push_back(texture);
     m_lutSizes.push_back(spec.width);
     buffer->release();
@@ -418,14 +420,14 @@ void Renderer::rebuildResourceBuffers() {
   if (m_vertexResourcesBuffer != nullptr) m_vertexResourcesBuffer->release();
   m_meshVertexPositionBuffers.clear();
   m_meshVertexDataBuffers.clear();
-  
+
   if (m_primitiveResourcesBuffer != nullptr) m_primitiveResourcesBuffer->release();
   m_meshMaterialIndexBuffers.clear();
-  
+
   if (m_instanceResourcesBuffer != nullptr) m_instanceResourcesBuffer->release();
   for (MTL::Buffer* buffer: m_instanceMaterialBuffers) buffer->release();
   m_instanceMaterialBuffers.clear();
-  
+
   if (m_texturesBuffer != nullptr) m_texturesBuffer->release();
 
   /*
@@ -433,7 +435,7 @@ void Renderer::rebuildResourceBuffers() {
    * and primitive resources buffer, pointing to each mesh's material slot index buffer
    */
   auto meshes = m_store.scene().getAll<Mesh>();
-  
+
   m_vertexResourcesBuffer = m_device->newBuffer(
     m_resourcesStride * 2 * meshes.size(),
     MTL::ResourceStorageModeShared
@@ -451,17 +453,17 @@ void Renderer::rebuildResourceBuffers() {
     auto vertexResourceHandle = (uint64_t*) m_vertexResourcesBuffer->contents() + idx * 2;
     vertexResourceHandle[0] = mesh.asset->vertexPositions()->gpuAddress();
     vertexResourceHandle[1] = mesh.asset->vertexData()->gpuAddress();
-    
+
     auto primResourceHandle = (uint64_t*) m_primitiveResourcesBuffer->contents() + idx;
     *primResourceHandle = mesh.asset->materialIndices()->gpuAddress();
-    
+
     m_meshVertexPositionBuffers.push_back(mesh.asset->vertexPositions());
     m_meshVertexDataBuffers.push_back(mesh.asset->vertexData());
     m_meshMaterialIndexBuffers.push_back(mesh.asset->materialIndices());
-  
+
     idx++;
   }
-  
+
   /*
    * Create texture resource buffer, pointing to each scene texture.
    * Right now we include all textures, even unused ones.
@@ -469,31 +471,31 @@ void Renderer::rebuildResourceBuffers() {
    */
   auto textures = m_store.scene().getAll<Texture>();
   std::vector<MTL::ResourceID> texturePointers;
-  
+
   m_textureIndices.clear();
   for (const auto& texture: textures) {
     m_textureIndices[texture.id] = texturePointers.size();
     texturePointers.push_back(texture.asset->texture()->gpuResourceID());
   }
-  
+
   m_texturesBuffer = m_device->newBuffer(
-		sizeof(MTL::ResourceID) * texturePointers.size(),
-		MTL::ResourceStorageModeShared
-	);
+    sizeof(MTL::ResourceID) * texturePointers.size(),
+    MTL::ResourceStorageModeShared
+  );
   memcpy(m_texturesBuffer->contents(), texturePointers.data(), sizeof(MTL::ResourceID) * texturePointers.size());
-  
+
   /*
    * Create instance resources buffer, pointing to each *instance's* materials buffer
    * Also create the materials buffers
    * This duplicates materials across instances, but it's a very small struct, this is ok
    */
   auto instances = m_store.scene().getInstances();
-  
+
   m_instanceResourcesBuffer = m_device->newBuffer(
     m_resourcesStride * instances.size(),
     MTL::ResourceStorageModeShared
   );
-  
+
   idx = 0;
   m_instanceMaterialBuffers.reserve(instances.size());
   for (const auto& instance: instances) {
@@ -501,23 +503,23 @@ void Renderer::rebuildResourceBuffers() {
     const auto& materialIds = *instance.node.materialIds().value(); // We know the node has a mesh so there is a value
     auto materialsBuffer = m_device->newBuffer(
       materialIds.size() * sizeof(shaders_pt::MaterialGPU),
-		  MTL::ResourceStorageModeShared
-		);
-    
+      MTL::ResourceStorageModeShared
+    );
+
     size_t materialIdx = 0;
     for (auto materialId: materialIds) {
       auto* material = getMaterialOrDefault(materialId);
-      
+
       // Create BSDF struct from material
       auto getTextureIdx = [&](std::optional<Scene::AssetID> id) {
         return id
           .transform([&](Scene::AssetID id) { return int32_t(m_textureIndices[id]); })
           .value_or(-1);
       };
-      
+
       auto bsdfHandle = (shaders_pt::MaterialGPU*) materialsBuffer->contents() + materialIdx++;
       auto& bsdf = *bsdfHandle;
-      bsdf = shaders_pt::MaterialGPU {
+      bsdf = shaders_pt::MaterialGPU{
         .baseColor = material->baseColor,
         .emission = material->emission,
         .emissionStrength = material->emissionStrength,
@@ -537,11 +539,11 @@ void Renderer::rebuildResourceBuffers() {
         .normalTextureId = getTextureIdx(material->getTexture(Material::TextureSlot::Normal)),
         .flags = 0,
       };
-      
+
       auto baseTexture = material->getTexture(Material::TextureSlot::BaseColor)
-        .transform([&](Scene::AssetID id) { return m_store.scene().getAsset<Texture>(id); })
-        .value_or(nullptr);
-      
+                                 .transform([&](Scene::AssetID id) { return m_store.scene().getAsset<Texture>(id); })
+                                 .value_or(nullptr);
+
       if (material->thinTransmission)
         bsdf.flags |= shaders_pt::MaterialGPU::Material_ThinDielectric;
       if (material->baseColor[3] < 1.0 || (baseTexture && baseTexture->hasAlpha()))
@@ -551,11 +553,11 @@ void Renderer::rebuildResourceBuffers() {
       if (material->isEmissive())
         bsdf.flags |= shaders_pt::MaterialGPU::Material_Emissive;
     }
-    
+
     // Add the material buffer addresses to the instance resources buffer
     auto instanceResourceHandle = (uint64_t*) m_instanceResourcesBuffer->contents() + idx++;
     *instanceResourceHandle = materialsBuffer->gpuAddress();
-    
+
     m_instanceMaterialBuffers.push_back(materialsBuffer);
   }
 }
@@ -611,15 +613,15 @@ void Renderer::rebuildAccelerationStructures() {
     auto& id = instanceDescriptors[idx];
     // TODO: use a map for id -> index instead
     auto meshIdx = std::find_if(
-        meshIds.begin(), meshIds.end(), [&](Scene::AssetID id) {
-          return id == instance.mesh.id;
+      meshIds.begin(), meshIds.end(), [&](Scene::AssetID id) {
+        return id == instance.mesh.id;
       }
     ) - meshIds.begin();
 
     id.accelerationStructureIndex = (uint32_t) meshIdx;
     id.intersectionFunctionTableOffset = 0;
     id.mask = 1;
-    
+
     bool anyMaterialHasAlpha = false;
     auto& materials = *instance.node.materialIds().value();
     for (size_t materialIdx = 0; materialIdx < materials.size(); materialIdx++) {
@@ -629,15 +631,16 @@ void Renderer::rebuildAccelerationStructures() {
         break;
       }
     }
-    
-    id.options = anyMaterialHasAlpha ? MTL::AccelerationStructureInstanceOptionNonOpaque : MTL::AccelerationStructureInstanceOptionOpaque;
+
+    id.options = anyMaterialHasAlpha ? MTL::AccelerationStructureInstanceOptionNonOpaque
+                                     : MTL::AccelerationStructureInstanceOptionOpaque;
 
     for (int32_t j = 0; j < 4; j++) {
       for (int32_t i = 0; i < 3; i++) {
         id.transformationMatrix.columns[j][i] = instance.transformMatrix.columns[j][i];
       }
     }
-    
+
     idx++;
   }
 
@@ -655,11 +658,11 @@ void Renderer::rebuildArgumentBuffer() {
    */
   if (m_argumentBuffer == nullptr) {
     m_argumentBuffer = m_device->newBuffer(
-		  sizeof(shaders_pt::Arguments),
-		  MTL::ResourceStorageModeShared
-		);
+      sizeof(shaders_pt::Arguments),
+      MTL::ResourceStorageModeShared
+    );
   }
-  
+
   /*
    * Get a handle to the argument buffer as a struct and fill in the args
    */
@@ -674,17 +677,17 @@ void Renderer::rebuildArgumentBuffer() {
   arguments->lights = m_lightDataBuffer->gpuAddress();
   arguments->envLights = m_envLightDataBuffer->gpuAddress();
   arguments->textures = m_texturesBuffer->gpuAddress();
-  
+
   // GGX Multiscatter LUTs
-  arguments->luts.E 						= m_luts[0]->gpuResourceID();
-  arguments->luts.Eavg 					= m_luts[1]->gpuResourceID();
-  arguments->luts.EMs 					= m_luts[2]->gpuResourceID();
-  arguments->luts.EavgMs 				= m_luts[3]->gpuResourceID();
-  arguments->luts.ETransIn 			= m_luts[4]->gpuResourceID();
-  arguments->luts.ETransOut 		= m_luts[5]->gpuResourceID();
-  arguments->luts.EavgTransIn 	= m_luts[6]->gpuResourceID();
-  arguments->luts.EavgTransOut 	= m_luts[7]->gpuResourceID();
-  
+  arguments->luts.E = m_luts[0]->gpuResourceID();
+  arguments->luts.Eavg = m_luts[1]->gpuResourceID();
+  arguments->luts.EMs = m_luts[2]->gpuResourceID();
+  arguments->luts.EavgMs = m_luts[3]->gpuResourceID();
+  arguments->luts.ETransIn = m_luts[4]->gpuResourceID();
+  arguments->luts.ETransOut = m_luts[5]->gpuResourceID();
+  arguments->luts.EavgTransIn = m_luts[6]->gpuResourceID();
+  arguments->luts.EavgTransOut = m_luts[7]->gpuResourceID();
+
   /*
    * Bind the argument buffer to the active intersection function table
    */
@@ -738,7 +741,7 @@ void Renderer::rebuildLightData() {
    */
   if (m_lightDataBuffer != nullptr) m_lightDataBuffer->release();
   if (m_envLightDataBuffer != nullptr) m_envLightDataBuffer->release();
-  
+
   /*
    * Iterate all instances, finding the ones with emissive materials.
    * For each instance with emissive materials, iterate its primitives. Any primitives that
@@ -753,17 +756,17 @@ void Renderer::rebuildLightData() {
     for (auto materialId: *instance.node.materialIds().value()) {
       Material* material = nullptr;
       if (materialId) material = m_store.scene().getAsset<Material>(materialId.value());
-      
+
       if (material != nullptr && material->isEmissive()) {
         instanceEmissiveMaterials.insert(materialId.value());
       }
     }
-    
+
     if (!instanceEmissiveMaterials.empty()) {
       auto materialIndices = (uint32_t*) instance.mesh.asset->materialIndices()->contents();
       auto indices = (uint32_t*) instance.mesh.asset->indices()->contents();
       auto vertices = (float3*) instance.mesh.asset->vertexPositions()->contents();
-      
+
       auto triangleCount = instance.mesh.asset->indexCount() / 3;
       for (int i = 0; i < triangleCount; i++) {
         auto material = instance.node.material(materialIndices[i]).value();
@@ -773,56 +776,60 @@ void Renderer::rebuildLightData() {
           const auto v0 = (instance.transformMatrix * make_float4(vertices[indices[i * 3 + 0]], 1.0f)).xyz;
           const auto v1 = (instance.transformMatrix * make_float4(vertices[indices[i * 3 + 1]], 1.0f)).xyz;
           const auto v2 = (instance.transformMatrix * make_float4(vertices[indices[i * 3 + 2]], 1.0f)).xyz;
-          
+
           const auto edge1 = v1 - v0;
           const auto edge2 = v2 - v0;
           const auto area = length(cross(edge1, edge2)) * 0.5f;
-          
+
           const auto emission = material.asset->emission * material.asset->emissionStrength;
           const auto lightPower = dot(emission, float3{0, 1, 0}) * area * std::numbers::pi_v<float>;
           m_lightTotalPower += lightPower;
-          
-          lights.push_back({
-            .instanceIdx = instanceIdx,
-            .indices = { indices[i * 3 + 0], indices[i * 3 + 1], indices[i * 3 + 2] },
-            .area = area,
-            .power = lightPower,
-            .cumulativePower = m_lightTotalPower,
-            .emission = emission,
-          });
+
+          lights.push_back(
+            {
+              .instanceIdx = instanceIdx,
+              .indices = {indices[i * 3 + 0], indices[i * 3 + 1], indices[i * 3 + 2]},
+              .area = area,
+              .power = lightPower,
+              .cumulativePower = m_lightTotalPower,
+              .emission = emission,
+            }
+          );
         }
       }
     }
     instanceIdx++;
   }
-  
+
   m_lightCount = (uint32_t) lights.size();
-  
+
   /*
    * Create and fill the lights buffer
    */
   size_t lightBufSize = sizeof(shaders_pt::AreaLight) * lights.size();
   m_lightDataBuffer = m_device->newBuffer(lightBufSize, MTL::ResourceStorageModeShared);
   memcpy(m_lightDataBuffer->contents(), lights.data(), lightBufSize);
-  
+
   /*
    * Load environment lights into the argument buffer.
    * TODO: Right now the scene only supports one environment light, but we build this to support more
    */
   std::vector<shaders_pt::EnvironmentLight> envLights;
   m_envLightAliasTables.clear();
-  
+
   const auto& envmap = m_store.scene().envmap();
   if (envmap.textureId()) {
-    envLights.push_back({
-      .textureIdx = uint32_t(m_textureIndices.at(envmap.textureId().value())),
-      .alias = envmap.aliasTable()->gpuAddress(),
-    });
+    envLights.push_back(
+      {
+        .textureIdx = uint32_t(m_textureIndices.at(envmap.textureId().value())),
+        .alias = envmap.aliasTable()->gpuAddress(),
+      }
+    );
     m_envLightAliasTables.push_back(envmap.aliasTable());
   }
-  
+
   m_envLightCount = (uint32_t) envLights.size();
-  
+
   /*
    * Create and fill the lights buffer
    */
@@ -880,7 +887,7 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
 
 int Renderer::status() const {
   if (m_renderTarget != nullptr && m_accumulatedFrames < m_accumulationFrames) return Status_Busy;
-  
+
   int status = Status_Ready;
   if (m_renderTarget != nullptr) status |= Status_Done;
   return status;
@@ -897,12 +904,12 @@ size_t Renderer::renderTime() const {
 NS::SharedPtr<MTL::Buffer> Renderer::readbackRenderTarget(uint2* size) const {
   auto cmd = m_commandQueue->commandBuffer();
   auto benc = cmd->blitCommandEncoder();
-  
+
   *size = {(uint32_t) m_renderTarget->width(), (uint32_t) m_renderTarget->height()};
 
   const auto bytesPerRow = sizeof(uchar4) * size->x;
   const auto bytesPerImage = bytesPerRow * size->y;
-  
+
   const auto readbackBuffer = m_device->newBuffer(bytesPerImage, MTL::ResourceStorageModeShared);
   benc->copyFromTexture(
     m_renderTarget,
@@ -918,7 +925,7 @@ NS::SharedPtr<MTL::Buffer> Renderer::readbackRenderTarget(uint2* size) const {
   benc->endEncoding();
   cmd->commit();
   cmd->waitUntilCompleted();
-  
+
   return NS::TransferPtr(readbackBuffer);
 }
 
@@ -926,7 +933,7 @@ Material* Renderer::getMaterialOrDefault(std::optional<Scene::AssetID> id) {
   Material* material = nullptr;
   if (id) material = m_store.scene().getAsset<Material>(id.value());
   if (material == nullptr) material = &m_store.scene().defaultMaterial();
-  
+
   return material;
 }
 
