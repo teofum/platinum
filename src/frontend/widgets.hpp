@@ -55,7 +55,7 @@ bool dragInt(
   int step = 1.0,
   int min = 0.0,
   int max = 0.0,
-  const char* fmt = "%.3f",
+  const char* fmt = "%d",
   ImGuiSliderFlags flags = 0
 );
 
