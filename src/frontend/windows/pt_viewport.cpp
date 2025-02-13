@@ -141,6 +141,7 @@ void RenderViewport::render() {
 void RenderViewport::renderSettingsWindow(const std::vector<Scene::CameraInstance>& cameras, const std::string& label) {
   ImGui::Begin("Render Settings");
 
+  ImGui::BeginDisabled(!(m_renderer->status() & renderer_pt::Renderer::Status_Ready));
   ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
   ImGui::BeginDisabled(cameras.empty());
   if (ImGui::BeginCombo("##CameraSelect", label.c_str())) {
@@ -187,6 +188,8 @@ void RenderViewport::renderSettingsWindow(const std::vector<Scene::CameraInstanc
 
   ImGui::CheckboxFlags("Multiscatter GGX", &m_renderFlags, shaders_pt::RendererFlags_MultiscatterGGX);
 
+  ImGui::EndDisabled();
+
   renderPostprocessSettings();
 
   ImGui::End();
@@ -232,7 +235,7 @@ void RenderViewport::exportImage() const {
       uint2 size;
       auto readbackBuffer = m_renderer->readbackRenderTarget(&size);
 
-      OIIO::ImageSpec spec(size.x, size.y, 4, OIIO::TypeDesc::UINT8);
+      OIIO::ImageSpec spec(int(size.x), int(size.y), 4, OIIO::TypeDesc::UINT8);
       out->open(savePath->string(), spec);
       out->write_image(OIIO::TypeDesc::UINT8, readbackBuffer->contents());
       out->close();
