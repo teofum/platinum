@@ -81,8 +81,8 @@ void Renderer::render() {
     computeEnc->useResource(m_envLightDataBuffer, MTL::ResourceUsageRead);
     computeEnc->useResource(m_texturesBuffer, MTL::ResourceUsageRead);
 
-    for (uint32_t i = 0; i < m_luts.size(); i++) {
-      computeEnc->useResource(m_luts[i], MTL::ResourceUsageRead);
+    for (const auto& m_lut: m_luts) {
+      computeEnc->useResource(m_lut, MTL::ResourceUsageRead);
     }
 
     for (uint32_t i = 0; i < m_meshAccelStructs->count(); i++) {
@@ -146,7 +146,7 @@ void Renderer::render() {
 
   postEnc->setRenderPipelineState(m_postprocessPipeline);
   postEnc->setFragmentTexture(m_accumulator[0], 0);
-  postEnc->setFragmentBytes(&m_postProcessOptions, sizeof(shaders_pt::PostProcessOptions), 0);
+  postEnc->setFragmentBytes(&m_postProcessOptions, sizeof(postprocess::PostProcessOptions), 0);
 
   postEnc->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger) 0, 6);
   postEnc->endEncoding();
@@ -377,11 +377,11 @@ void Renderer::loadGgxLutTextures() {
     // Create the texture
     auto texd = metal_utils::makeTextureDescriptor(
       {
-        .type = lut.type,
-        .format = MTL::PixelFormatR32Float,
         .width = (uint32_t) spec.width,
         .height = (uint32_t) spec.height,
         .depth = (uint32_t) lut.depth,
+        .type = lut.type,
+        .format = MTL::PixelFormatR32Float,
       }
     );
     auto texture = m_device->newTexture(texd);
@@ -402,11 +402,11 @@ void Renderer::loadGgxLutTextures() {
         std::println(stderr, "renderer_pt: Failed to open file {}", path.string());
         assert(false);
       }
-      const auto& spec = in->spec();
-      in->read_image(0, 0, 0, -1, spec.format, buffer->contents());
+      const auto& sliceSpec = in->spec();
+      in->read_image(0, 0, 0, -1, sliceSpec.format, buffer->contents());
 
-      auto region = MTL::Region(0, 0, zSlice, spec.width, spec.height, 1);
-      texture->replaceRegion(region, 0, buffer->contents(), sizeof(float) * spec.width);
+      auto sliceRegion = MTL::Region(0, 0, zSlice, sliceSpec.width, sliceSpec.height, 1);
+      texture->replaceRegion(sliceRegion, 0, buffer->contents(), sizeof(float) * sliceSpec.width);
     }
 
     m_luts.push_back(texture);
@@ -531,13 +531,13 @@ void Renderer::rebuildResourceBuffers() {
         .anisotropyRotation = material->anisotropyRotation,
         .clearcoat = material->clearcoat,
         .clearcoatRoughness = material->clearcoatRoughness,
+        .flags = 0,
         .baseTextureId = getTextureIdx(material->getTexture(Material::TextureSlot::BaseColor)),
         .rmTextureId = getTextureIdx(material->getTexture(Material::TextureSlot::RoughnessMetallic)),
         .transmissionTextureId = getTextureIdx(material->getTexture(Material::TextureSlot::Transmission)),
-        .emissionTextureId = getTextureIdx(material->getTexture(Material::TextureSlot::Emission)),
         .clearcoatTextureId = getTextureIdx(material->getTexture(Material::TextureSlot::Clearcoat)),
+        .emissionTextureId = getTextureIdx(material->getTexture(Material::TextureSlot::Emission)),
         .normalTextureId = getTextureIdx(material->getTexture(Material::TextureSlot::Normal)),
-        .flags = 0,
       };
 
       auto baseTexture = material->getTexture(Material::TextureSlot::BaseColor)
@@ -869,6 +869,12 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
 
   m_constants = {
     .frameIdx = 0,
+    .lightCount = m_lightCount,
+    .envLightCount = m_envLightCount,
+    .lutSizeE = m_lutSizes[0],
+    .lutSizeEavg = m_lutSizes[1],
+    .flags = flags,
+    .totalLightPower = m_lightTotalPower,
     .size = {(uint32_t) m_currentRenderSize.x, (uint32_t) m_currentRenderSize.y},
     .camera = {
       .position = pos,
@@ -876,12 +882,6 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
       .pixelDeltaU = vu / m_currentRenderSize.x,
       .pixelDeltaV = vv / m_currentRenderSize.y,
     },
-    .lightCount = m_lightCount,
-    .envLightCount = m_envLightCount,
-    .totalLightPower = m_lightTotalPower,
-    .lutSizeE = m_lutSizes[0],
-    .lutSizeEavg = m_lutSizes[1],
-    .flags = flags,
   };
 }
 

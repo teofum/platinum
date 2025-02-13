@@ -540,32 +540,44 @@ void Scene::saveToFile(const fs::path& path) {
     return data;
   };
 
-  for (const auto& texture: getAll<Texture>()) {
-    // Copy the texture's data so we can access it
-    auto format = texture.asset->texture()->pixelFormat();
-    size_t width = texture.asset->texture()->width();
-    size_t height = texture.asset->texture()->height();
+  json assetJson = {
+    {"nextId", m_nextAssetId},
+    {"assets", json::array()},
+  };
+  auto& assets = assetJson["assets"];
+  for (const auto& asset: getAllAssets()) {
+    if (std::holds_alternative<Texture*>(asset.asset)) {
+      auto* texture = std::get<Texture*>(asset.asset);
 
-    size_t bytesPerPixel = getTextureBytesPerPixel(format);
-    size_t bytesPerRow = bytesPerPixel * width;
-    size_t totalBytes = bytesPerRow * height;
+      // Copy the texture's data so we can access it
+      auto format = texture->texture()->pixelFormat();
+      size_t width = texture->texture()->width();
+      size_t height = texture->texture()->height();
 
-    void* data = malloc(totalBytes);
-    texture.asset->texture()->getBytes(data, bytesPerRow, MTL::Region(0, 0, width, height), 0);
-    binaryFile.write((const char*) data, std::streamsize(totalBytes));
-    free(data);
+      size_t bytesPerPixel = getTextureBytesPerPixel(format);
+      size_t bytesPerRow = bytesPerPixel * width;
+      size_t totalBytes = bytesPerRow * height;
 
-    textureBufferData[texture.id] = {
-      .offset = cumulativeOffset,
-      .length = totalBytes,
-    };
-    cumulativeOffset += totalBytes;
-  }
-  for (const auto& mesh: getAll<Mesh>()) {
-    meshBufferData[mesh.id].positions = dumpBuffer(mesh.asset->vertexPositions());
-    meshBufferData[mesh.id].vertexData = dumpBuffer(mesh.asset->vertexData());
-    meshBufferData[mesh.id].indices = dumpBuffer(mesh.asset->indices());
-    meshBufferData[mesh.id].materials = dumpBuffer(mesh.asset->materialIndices());
+      void* data = malloc(totalBytes);
+      texture->texture()->getBytes(data, bytesPerRow, MTL::Region(0, 0, width, height), 0);
+      binaryFile.write((const char*) data, std::streamsize(totalBytes));
+      free(data);
+
+      textureBufferData[asset.id] = {
+        .offset = cumulativeOffset,
+        .length = totalBytes,
+      };
+      cumulativeOffset += totalBytes;
+    } else if (std::holds_alternative<Mesh*>(asset.asset)) {
+      auto* mesh = std::get<Mesh*>(asset.asset);
+
+      meshBufferData[asset.id].positions = dumpBuffer(mesh->vertexPositions());
+      meshBufferData[asset.id].vertexData = dumpBuffer(mesh->vertexData());
+      meshBufferData[asset.id].indices = dumpBuffer(mesh->indices());
+      meshBufferData[asset.id].materials = dumpBuffer(mesh->materialIndices());
+    }
+
+    assets.push_back(toJson(asset, textureBufferData, meshBufferData));
   }
 
   /*
@@ -573,15 +585,6 @@ void Scene::saveToFile(const fs::path& path) {
    */
   auto rootNode = root();
   json objectJson = nodeToJson(rootNode);
-
-  json assetJson = {
-    {"nextId", m_nextAssetId},
-    {"assets", json::array()},
-  };
-  auto& assets = assetJson["assets"];
-  for (const auto& asset: getAllAssets()) {
-    assets.push_back(toJson(asset, textureBufferData, meshBufferData));
-  }
 
   json sceneJson = {
     {"root",   objectJson},

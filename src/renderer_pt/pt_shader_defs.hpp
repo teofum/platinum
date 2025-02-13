@@ -22,6 +22,12 @@
 #define metal_resource(T) MTL::ResourceID
 #endif
 
+#ifdef __METAL_VERSION__
+#define address_space(space) space
+#else
+#define address_space(space)
+#endif
+
 #include <simd/simd.h>
 
 #include "../core/mesh.hpp"
@@ -82,17 +88,17 @@ struct MaterialGPU {
     Material_Emissive = 1 << 2,
     Material_Anisotropic = 1 << 3,
   };
-  
+
   float4 baseColor = {0.8, 0.8, 0.8, 1.0};
-  float3 emission;
+  float3 emission = {0.0, 0.0, 0.0};
   float emissionStrength = 0.0f;
   float roughness = 1.0f, metallic = 0.0f, transmission = 0.0f;
   float ior = 1.5f;
   float anisotropy = 0.0f, anisotropyRotation = 0.0f;
   float clearcoat = 0.0f, clearcoatRoughness = 0.05f;
-  
+
   int flags = 0;
-  
+
   int32_t baseTextureId = -1, rmTextureId = -1, transmissionTextureId = -1, clearcoatTextureId = -1, emissionTextureId = -1, normalTextureId = -1;
 };
 
@@ -150,13 +156,65 @@ struct Arguments {
   metal_ptr(AreaLight, device) lights;
   metal_ptr(EnvironmentLight, device) envLights;
   metal_ptr(Texture, device) textures;
-  
+
   Luts luts;
+};
+
+}
+
+namespace postprocess {
+
+namespace agx {
+
+struct Look {
+  float3 offset, slope, power;
+  float saturation;
+};
+
+namespace looks {
+
+address_space(constant) constexpr const Look none = {
+  .offset = float3(0.0),
+  .slope = float3(1.0),
+  .power = float3(1.0),
+  .saturation = 1.0,
+};
+
+address_space(constant) constexpr const Look golden = {
+  .offset = float3(0.0),
+  .slope = float3{1.0, 0.9, 0.5},
+  .power = float3(0.8),
+  .saturation = 0.8,
+};
+
+address_space(constant) constexpr const Look punchy = {
+  .offset = float3(0.0),
+  .slope = float3(1.0),
+  .power = float3(1.35),
+  .saturation = 1.4,
+};
+
+}
+
+struct Options {
+  Look look = looks::none;
+};
+
+}
+
+enum class Tonemap {
+  None,
+  AgX,
+};
+
+struct TonemapOptions {
+  Tonemap tonemapper = Tonemap::AgX;
+  agx::Options agxOptions;
 };
 
 struct PostProcessOptions {
   float exposure = 0.0f;
-  bool enableTonemapping = true;
+  TonemapOptions tonemap;
 };
 
 }

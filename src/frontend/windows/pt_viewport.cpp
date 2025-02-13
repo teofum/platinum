@@ -6,6 +6,9 @@
 
 namespace pt::frontend::windows {
 
+RenderViewport::RenderViewport(Store& store, State& state, float& dpiScaling, bool* open) noexcept
+  : Window(store, state, open), m_dpiScaling(dpiScaling) {}
+
 void RenderViewport::init(MTL::Device* device, MTL::CommandQueue* commandQueue) {
   /*
    * Initialize PT renderer
@@ -190,7 +193,10 @@ void RenderViewport::renderSettingsWindow(const std::vector<Scene::CameraInstanc
 
   ImGui::EndDisabled();
 
-  renderPostprocessSettings();
+  if (ImGui::CollapsingHeader("Post processing", ImGuiTreeNodeFlags_DefaultOpen)) {
+    renderPostprocessSettings();
+    ImGui::Spacing();
+  }
 
   ImGui::End();
 }
@@ -198,11 +204,45 @@ void RenderViewport::renderSettingsWindow(const std::vector<Scene::CameraInstanc
 void RenderViewport::renderPostprocessSettings() {
   auto& ppOptions = m_renderer->postProcessOptions();
 
-  ImGui::SeparatorText("Post Processing");
-
-  ImGui::Checkbox("Enable Tonemapping", &ppOptions.enableTonemapping);
-
   ImGui::DragFloat("Exposure", &ppOptions.exposure, 0.1f, -5.0f, 5.0f, "%.1f EV");
+
+  ImGui::Spacing();
+  ImGui::SeparatorText("Tone mapping");
+  ImGui::Spacing();
+
+  /*
+   * Tonemapper select
+   */
+  if (ImGui::BeginCombo("Tonemap", m_tonemappers.at(ppOptions.tonemap.tonemapper).c_str())) {
+    for (const auto& [tonemapper, name]: m_tonemappers) {
+      bool isSelected = ppOptions.tonemap.tonemapper == tonemapper;
+      if (widgets::comboItem(name.c_str(), isSelected)) ppOptions.tonemap.tonemapper = tonemapper;
+
+      if (isSelected) ImGui::SetItemDefaultFocus();
+    }
+    ImGui::EndCombo();
+  }
+
+  /*
+   * Tonemap options
+   */
+  if (ppOptions.tonemap.tonemapper == postprocess::Tonemap::AgX) {
+    ImGui::Spacing();
+    auto& look = ppOptions.tonemap.agxOptions.look;
+    ImGui::DragFloat3("Offset", (float*) &look.offset, 0.01f, 0.0f, 0.0f, "%.2f");
+    ImGui::DragFloat3("Slope", (float*) &look.slope, 0.01f, 0.0f, 0.0f, "%.2f");
+    ImGui::DragFloat3("Power", (float*) &look.power, 0.01f, 0.0f, 0.0f, "%.2f");
+    ImGui::DragFloat("Saturation", &look.saturation, 0.01f, 0.0f, 0.0f, "%.2f");
+
+    float buttonWidth = (ImGui::GetContentRegionAvail().x - 2 * ImGui::GetStyle().ItemSpacing.x) / 3;
+    ImGui::Text("Presets");
+
+    if (widgets::button("None", {buttonWidth, 0})) look = postprocess::agx::looks::none;
+    ImGui::SameLine();
+    if (widgets::button("Golden", {buttonWidth, 0})) look = postprocess::agx::looks::golden;
+    ImGui::SameLine();
+    if (widgets::button("Punchy", {buttonWidth, 0})) look = postprocess::agx::looks::punchy;
+  }
 }
 
 void RenderViewport::startRender() {

@@ -13,9 +13,7 @@ namespace pt::frontend::windows {
 
 class RenderViewport final : Window {
 public:
-  constexpr RenderViewport(Store& store, State& state, float& dpiScaling, bool* open = nullptr) noexcept
-    : Window(store, state, open), m_dpiScaling(dpiScaling) {
-  }
+  RenderViewport(Store& store, State& state, float& dpiScaling, bool* open = nullptr) noexcept;
 
   void init(MTL::Device* device, MTL::CommandQueue* commandQueue);
 
@@ -72,6 +70,12 @@ private:
   int32_t m_nextRenderSampleCount = 128;
   bool m_useViewportSizeForRender = true;
   int m_renderFlags = shaders_pt::RendererFlags_MultiscatterGGX;
+
+  // Post process settings
+  const hashmap<postprocess::Tonemap, std::string> m_tonemappers = {
+    {postprocess::Tonemap::None, "None"},
+    {postprocess::Tonemap::AgX,  "AgX"},
+  };
 
   void updateScrollAndZoomState();
 

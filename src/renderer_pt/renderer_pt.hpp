@@ -57,7 +57,7 @@ public:
 
   [[nodiscard]] size_t renderTime() const;
 
-  [[nodiscard]] constexpr shaders_pt::PostProcessOptions& postProcessOptions() {
+  [[nodiscard]] constexpr postprocess::PostProcessOptions& postProcessOptions() {
     return m_postProcessOptions;
   }
 
@@ -157,7 +157,7 @@ private:
   MTL::RenderPipelineState* m_postprocessPipeline = nullptr;
 
   // Postprocess options
-  shaders_pt::PostProcessOptions m_postProcessOptions;
+  postprocess::PostProcessOptions m_postProcessOptions;
 
   MTL::AccelerationStructure* makeAccelStruct(MTL::AccelerationStructureDescriptor* desc);
 

@@ -3,7 +3,8 @@
 #include "../pt_shader_defs.hpp"
 
 using namespace metal;
-using namespace pt::shaders_pt;
+namespace pp = pt::postprocess;
+using Options = pp::PostProcessOptions;
 
 // Screen filling quad in normalized device coordinates
 constant float2 quadVertices[] = {
@@ -14,6 +15,9 @@ constant float2 quadVertices[] = {
   float2( 1,  1),
   float2( 1, -1)
 };
+
+// RGB weights for luma calculation
+constant float3 lw(0.2126, 0.7152, 0.0722);
 
 struct VertexOut {
   float4 position [[position]];
@@ -60,9 +64,20 @@ namespace agx {
     val = saturate(val);
     return val;
   }
+
+  float3 applyLook(float3 val, pp::agx::Look look) {
+    float luma = dot(val, lw);
+
+    val = pow(val * look.slope + look.offset, look.power);
+    return mix(float3(luma), val, look.saturation);
+  }
   
   float3 apply(float3 val) {
     return end(start(val));
+  }
+
+  float3 apply(float3 val, pp::agx::Look look) {
+    return end(applyLook(start(val), look));
   }
 }
 
@@ -81,14 +96,17 @@ vertex VertexOut postprocessVertex(unsigned short vid [[vertex_id]]) {
 fragment float4 postprocessFragment(
   VertexOut in [[stage_in]],
   texture2d<float> src,
-  constant PostProcessOptions& options [[buffer(0)]]
+  constant Options& options [[buffer(0)]]
 ) {
   constexpr sampler sampler(min_filter::nearest, mag_filter::nearest, mip_filter::none);
   
   float3 color = src.sample(sampler, in.uv).xyz;
-  
+
+  // Exposure
   color *= exp2(options.exposure);
-  if (options.enableTonemapping) color = agx::apply(color);
+
+  // Tone mapping
+  if (options.tonemap.tonemapper == pp::Tonemap::AgX) color = agx::apply(color, options.tonemap.agxOptions.look);
   
   return float4(color, 1.0f);
 }
