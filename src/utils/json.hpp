@@ -37,6 +37,22 @@ inline json transform(const Transform& transform) {
   };
 }
 
+inline float2 parseFloat2(const json& j) { return {j.at(0), j.at(1)}; }
+inline float3 parseFloat3(const json& j) { return {j.at(0), j.at(1), j.at(2)}; }
+inline float4 parseFloat4(const json& j) { return {j.at(0), j.at(1), j.at(2), j.at(3)}; }
+
+inline Transform parseTransform(const json& j) {
+  Transform t;
+
+  t.translation = parseFloat3(j.at("t"));
+  t.rotation = parseFloat3(j.at("r"));
+  t.scale = parseFloat3(j.at("s"));
+  t.target = parseFloat3(j.at("tgt"));
+  t.track = j.at("track");
+
+  return t;
+}
+
 }
 
 #endif //PLATINUM_JSON_HPP

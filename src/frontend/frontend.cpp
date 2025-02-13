@@ -365,9 +365,13 @@ void Frontend::renderMenuBar() {
 
     ImGui::SetNextWindowSize({160, 0});
     if (widgets::menu("File")) {
+      if (widgets::menuItem("Open")) {
+        auto path = utils::fileOpen("/", "json");
+        if (path) m_store.open(path.value());
+      }
       if (widgets::menuItem("Save As...")) {
         auto path = utils::fileSave("/", "json");
-        if (path) m_store.scene().saveToFile(path.value());
+        if (path) m_store.saveAs(path.value());
       }
 
       ImGui::Separator();

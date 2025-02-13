@@ -49,34 +49,34 @@ private:
     texture::TextureType type;
     std::vector<std::pair<Scene::AssetID, Material::TextureSlot>> users;
   };
-  
+
   MTL::Device* m_device;
   MTL::CommandQueue* m_commandQueue;
   texture::TextureLoader m_textureLoader;
-  
+
   std::unique_ptr<fastgltf::Asset> m_asset;
   std::vector<Scene::AssetID> m_meshIds;
   ankerl::unordered_dense::map<Scene::AssetID, std::vector<Scene::AssetID>> m_meshMaterials;
-  
+
   Scene& m_scene;
   std::vector<Scene::AssetID> m_materialIds;
   std::vector<Scene::AssetID> m_textureIds;
   std::vector<Camera> m_cameras;
-  
+
   ankerl::unordered_dense::map<uint32_t, TextureDescription> m_texturesToLoad;
-  
-  int m_options;
+
+  int m_options = LoadOptions_Default;
 
   void loadMesh(const fastgltf::Mesh& gltfMesh);
 
   void loadNode(const fastgltf::Node& gltfNode, Scene::NodeID parent = Scene::null);
-  
+
   void loadMaterial(const fastgltf::Material& gltfMat);
-  
+
   [[nodiscard]] Scene::AssetID loadTexture(const fastgltf::Texture& gltfTex, texture::TextureType type);
 };
 
 
 }
 
-#endif //PLATINUM_GLTF_HPP
+#endif //PLATINUM_LOADER_GLTF_HPP

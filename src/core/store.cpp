@@ -14,6 +14,14 @@ Store::~Store() {
   m_commandQueue->release();
 }
 
+void Store::open(const fs::path& path) {
+  m_scene = std::make_unique<Scene>(path, m_device);
+}
+
+void Store::saveAs(const fs::path& path) {
+  m_scene->saveToFile(path);
+}
+
 void Store::importGltf() {
   const auto gltfPath = utils::fileOpen("/", "gltf,glb");
   if (gltfPath) {

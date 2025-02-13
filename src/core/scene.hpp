@@ -18,6 +18,7 @@
 #include "environment.hpp"
 
 namespace fs = std::filesystem;
+using json = nlohmann::json;
 
 template<typename K, typename V>
 using hashmap = ankerl::unordered_dense::map<K, V>;
@@ -131,6 +132,8 @@ public:
     Camera& camera;
     float4x4 transformMatrix;
   };
+
+  explicit Scene(const fs::path& path, MTL::Device* device) noexcept;
 
   explicit Scene() noexcept;
 
@@ -275,10 +278,19 @@ private:
   Material m_defaultMaterial;
   Environment m_envmap;
 
+  /*
+   * Internal methods
+   */
   void traverseHierarchy(
     const std::function<void(Node, const float4x4&)>& cb,
     const std::function<bool(const Node&)>& filter
   );
+
+  /*
+   * Internal implementation of createNode. Allows a null parent ID, as we need
+   * to be able to create a root node when loading scenes.
+   */
+  Node createNodeImpl(std::string_view name, NodeID parent = null, NodeID id = null);
 
   /*
    * Save/load internals
@@ -292,22 +304,34 @@ private:
     BufferData positions, vertexData, indices, materials;
   };
 
-  [[nodiscard]] nlohmann::json nodeToJson(Scene::Node node);
+  NodeID nodeFromJson(const json& nodeJson, NodeID parentId = null);
 
-  [[nodiscard]] nlohmann::json toJson(
+  [[nodiscard]] AssetPtr assetFromJson(
+    const std::string& type,
+    json json,
+    std::ifstream& data,
+    MTL::Device* device
+  );
+  [[nodiscard]] std::unique_ptr<Texture> textureFromJson(const json& json, std::ifstream& data, MTL::Device* device);
+  [[nodiscard]] std::unique_ptr<Mesh> meshFromJson(const json& json, std::ifstream& data, MTL::Device* device);
+  [[nodiscard]] std::unique_ptr<Material> materialFromJson(const json& materialJson);
+
+  [[nodiscard]] json nodeToJson(Scene::Node node);
+
+  [[nodiscard]] json toJson(
     const AnyAssetData& asset,
     const hashmap <AssetID, BufferData>& textureBufferData,
     const hashmap <AssetID, MeshBufferData>& meshBufferData
   );
-  [[nodiscard]] nlohmann::json toJson(
+  [[nodiscard]] json toJson(
     const AssetData<Texture>& texture,
     const hashmap <AssetID, BufferData>& textureBufferData
   );
-  [[nodiscard]] nlohmann::json toJson(
+  [[nodiscard]] json toJson(
     const AssetData<Mesh>& mesh,
     const hashmap <AssetID, MeshBufferData>& meshBufferData
   );
-  [[nodiscard]] nlohmann::json toJson(const AssetData<Material>& material);
+  [[nodiscard]] json toJson(const AssetData<Material>& material);
 };
 
 }

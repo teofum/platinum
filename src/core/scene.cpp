@@ -1,19 +1,63 @@
 #include "scene.hpp"
 
 #include <utils/json.hpp>
-
-using json = nlohmann::json;
+#include <utils/metal_utils.hpp>
 
 namespace pt {
 
-Scene::Scene() noexcept
-  : m_nextAssetId(0), m_assets() {
+static size_t getTextureBytesPerPixel(MTL::PixelFormat format) {
+  if (format == MTL::PixelFormatRGBA32Float) return 4 * sizeof(float);
+  if (format == MTL::PixelFormatRGBA8Unorm) return 4 * sizeof(uint8_t);
+  if (format == MTL::PixelFormatRG8Unorm) return 2 * sizeof(uint8_t);
+  if (format == MTL::PixelFormatR8Unorm) return 1 * sizeof(uint8_t);
+  return 0;
+}
+
+Scene::Scene() noexcept: m_nextAssetId(0), m_assets() {
   /*
    * Initialize the scene
    */
   m_root = m_registry.create();
   m_registry.emplace<Transform>(m_root);
   m_registry.emplace<Hierarchy>(m_root, "Scene", entt::null);
+}
+
+Scene::Scene(const fs::path& path, MTL::Device* device) noexcept: m_nextAssetId(0), m_assets() {
+  auto binaryFilename = std::format("{}_data.bin", path.stem().string());
+  auto binaryPath = path.parent_path() / binaryFilename;
+
+  std::ifstream binaryFile(binaryPath, std::ios::in | std::ios::binary);
+  std::ifstream file(path);
+
+  auto data = json::parse(file);
+
+  /*
+   * Load assets
+   */
+  auto assetData = data.at("assets");
+  m_nextAssetId = assetData.at("nextId");
+
+  auto assets = assetData.at("assets");
+  for (const json& asset: assets) {
+    AssetID id = asset.at("id");
+    std::string type = asset.at("type");
+
+    m_assets[id] = {
+      .retain = asset.at("retain"),
+      .asset = assetFromJson(type, asset.at("data"), binaryFile, device),
+    };
+    m_assetRc[id] = asset.at("rc");
+    std::println("Load {} id: {}", type, id);
+
+    m_nextAssetId = m_nextAssetId <= id ? id + 1 : m_nextAssetId;
+
+  }
+
+  /*
+   * Load scene hierarchy
+   */
+  json scene = data.at("root");
+  m_root = nodeFromJson(scene);
 }
 
 void Scene::removeAsset(AssetID id) {
@@ -260,19 +304,25 @@ Scene::Node Scene::Node::createChild(std::string_view name) {
 /*
  * Node API
  */
-Scene::Node Scene::createNode(std::string_view name, Scene::NodeID parent) {
-  auto id = m_registry.create();
+Scene::Node Scene::createNode(std::string_view name, NodeID parent) {
+  auto parentId = parent == null ? m_root : parent;
+  return createNodeImpl(name, parentId);
+}
+
+Scene::Node Scene::createNodeImpl(std::string_view name, NodeID parent, NodeID id) {
+  id = id == null ? m_registry.create() : m_registry.create(id);
 
   // Create transform component
   m_registry.emplace<Transform>(id);
 
   // Create hierarchy component
-  auto parentId = parent == null ? m_root : parent;
-  m_registry.emplace<Hierarchy>(id, name, parentId);
+  m_registry.emplace<Hierarchy>(id, name, parent);
 
   // Append to children of parent node
-  auto& parentHierarchy = m_registry.get<Hierarchy>(parentId);
-  parentHierarchy.children.push_back(id);
+  if (parent != null) {
+    auto& parentHierarchy = m_registry.get<Hierarchy>(parent);
+    parentHierarchy.children.push_back(id);
+  }
 
   return node(id);
 }
@@ -489,15 +539,10 @@ void Scene::saveToFile(const fs::path& path) {
   for (const auto& texture: getAll<Texture>()) {
     // Copy the texture's data so we can access it
     auto format = texture.asset->texture()->pixelFormat();
-    size_t bytesPerPixel = 0;
-    if (format == MTL::PixelFormatRGBA32Float) bytesPerPixel = 4 * sizeof(float);
-    if (format == MTL::PixelFormatRGBA8Unorm) bytesPerPixel = 4 * sizeof(uint8_t);
-    if (format == MTL::PixelFormatRG8Unorm) bytesPerPixel = 2 * sizeof(uint8_t);
-    if (format == MTL::PixelFormatR8Unorm) bytesPerPixel = 1 * sizeof(uint8_t);
-
     size_t width = texture.asset->texture()->width();
     size_t height = texture.asset->texture()->height();
 
+    size_t bytesPerPixel = getTextureBytesPerPixel(format);
     size_t bytesPerRow = bytesPerPixel * width;
     size_t totalBytes = bytesPerRow * height;
 
@@ -645,7 +690,7 @@ json Scene::toJson(
   return assetJson;
 }
 
-[[nodiscard]] json Scene::toJson(
+json Scene::toJson(
   const Scene::AssetData<Texture>& texture,
   const hashmap<AssetID, BufferData>& textureBufferData
 ) {
@@ -663,7 +708,7 @@ json Scene::toJson(
   };
 }
 
-[[nodiscard]] json Scene::toJson(const Scene::AssetData<Material>& material) {
+json Scene::toJson(const Scene::AssetData<Material>& material) {
   json materialJson{
     {"name",               material.asset->name},
     {"baseColor",          json_utils::vec(material.asset->baseColor)},
@@ -689,7 +734,7 @@ json Scene::toJson(
   return materialJson;
 }
 
-[[nodiscard]] json Scene::toJson(
+json Scene::toJson(
   const Scene::AssetData<Mesh>& mesh,
   const hashmap<AssetID, MeshBufferData>& meshBufferData
 ) {
@@ -703,6 +748,131 @@ json Scene::toJson(
     {"indices",     {bd.indices.offset,    bd.indices.length}},
     {"materials",   {bd.materials.offset,  bd.materials.length}},
   };
+}
+
+Scene::AssetPtr Scene::assetFromJson(
+  const std::string& type,
+  nlohmann::json json,
+  std::ifstream& data,
+  MTL::Device* device
+) {
+  if (type == "texture") return textureFromJson(json, data, device);
+  if (type == "mesh") return meshFromJson(json, data, device);
+  return materialFromJson(json);
+}
+
+std::unique_ptr<Texture> Scene::textureFromJson(const json& json, std::ifstream& data, MTL::Device* device) {
+  size_t len = json.at("data").at(1);
+  auto size = json.at("size");
+  size_t width = size.at(0);
+  size_t height = size.at(1);
+
+  MTL::PixelFormat format = json.at("format");
+  size_t bytesPerPixel = getTextureBytesPerPixel(format);
+  size_t bytesPerRow = bytesPerPixel * width;
+
+  void* buf = malloc(len);
+  data.read((char*) buf, std::streamsize(len));
+  MTL::Texture* tex = device->newTexture(
+    metal_utils::makeTextureDescriptor(
+      {
+        .width = uint32_t(width),
+        .height = uint32_t(height),
+        .format = format,
+      }
+    ));
+  tex->replaceRegion(MTL::Region(0, 0, width, height), 0, buf, bytesPerRow);
+  free(buf);
+
+  std::string name = json.at("name");
+  bool hasAlpha = json.at("alpha");
+  return std::make_unique<Texture>(tex, name, hasAlpha);
+}
+
+std::unique_ptr<Mesh> Scene::meshFromJson(const json& json, std::ifstream& data, MTL::Device* device) {
+  size_t len = json.at("positions").at(1);
+  MTL::Buffer* positions = device->newBuffer(len, MTL::ResourceStorageModeShared);
+  data.read((char*) positions->contents(), std::streamsize(len));
+
+  len = json.at("vertexData").at(1);
+  MTL::Buffer* vertexData = device->newBuffer(len, MTL::ResourceStorageModeShared);
+  data.read((char*) vertexData->contents(), std::streamsize(len));
+
+  len = json.at("indices").at(1);
+  MTL::Buffer* indices = device->newBuffer(len, MTL::ResourceStorageModeShared);
+  data.read((char*) indices->contents(), std::streamsize(len));
+
+  len = json.at("materials").at(1);
+  MTL::Buffer* materials = device->newBuffer(len, MTL::ResourceStorageModeShared);
+  data.read((char*) materials->contents(), std::streamsize(len));
+
+  size_t vc = json.at("vertexCount");
+  size_t ic = json.at("indexCount");
+
+  return std::make_unique<Mesh>(positions, vertexData, indices, materials, ic, vc);
+}
+
+std::unique_ptr<Material> Scene::materialFromJson(const json& materialJson) {
+  Material mat{
+    .name = materialJson.at("name"),
+    .baseColor = json_utils::parseFloat4(materialJson.at("baseColor")),
+    .emission = json_utils::parseFloat3(materialJson.at("emission")),
+    .emissionStrength = materialJson.at("emissionStrength"),
+    .roughness = materialJson.at("roughness"),
+    .metallic = materialJson.at("metallic"),
+    .transmission = materialJson.at("transmission"),
+    .ior = materialJson.at("ior"),
+    .anisotropy = materialJson.at("aniso"),
+    .anisotropyRotation = materialJson.at("anisoRotation"),
+    .clearcoat = materialJson.at("clearcoat"),
+    .clearcoatRoughness = materialJson.at("clearcoatRoughness"),
+    .thinTransmission = materialJson.at("thinTransmission"),
+  };
+
+  for (const json& texture: materialJson.at("textures")) {
+    mat.textures[Material::TextureSlot(texture.at(0))] = AssetID(texture.at(1));
+  }
+
+  return std::make_unique<Material>(std::move(mat));
+}
+
+Scene::NodeID Scene::nodeFromJson(const json& nodeJson, NodeID parentId) {
+  auto id = NodeID(nodeJson.at("id"));
+  std::string name = nodeJson.at("name");
+
+  // Create the node and set its basic properties
+  Node node = createNodeImpl(name, parentId, id);
+  node.visible() = nodeJson.at("visible");
+  node.transform() = json_utils::parseTransform(nodeJson.at("transform"));
+
+  // Parse mesh data, if present
+  if (nodeJson.contains("mesh")) {
+    const auto& mesh = nodeJson.at("mesh");
+    AssetID meshId = mesh.at("id");
+    const auto& materials = mesh.at("materials");
+
+    node.setMesh(meshId);
+    for (size_t i = 0; i < materials.size(); i++) {
+      if (materials.at(i) != "default") node.setMaterial(i, AssetID(materials.at(i)));
+    }
+  }
+
+  // Parse camera data, if present
+  if (nodeJson.contains("camera")) {
+    const auto& camera = nodeJson.at("camera");
+    float f = camera.at("f");
+    float aperture = camera.at("aperture");
+    float2 sensor = json_utils::parseFloat2(camera.at("sensor"));
+    node.set(Camera::withFocalLength(f, sensor, aperture));
+  }
+
+  // Recursively parse and create children
+  const auto& children = nodeJson.at("children");
+  for (const json& child: children) {
+    nodeFromJson(child, node.id());
+  }
+
+  return node.id();
 }
 
 }
