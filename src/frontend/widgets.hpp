@@ -15,9 +15,9 @@ void removeNodePopup(State& state, Scene::NodeID id);
 
 void transformEditor(Transform& transform);
 
-bool buttonDanger(const char* label, const ImVec2& size);
+bool buttonDanger(const char* label, const ImVec2& size = {0, 0});
 
-bool button(const char* label, const ImVec2& size);
+bool button(const char* label, const ImVec2& size = {0, 0});
 
 bool selectableDanger(
   const char* label,

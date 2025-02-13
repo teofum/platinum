@@ -73,8 +73,9 @@ private:
 
   // Post process settings
   const hashmap<postprocess::Tonemap, std::string> m_tonemappers = {
-    {postprocess::Tonemap::None, "None"},
-    {postprocess::Tonemap::AgX,  "AgX"},
+    {postprocess::Tonemap::None,       "None"},
+    {postprocess::Tonemap::AgX,        "AgX"},
+    {postprocess::Tonemap::KhronosPBR, "Khronos PBR Neutral"},
   };
 
   void updateScrollAndZoomState();

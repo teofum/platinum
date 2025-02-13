@@ -228,31 +228,52 @@ void RenderViewport::renderPostprocessSettings() {
   /*
    * Tonemap options
    */
-  if (ppOptions.tonemap.tonemapper == postprocess::Tonemap::AgX) {
-    auto& look = ppOptions.tonemap.agxOptions.look;
+  switch (ppOptions.tonemap.tonemapper) {
+    case postprocess::Tonemap::AgX: {
+      auto& look = ppOptions.tonemap.agxOptions.look;
 
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
+      ImGui::Spacing();
+      ImGui::Separator();
+      ImGui::Spacing();
 
-    ImGui::Text("Presets");
+      ImGui::Text("Presets");
 
-    float w = ImGui::CalcItemWidth();
-    float available = ImGui::GetContentRegionAvail().x;
-    ImGui::SameLine(available - w);
-    float buttonWidth = (w - ImGui::GetStyle().ItemSpacing.x) / 3;
-    if (widgets::button("None", {buttonWidth, 0})) look = postprocess::agx::looks::none;
-    ImGui::SameLine();
-    if (widgets::button("Golden", {buttonWidth, 0})) look = postprocess::agx::looks::golden;
-    ImGui::SameLine();
-    if (widgets::button("Punchy", {buttonWidth, 0})) look = postprocess::agx::looks::punchy;
+      float w = ImGui::CalcItemWidth();
+      float available = ImGui::GetContentRegionAvail().x;
+      ImGui::SameLine(available - w);
+      float buttonWidth = (w - ImGui::GetStyle().ItemSpacing.x) / 3;
+      if (widgets::button("None", {buttonWidth, 0})) look = postprocess::agx::looks::none;
+      ImGui::SameLine();
+      if (widgets::button("Golden", {buttonWidth, 0})) look = postprocess::agx::looks::golden;
+      ImGui::SameLine();
+      if (widgets::button("Punchy", {buttonWidth, 0})) look = postprocess::agx::looks::punchy;
 
-    ImGui::Spacing();
+      ImGui::Spacing();
 
-    widgets::dragVec3("Offset", (float*) &look.offset, 0.01f, 0.0f, 0.0f, "%.2f");
-    widgets::dragVec3("Slope", (float*) &look.slope, 0.01f, 0.0f, 0.0f, "%.2f");
-    widgets::dragVec3("Power", (float*) &look.power, 0.01f, 0.0f, 0.0f, "%.2f");
-    widgets::dragFloat("Saturation", &look.saturation, 0.01f, 0.0f, 0.0f, "%.2f");
+      widgets::dragVec3("Offset", (float*) &look.offset, 0.01f, -10.0f, 10.0f, "%.2f");
+      widgets::dragVec3("Slope", (float*) &look.slope, 0.01f, -5.0f, 5.0f, "%.2f");
+      widgets::dragVec3("Power", (float*) &look.power, 0.01f, 0.0f, 5.0f, "%.2f");
+      widgets::dragFloat("Saturation", &look.saturation, 0.01f, 0.0f, 3.0f, "%.2f");
+
+      break;
+    }
+    case postprocess::Tonemap::KhronosPBR: {
+      auto& options = ppOptions.tonemap.khrOptions;
+
+      ImGui::Spacing();
+      ImGui::Separator();
+      ImGui::Spacing();
+
+      widgets::dragFloat("Threshold", &options.compressionStart, 0.01f, 0.2f, 1.0f, "%.2f");
+      widgets::dragFloat("Desaturation", &options.desaturation, 0.01f, 0.0f, 1.0f, "%.2f");
+
+      if (widgets::button("Reset")) {
+
+      }
+
+      break;
+    }
+    default: {}
   }
 }
 

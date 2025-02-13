@@ -202,14 +202,25 @@ struct Options {
 
 }
 
+namespace khronos_pbr {
+
+struct Options {
+  float compressionStart = 0.8;
+  float desaturation = 0.15;
+};
+
+}
+
 enum class Tonemap {
   None,
   AgX,
+  KhronosPBR,
 };
 
 struct TonemapOptions {
   Tonemap tonemapper = Tonemap::AgX;
   agx::Options agxOptions;
+  khronos_pbr::Options khrOptions;
 };
 
 struct PostProcessOptions {
