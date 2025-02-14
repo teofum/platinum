@@ -292,6 +292,54 @@ void RenderViewport::renderPostprocessSettings() {
       if (widgets::button("Silver", {buttonWidth, 0})) options = postprocess::flim::presets::silver;
 
       ImGui::Spacing();
+
+      widgets::dragFloat("Pre-exposure", &options.preExposure, 0.1f, -10.0f, 10.0f, "%.1f EV");
+
+      ImGui::Spacing();
+
+      widgets::dragFloat("Min EV", &options.sigmoidLog2Min, 0.1f, -20.0f, 50.0f, "%.1f EV");
+      widgets::dragFloat("Max EV", &options.sigmoidLog2Max, 0.1f, -20.0f, 50.0f, "%.1f EV");
+      widgets::dragVec2("Toe", (float*) &options.sigmoidToe, 0.001f, 0.0f, 1.0f);
+      widgets::dragVec2("Shoulder", (float*) &options.sigmoidShoulder, 0.001f, 0.0f, 1.0f);
+
+      ImGui::Spacing();
+
+      widgets::color("Pre filter", (float*) &options.preFormationFilter);
+      widgets::dragFloat("Pre strength", &options.preFormationFilterStrength, 0.001f, 0.0f, 1.0f);
+      widgets::color("Post filter", (float*) &options.postFormationFilter);
+      widgets::dragFloat("Post strength", &options.postFormationFilterStrength, 0.001f, 0.0f, 1.0f);
+
+//      ImGui::Spacing();
+//
+//      widgets::dragVec3("EG Scale", (float*) &options.extendedGamutScale, 0.01f, 0.0f, 100.0f, "%.2f");
+//      widgets::dragVec3(
+//        "EG Rotation",
+//        (float*) &options.extendedGamutRotation,
+//        1.0f,
+//        0.0f,
+//        360.0f,
+//        "%.0f",
+//        ImGuiSliderFlags_WrapAround
+//      );
+//      widgets::dragVec3("EG Multiplier", (float*) &options.extendedGamutMul, 0.01f, 0.0f, 100.0f, "%.2f");
+
+      ImGui::Spacing();
+
+      widgets::dragFloat("Neg. Exposure", &options.negativeExposure, 0.1f, -10.0f, 10.0f, "%.1f EV");
+      widgets::dragFloat("Neg. Density", &options.negativeDensity, 0.5f, 0.0f, 100.0f, "%.1f");
+      widgets::dragFloat("Print Exposure", &options.printExposure, 0.1f, -10.0f, 10.0f, "%.1f EV");
+      widgets::dragFloat("Print Density", &options.printDensity, 0.5f, 0.0f, 100.0f, "%.1f");
+      widgets::color("Backlight", (float*) &options.printBacklight);
+
+      ImGui::Spacing();
+
+      ImGui::Checkbox("Auto black point", &options.autoBlackPoint);
+      ImGui::BeginDisabled(options.autoBlackPoint);
+      widgets::dragFloat("Black point", &options.blackPoint, 0.01f, 0.0f, 1.0f, "%.2f");
+      ImGui::EndDisabled();
+      widgets::dragFloat("Midtone Sat.", &options.midtoneSaturation, 0.01f, 0.0f, 10.0f, "%.2f");
+
+      break;
     }
     default: {}
   }

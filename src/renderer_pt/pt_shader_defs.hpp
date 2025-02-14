@@ -234,7 +234,8 @@ struct Options {
   float printExposure;
   float printDensity;
 
-  float blackPoint; // -1 = auto
+  float blackPoint;
+  bool autoBlackPoint;
   float3 postFormationFilter;
   float postFormationFilterStrength;
 
@@ -264,7 +265,8 @@ address_space(constant) constexpr const Options flim{
   .printExposure = 6.0,
   .printDensity = 27.5,
 
-  .blackPoint = -1.0,
+  .blackPoint = 0.0,
+  .autoBlackPoint = true,
   .postFormationFilter = {1.0, 1.0, 1.0},
   .postFormationFilterStrength = 0.0,
 
@@ -293,6 +295,7 @@ address_space(constant) constexpr const Options silver{
   .printDensity = 30.0,
 
   .blackPoint = 0.5,
+  .autoBlackPoint = false,
   .postFormationFilter = {1.0, 1.0, 0.0},
   .postFormationFilterStrength = 0.04,
 

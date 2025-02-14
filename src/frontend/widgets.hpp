@@ -7,6 +7,11 @@
 
 namespace pt::frontend::widgets {
 
+constexpr ImGuiColorEditFlags COLOR_FLAGS =
+  ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoOptions | ImGuiColorEditFlags_NoSidePreview
+  | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_DisplayRGB
+  | ImGuiColorEditFlags_DisplayHSV;
+
 std::tuple<float, std::string> leftAlignedLabel(const char* label);
 
 float getWidthForItems(uint32_t n);
@@ -69,6 +74,16 @@ bool dragFloat(
   ImGuiSliderFlags flags = 0
 );
 
+bool dragVec2(
+  const char* label,
+  float* f,
+  float step = 1.0,
+  float min = 0.0,
+  float max = 0.0,
+  const char* fmt = "%.3f",
+  ImGuiSliderFlags flags = 0
+);
+
 bool dragVec3(
   const char* label,
   float* f,
@@ -79,7 +94,7 @@ bool dragVec3(
   ImGuiSliderFlags flags = 0
 );
 
-bool color(const char* label, float col[3], ImGuiColorEditFlags flags = 0);
+bool color(const char* label, float col[3], ImGuiColorEditFlags flags = COLOR_FLAGS);
 
 }
 

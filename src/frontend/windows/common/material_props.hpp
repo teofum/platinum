@@ -8,11 +8,6 @@
 
 namespace pt::frontend {
 
-constexpr ImGuiColorEditFlags COLOR_FLAGS =
-  ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoOptions | ImGuiColorEditFlags_NoSidePreview
-	| ImGuiColorEditFlags_Float | ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_DisplayRGB
-	| ImGuiColorEditFlags_DisplayHSV;
-
 void materialProperties(Scene& scene, Material* material, std::optional<Scene::AssetID> id);
 
 void materialTextureSelect(Scene& scene, const char* label, Material* material, Material::TextureSlot slot);

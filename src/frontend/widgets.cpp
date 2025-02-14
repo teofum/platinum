@@ -255,6 +255,34 @@ bool dragFloat(
   return ImGui::DragFloat(hiddenLabel.c_str(), f, step, min, max, fmt, flags);
 }
 
+bool dragVec2(
+  const char* label,
+  float* f,
+  float step,
+  float min,
+  float max,
+  const char* fmt,
+  ImGuiSliderFlags flags
+) {
+  float wAll = ImGui::GetFrameHeight() * 2;
+  bool change = false;
+
+  auto [w, hiddenLabel] = leftAlignedLabel(label);
+  ImGui::SetNextItemWidth(w - wAll);
+  change |= ImGui::DragFloat2(hiddenLabel.c_str(), f, step, min, max, fmt, flags);
+
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(wAll);
+  auto hiddenLabelAll = std::format("##{}_All", label);
+  if (ImGui::DragFloat(hiddenLabelAll.c_str(), f, step, min, max, "U")) {
+    change = true;
+    f[1] = f[0];
+    f[2] = f[0];
+  }
+
+  return change;
+}
+
 bool dragVec3(
   const char* label,
   float* f,

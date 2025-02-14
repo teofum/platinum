@@ -384,7 +384,7 @@ float3 apply(float3 val, constant const pp::flim::Options& options) {
   val = max(val, float3(0.0));
   val /= whiteCap;
 
-  if (options.blackPoint == -1.0) {
+  if (options.autoBlackPoint) {
     float3 blackCap = negativeAndPrint(float3(0.0), backlight, options);
     blackCap /= whiteCap;
     val = rgbUniformOffset(val, rgbAvg(blackCap) * 1000.0, 0.0);

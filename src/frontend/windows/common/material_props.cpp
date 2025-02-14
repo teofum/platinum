@@ -11,7 +11,7 @@ void materialProperties(Scene& scene, Material* material, std::optional<Scene::A
 
   ImGui::SeparatorText("Basic properties");
 
-  widgets::color("Base color", (float*) &material->baseColor, COLOR_FLAGS);
+  widgets::color("Base color", (float*) &material->baseColor);
 
   materialTextureSelect(scene, "Base texture", material, Material::TextureSlot::BaseColor);
 
@@ -32,7 +32,7 @@ void materialProperties(Scene& scene, Material* material, std::optional<Scene::A
 
   ImGui::SeparatorText("Emission");
 
-  widgets::color("Color", (float*) &material->emission, COLOR_FLAGS);
+  widgets::color("Color", (float*) &material->emission);
   widgets::dragFloat("Strength", &material->emissionStrength, 0.1f);
 
   materialTextureSelect(scene, "Texture##EmissionTexture", material, Material::TextureSlot::Emission);
