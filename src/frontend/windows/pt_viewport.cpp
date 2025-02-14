@@ -206,7 +206,9 @@ void RenderViewport::renderPostprocessSettings() {
   /*
    * Post processing options
    */
+  int32_t idx = 0;
   for (const auto& options: m_renderer->postProcessOptions()) {
+    ImGui::PushID(idx++);
     switch (options.type) {
       case postprocess::PostProcessPass::Type::Exposure: {
         auto& exposureOptions = *options.exposure;
@@ -221,6 +223,7 @@ void RenderViewport::renderPostprocessSettings() {
       }
       default: break;
     }
+    ImGui::PopID();
   }
 
   /*
