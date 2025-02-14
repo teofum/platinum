@@ -144,24 +144,19 @@ void Renderer::render() {
     std::swap(m_accumulator[0], m_accumulator[1]);
   }
 
-  cmd->commit();
-
   /*
    * Post processing pipeline
    */
   for (size_t i = 0; i < m_postProcessPasses.size(); i++) {
     auto& pass = m_postProcessPasses[i];
-    auto ppCmd = m_commandQueue->commandBuffer();
 
-    pass->apply(i == 0 ? m_accumulator[0] : m_postProcessBuffer[0], m_postProcessBuffer[1], ppCmd);
+    pass->apply(i == 0 ? m_accumulator[0] : m_postProcessBuffer[0], m_postProcessBuffer[1], cmd);
     std::swap(m_postProcessBuffer[0], m_postProcessBuffer[1]);
-
-    ppCmd->commit();
   }
 
-  auto tonemapCmd = m_commandQueue->commandBuffer();
-  m_tonemapPass->apply(m_postProcessBuffer[0], m_renderTarget, tonemapCmd);
-  tonemapCmd->commit();
+  m_tonemapPass->apply(m_postProcessBuffer[0], m_renderTarget, cmd);
+
+  cmd->commit();
 }
 
 void Renderer::startRender(
