@@ -37,6 +37,17 @@ Renderer::~Renderer() {
   for (auto lut: m_luts) lut->release();
 }
 
+std::vector<postprocess::PostProcessPass::Options> Renderer::postProcessOptions() {
+  std::vector<postprocess::PostProcessPass::Options> options;
+  options.reserve(m_postProcessPasses.size());
+
+  for (const auto& pass: m_postProcessPasses) {
+    options.push_back(pass->options());
+  }
+
+  return options;
+}
+
 void Renderer::render() {
   if (!m_renderTarget) return;
 

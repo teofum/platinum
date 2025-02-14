@@ -58,14 +58,10 @@ public:
 
   [[nodiscard]] size_t renderTime() const;
 
-  template<typename T>
-  [[nodiscard]] constexpr T::Options& options(size_t idx) {
-    auto* pass = (T*) m_postProcessPasses[idx].get();
-    return pass->options();
-  }
+  [[nodiscard]] std::vector<postprocess::PostProcessPass::Options> postProcessOptions();
 
-  [[nodiscard]] constexpr postprocess::Tonemap::Options& tonemapOptions() {
-    return m_tonemapPass->options();
+  [[nodiscard]] constexpr postprocess::Tonemap::Options* tonemapOptions() {
+    return m_tonemapPass->options().tonemap;
   }
 
 private:

@@ -190,6 +190,19 @@ struct TonemapOptions {
 
 class PostProcessPass {
 public:
+  enum class Type {
+    Exposure,
+    Tonemap,
+  };
+
+  struct Options {
+    Type type = Type::Exposure;
+    union {
+      ExposureOptions* exposure = nullptr;
+      TonemapOptions* tonemap;
+    };
+  };
+
   PostProcessPass(
     MTL::Device* device,
     MTL::Library* lib,
@@ -201,6 +214,8 @@ public:
 
   virtual void apply(MTL::Texture* src, MTL::Texture* dst, MTL::CommandBuffer* cmd) = 0;
 
+  virtual Options options() = 0;
+
 protected:
   MTL::Device* m_device;
   MTL::RenderPipelineState* m_pso;
@@ -208,7 +223,7 @@ protected:
   std::string m_name;
 };
 
-template<typename T, utils::StringLiteral functionName, bool isFinal = false>
+template<typename T, PostProcessPass::Type PassType, utils::StringLiteral FunctionName, bool IsFinal = false>
 class BasicPostProcessPass : public PostProcessPass {
 public:
   using Options = T;
@@ -217,8 +232,8 @@ public:
     : PostProcessPass(
     device,
     lib,
-    functionName.value,
-    isFinal ? MTL::PixelFormatRGBA8Unorm : MTL::PixelFormatRGBA32Float
+    FunctionName.value,
+    IsFinal ? MTL::PixelFormatRGBA8Unorm : MTL::PixelFormatRGBA32Float
   ) {}
 
   void apply(MTL::Texture* src, MTL::Texture* dst, MTL::CommandBuffer* cmd) final {
@@ -238,14 +253,19 @@ public:
     postEnc->endEncoding();
   }
 
-  constexpr Options& options() { return m_options; }
+  PostProcessPass::Options options() final {
+    return {
+      PassType,
+      {(ExposureOptions*) ((void*) &m_options)},
+    };
+  }
 
 private:
   Options m_options;
 };
 
-using Exposure = BasicPostProcessPass<ExposureOptions, "exposure">;
-using Tonemap = BasicPostProcessPass<TonemapOptions, "tonemap", true>;
+using Exposure = BasicPostProcessPass<ExposureOptions, PostProcessPass::Type::Exposure, "exposure">;
+using Tonemap = BasicPostProcessPass<TonemapOptions, PostProcessPass::Type::Tonemap, "tonemap", true>;
 
 #endif
 

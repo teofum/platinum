@@ -203,19 +203,30 @@ void RenderViewport::renderSettingsWindow(const std::vector<Scene::CameraInstanc
 }
 
 void RenderViewport::renderPostprocessSettings() {
-  auto& exposureOptions = m_renderer->options<postprocess::Exposure>(0);
+  /*
+   * Post processing options
+   */
+  for (const auto& options: m_renderer->postProcessOptions()) {
+    switch (options.type) {
+      case postprocess::PostProcessPass::Type::Exposure: {
+        auto& exposureOptions = *options.exposure;
 
-  ImGui::SeparatorText("Exposure");
+        ImGui::SeparatorText("Exposure");
 
-  widgets::dragFloat("Exposure", &exposureOptions.exposure, 0.1f, -5.0f, 5.0f, "%.1f EV");
+        widgets::dragFloat("Exposure", &exposureOptions.exposure, 0.1f, -5.0f, 5.0f, "%.1f EV");
 
-  ImGui::Spacing();
-  ImGui::SeparatorText("Tone mapping");
+        ImGui::Spacing();
+        ImGui::SeparatorText("Tone mapping");
+        break;
+      }
+      default: break;
+    }
+  }
 
   /*
    * Tonemapper select
    */
-  auto& tonemapOptions = m_renderer->tonemapOptions();
+  auto& tonemapOptions = *m_renderer->tonemapOptions();
   if (widgets::combo("Tonemap", m_tonemappers.at(tonemapOptions.tonemapper).c_str())) {
     for (const auto& [tonemapper, name]: m_tonemappers) {
       bool isSelected = tonemapOptions.tonemapper == tonemapper;
