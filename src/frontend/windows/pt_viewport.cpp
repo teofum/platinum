@@ -267,11 +267,31 @@ void RenderViewport::renderPostprocessSettings() {
       widgets::dragFloat("Threshold", &options.compressionStart, 0.01f, 0.2f, 1.0f, "%.2f");
       widgets::dragFloat("Desaturation", &options.desaturation, 0.01f, 0.0f, 1.0f, "%.2f");
 
-      if (widgets::button("Reset")) {
-
+      if (widgets::button("Reset", {ImGui::GetContentRegionAvail().x, 0})) {
+        options.compressionStart = 0.8;
+        options.desaturation = 0.15;
       }
 
       break;
+    }
+    case postprocess::Tonemap::flim: {
+      auto& options = ppOptions.tonemap.flimOptions;
+
+      ImGui::Spacing();
+      ImGui::Separator();
+      ImGui::Spacing();
+
+      ImGui::Text("Presets");
+
+      float w = ImGui::CalcItemWidth();
+      float available = ImGui::GetContentRegionAvail().x;
+      ImGui::SameLine(available - w);
+      float buttonWidth = w / 2;
+      if (widgets::button("Default", {buttonWidth, 0})) options = postprocess::flim::presets::flim;
+      ImGui::SameLine();
+      if (widgets::button("Silver", {buttonWidth, 0})) options = postprocess::flim::presets::silver;
+
+      ImGui::Spacing();
     }
     default: {}
   }

@@ -76,6 +76,7 @@ private:
     {postprocess::Tonemap::None,       "None"},
     {postprocess::Tonemap::AgX,        "AgX"},
     {postprocess::Tonemap::KhronosPBR, "Khronos PBR Neutral"},
+    {postprocess::Tonemap::flim,       "flim"},
   };
 
   void updateScrollAndZoomState();

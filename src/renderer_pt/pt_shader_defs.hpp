@@ -211,16 +211,110 @@ struct Options {
 
 }
 
+namespace flim {
+
+struct Options {
+  float preExposure;
+  float3 preFormationFilter;
+  float preFormationFilterStrength;
+
+  float3 extendedGamutScale;
+  float3 extendedGamutRotation;
+  float3 extendedGamutMul;
+
+  float sigmoidLog2Min;
+  float sigmoidLog2Max;
+  float2 sigmoidToe;
+  float2 sigmoidShoulder;
+
+  float negativeExposure;
+  float negativeDensity;
+
+  float3 printBacklight;
+  float printExposure;
+  float printDensity;
+
+  float blackPoint; // -1 = auto
+  float3 postFormationFilter;
+  float postFormationFilterStrength;
+
+  float midtoneSaturation;
+};
+
+namespace presets {
+
+address_space(constant) constexpr const Options flim{
+  .preExposure = 4.3,
+  .preFormationFilter = {1.0, 1.0, 1.0},
+  .preFormationFilterStrength = 0.0,
+
+  .extendedGamutScale = {1.05, 1.12, 1.045},
+  .extendedGamutRotation = {0.5, 2.0, 0.1},
+  .extendedGamutMul = {1.0, 1.0, 1.0},
+
+  .sigmoidLog2Min = -10.0,
+  .sigmoidLog2Max = 22.0,
+  .sigmoidToe = {0.440, 0.280},
+  .sigmoidShoulder = {0.591, 0.779},
+
+  .negativeExposure = 6.0,
+  .negativeDensity = 5.0,
+
+  .printBacklight = {1.0, 1.0, 1.0},
+  .printExposure = 6.0,
+  .printDensity = 27.5,
+
+  .blackPoint = -1.0,
+  .postFormationFilter = {1.0, 1.0, 1.0},
+  .postFormationFilterStrength = 0.0,
+
+  .midtoneSaturation = 1.02,
+};
+
+address_space(constant) constexpr const Options silver{
+  .preExposure = 3.9,
+  .preFormationFilter = {0.0, 0.5, 1.0},
+  .preFormationFilterStrength = 0.05,
+
+  .extendedGamutScale = {1.05, 1.12, 1.045},
+  .extendedGamutRotation = {0.5, 2.0, 0.1},
+  .extendedGamutMul = {1.0, 1.0, 1.06},
+
+  .sigmoidLog2Min = -10.0,
+  .sigmoidLog2Max = 22.0,
+  .sigmoidToe = {0.440, 0.280},
+  .sigmoidShoulder = {0.591, 0.779},
+
+  .negativeExposure = 4.7,
+  .negativeDensity = 7.0,
+
+  .printBacklight = {0.9992, 0.99, 1.0},
+  .printExposure = 4.7,
+  .printDensity = 30.0,
+
+  .blackPoint = 0.5,
+  .postFormationFilter = {1.0, 1.0, 0.0},
+  .postFormationFilterStrength = 0.04,
+
+  .midtoneSaturation = 1.0,
+};
+
+}
+
+}
+
 enum class Tonemap {
   None,
   AgX,
   KhronosPBR,
+  flim,
 };
 
 struct TonemapOptions {
   Tonemap tonemapper = Tonemap::AgX;
   agx::Options agxOptions;
   khronos_pbr::Options khrOptions;
+  flim::Options flimOptions = flim::presets::flim;
 };
 
 struct PostProcessOptions {
