@@ -4,7 +4,6 @@
 
 using namespace metal;
 namespace pp = pt::postprocess;
-using Options = pp::PostProcessOptions;
 
 // Screen filling quad in normalized device coordinates
 constant float2 quadVertices[] = {
@@ -420,30 +419,38 @@ vertex VertexOut postprocessVertex(unsigned short vid [[vertex_id]]) {
   return out;
 }
 
-fragment float4 postprocessFragment(
+fragment float4 exposure(
   VertexOut in [[stage_in]],
   texture2d<float> src,
-  constant Options& options [[buffer(0)]]
+  constant pp::ExposureOptions& options [[buffer(0)]]
+) {
+  constexpr sampler sampler(min_filter::nearest, mag_filter::nearest, mip_filter::none);
+
+  float3 color = src.sample(sampler, in.uv).xyz;
+  color *= exp2(options.exposure);
+
+  return float4(color, 1.0f);
+}
+
+fragment float4 tonemap(
+  VertexOut in [[stage_in]],
+  texture2d<float> src,
+  constant pp::TonemapOptions& options [[buffer(0)]]
 ) {
   constexpr sampler sampler(min_filter::nearest, mag_filter::nearest, mip_filter::none);
   
   float3 color = src.sample(sampler, in.uv).xyz;
-
-  // Exposure
-  color *= exp2(options.exposure);
-
-  // Tone mapping
-  switch (options.tonemap.tonemapper) {
-    case pp::Tonemap::AgX:
-      color = agx::apply(color, options.tonemap.agxOptions);
+  switch (options.tonemapper) {
+    case pp::Tonemapper::AgX:
+      color = agx::apply(color, options.agxOptions);
       // No sRGB conversion; AgX has it built in
       break;
-    case pp::Tonemap::KhronosPBR:
-      color = khronos_pbr::apply(color, options.tonemap.khrOptions);
+    case pp::Tonemapper::KhronosPBR:
+      color = khronos_pbr::apply(color, options.khrOptions);
       color = sRGB(color);
       break;
-    case pp::Tonemap::flim:
-      color = flim::apply(color, options.tonemap.flimOptions);
+    case pp::Tonemapper::flim:
+      color = flim::apply(color, options.flimOptions);
       color = sRGB(color);
     default:
       color = sRGB(color);

@@ -4,6 +4,7 @@
 #include <Metal/Metal.hpp>
 
 #include <core/store.hpp>
+#include <core/postprocessing.hpp>
 #include "pt_shader_defs.hpp"
 
 namespace pt::renderer_pt {
@@ -57,8 +58,14 @@ public:
 
   [[nodiscard]] size_t renderTime() const;
 
-  [[nodiscard]] constexpr postprocess::PostProcessOptions& postProcessOptions() {
-    return m_postProcessOptions;
+  template<typename T>
+  [[nodiscard]] constexpr T::Options& options(size_t idx) {
+    auto* pass = (T*) m_postProcessPasses[idx].get();
+    return pass->options();
+  }
+
+  [[nodiscard]] constexpr postprocess::Tonemap::Options& tonemapOptions() {
+    return m_tonemapPass->options();
   }
 
 private:
@@ -152,12 +159,11 @@ private:
   std::chrono::time_point<std::chrono::high_resolution_clock> m_renderStart;
 
   /*
-   * Postprocess pipeline state
+   * Postprocess pipeline
    */
-  MTL::RenderPipelineState* m_postprocessPipeline = nullptr;
-
-  // Postprocess options
-  postprocess::PostProcessOptions m_postProcessOptions;
+  MTL::Texture* m_postProcessBuffer[2] = {nullptr, nullptr};
+  std::vector<std::unique_ptr<postprocess::PostProcessPass>> m_postProcessPasses;
+  std::unique_ptr<postprocess::Tonemap> m_tonemapPass;
 
   MTL::AccelerationStructure* makeAccelStruct(MTL::AccelerationStructureDescriptor* desc);
 

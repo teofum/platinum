@@ -27,10 +27,11 @@ Renderer::~Renderer() {
   if (m_renderTarget != nullptr) m_renderTarget->release();
   if (m_accumulator[0] != nullptr) m_accumulator[0]->release();
   if (m_accumulator[1] != nullptr) m_accumulator[1]->release();
+  if (m_postProcessBuffer[0] != nullptr) m_postProcessBuffer[0]->release();
+  if (m_postProcessBuffer[1] != nullptr) m_postProcessBuffer[1]->release();
 
   for (auto pipeline: m_pathtracingPipelines) pipeline->release();
   for (auto ift: m_intersectionFunctionTables) ift->release();
-  if (m_postprocessPipeline != nullptr) m_postprocessPipeline->release();
   if (m_constantsBuffer != nullptr) m_constantsBuffer->release();
 
   for (auto lut: m_luts) lut->release();
@@ -132,26 +133,24 @@ void Renderer::render() {
     std::swap(m_accumulator[0], m_accumulator[1]);
   }
 
-  /*
-   * Always run the post processing pass — this lets us change post process
-   * settings without rendering again
-   */
-  auto rpd = ns_shared<MTL::RenderPassDescriptor>();
-
-  rpd->colorAttachments()->object(0)->setTexture(m_renderTarget);
-  rpd->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionClear);
-  rpd->colorAttachments()->object(0)->setClearColor(MTL::ClearColor::Make(0.0f, 0.0f, 0.0f, 1.0f));
-
-  auto postEnc = cmd->renderCommandEncoder(rpd);
-
-  postEnc->setRenderPipelineState(m_postprocessPipeline);
-  postEnc->setFragmentTexture(m_accumulator[0], 0);
-  postEnc->setFragmentBytes(&m_postProcessOptions, sizeof(postprocess::PostProcessOptions), 0);
-
-  postEnc->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger) 0, 6);
-  postEnc->endEncoding();
-
   cmd->commit();
+
+  /*
+   * Post processing pipeline
+   */
+  for (size_t i = 0; i < m_postProcessPasses.size(); i++) {
+    auto& pass = m_postProcessPasses[i];
+    auto ppCmd = m_commandQueue->commandBuffer();
+
+    pass->apply(i == 0 ? m_accumulator[0] : m_postProcessBuffer[0], m_postProcessBuffer[1], ppCmd);
+    std::swap(m_postProcessBuffer[0], m_postProcessBuffer[1]);
+
+    ppCmd->commit();
+  }
+
+  auto tonemapCmd = m_commandQueue->commandBuffer();
+  m_tonemapPass->apply(m_postProcessBuffer[0], m_renderTarget, tonemapCmd);
+  tonemapCmd->commit();
 }
 
 void Renderer::startRender(
@@ -193,10 +192,6 @@ NS::SharedPtr<MTL::AccelerationStructureGeometryDescriptor> Renderer::makeGeomet
   desc->setVertexBuffer(mesh->vertexPositions());
   desc->setVertexStride(sizeof(float3));
   desc->setTriangleCount(mesh->indexCount() / 3);
-
-  // TODO: Do we need this? Not documented
-  //   (https://developer.apple.com/documentation/metal/mtlaccelerationstructuretrianglegeometrydescriptor)
-  // desc->setVertexFormat(MTL::AttributeFormatFloat3);
 
   /*
    * Set per-primitive data buffer
@@ -321,23 +316,8 @@ void Renderer::buildPipelines() {
   /*
    * Build the post-process pipeline
    */
-  auto postDesc = metal_utils::makeRenderPipelineDescriptor(
-    {
-      .vertexFunction = metal_utils::getFunction(lib, "postprocessVertex"),
-      .fragmentFunction = metal_utils::getFunction(lib, "postprocessFragment"),
-      .colorAttachments = {MTL::PixelFormatRGBA8Unorm}
-    }
-  );
-
-  m_postprocessPipeline = m_device->newRenderPipelineState(postDesc, &error);
-  if (!m_postprocessPipeline) {
-    std::println(
-      stderr,
-      "renderer_pt: Failed to create postprocess pipeline:",
-      error->localizedDescription()->utf8String()
-    );
-    assert(false);
-  }
+  m_postProcessPasses.push_back(std::make_unique<postprocess::Exposure>(m_device, lib));
+  m_tonemapPass = std::make_unique<postprocess::Tonemap>(m_device, lib);
 }
 
 void Renderer::buildConstantsBuffer() {
@@ -698,6 +678,8 @@ void Renderer::rebuildRenderTargets() {
   if (m_renderTarget != nullptr) m_renderTarget->release();
   if (m_accumulator[0] != nullptr) m_accumulator[0]->release();
   if (m_accumulator[1] != nullptr) m_accumulator[1]->release();
+  if (m_postProcessBuffer[0] != nullptr) m_postProcessBuffer[0]->release();
+  if (m_postProcessBuffer[1] != nullptr) m_postProcessBuffer[1]->release();
 
   if (m_randomSource != nullptr) m_randomSource->release();
 
@@ -711,6 +693,8 @@ void Renderer::rebuildRenderTargets() {
   texd->setPixelFormat(MTL::PixelFormatRGBA32Float);
   m_accumulator[0] = m_device->newTexture(texd);
   m_accumulator[1] = m_device->newTexture(texd);
+  m_postProcessBuffer[0] = m_device->newTexture(texd);
+  m_postProcessBuffer[1] = m_device->newTexture(texd);
 
   texd->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
   texd->setPixelFormat(MTL::PixelFormatRGBA8Unorm);

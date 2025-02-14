@@ -110,6 +110,8 @@ add_executable(platinum
         tools.metallib
         loaders.metallib
         src/utils/json.hpp
+        src/core/postprocessing.hpp
+        src/core/postprocessing.cpp
 )
 
 target_include_directories(platinum PRIVATE src)

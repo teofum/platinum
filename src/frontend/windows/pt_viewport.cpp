@@ -203,11 +203,11 @@ void RenderViewport::renderSettingsWindow(const std::vector<Scene::CameraInstanc
 }
 
 void RenderViewport::renderPostprocessSettings() {
-  auto& ppOptions = m_renderer->postProcessOptions();
+  auto& exposureOptions = m_renderer->options<postprocess::Exposure>(0);
 
   ImGui::SeparatorText("Exposure");
 
-  widgets::dragFloat("Exposure", &ppOptions.exposure, 0.1f, -5.0f, 5.0f, "%.1f EV");
+  widgets::dragFloat("Exposure", &exposureOptions.exposure, 0.1f, -5.0f, 5.0f, "%.1f EV");
 
   ImGui::Spacing();
   ImGui::SeparatorText("Tone mapping");
@@ -215,10 +215,11 @@ void RenderViewport::renderPostprocessSettings() {
   /*
    * Tonemapper select
    */
-  if (widgets::combo("Tonemap", m_tonemappers.at(ppOptions.tonemap.tonemapper).c_str())) {
+  auto& tonemapOptions = m_renderer->tonemapOptions();
+  if (widgets::combo("Tonemap", m_tonemappers.at(tonemapOptions.tonemapper).c_str())) {
     for (const auto& [tonemapper, name]: m_tonemappers) {
-      bool isSelected = ppOptions.tonemap.tonemapper == tonemapper;
-      if (widgets::comboItem(name.c_str(), isSelected)) ppOptions.tonemap.tonemapper = tonemapper;
+      bool isSelected = tonemapOptions.tonemapper == tonemapper;
+      if (widgets::comboItem(name.c_str(), isSelected)) tonemapOptions.tonemapper = tonemapper;
 
       if (isSelected) ImGui::SetItemDefaultFocus();
     }
@@ -228,9 +229,9 @@ void RenderViewport::renderPostprocessSettings() {
   /*
    * Tonemap options
    */
-  switch (ppOptions.tonemap.tonemapper) {
-    case postprocess::Tonemap::AgX: {
-      auto& look = ppOptions.tonemap.agxOptions.look;
+  switch (tonemapOptions.tonemapper) {
+    case postprocess::Tonemapper::AgX: {
+      auto& look = tonemapOptions.agxOptions.look;
 
       ImGui::Spacing();
       ImGui::Separator();
@@ -257,8 +258,8 @@ void RenderViewport::renderPostprocessSettings() {
 
       break;
     }
-    case postprocess::Tonemap::KhronosPBR: {
-      auto& options = ppOptions.tonemap.khrOptions;
+    case postprocess::Tonemapper::KhronosPBR: {
+      auto& options = tonemapOptions.khrOptions;
 
       ImGui::Spacing();
       ImGui::Separator();
@@ -274,8 +275,8 @@ void RenderViewport::renderPostprocessSettings() {
 
       break;
     }
-    case postprocess::Tonemap::flim: {
-      auto& options = ppOptions.tonemap.flimOptions;
+    case postprocess::Tonemapper::flim: {
+      auto& options = tonemapOptions.flimOptions;
 
       ImGui::Spacing();
       ImGui::Separator();

@@ -22,17 +22,12 @@
 #define metal_resource(T) MTL::ResourceID
 #endif
 
-#ifdef __METAL_VERSION__
-#define address_space(space) space
-#else
-#define address_space(space)
-#endif
-
 #include <simd/simd.h>
 
 #include "../core/mesh.hpp"
 #include "../core/material.hpp"
 #include "../core/environment.hpp"
+#include "../core/postprocessing.hpp"
 
 using namespace simd;
 
@@ -158,171 +153,6 @@ struct Arguments {
   metal_ptr(Texture, device) textures;
 
   Luts luts;
-};
-
-}
-
-namespace postprocess {
-
-namespace agx {
-
-struct Look {
-  float3 offset, slope, power;
-  float saturation;
-};
-
-namespace looks {
-
-address_space(constant) constexpr const Look none = {
-  .offset = float3(0.0),
-  .slope = float3(1.0),
-  .power = float3(1.0),
-  .saturation = 1.0,
-};
-
-address_space(constant) constexpr const Look golden = {
-  .offset = float3(0.0),
-  .slope = float3{1.0, 0.9, 0.5},
-  .power = float3(0.8),
-  .saturation = 0.8,
-};
-
-address_space(constant) constexpr const Look punchy = {
-  .offset = float3(0.0),
-  .slope = float3(1.0),
-  .power = float3(1.35),
-  .saturation = 1.4,
-};
-
-}
-
-struct Options {
-  Look look = looks::none;
-};
-
-}
-
-namespace khronos_pbr {
-
-struct Options {
-  float compressionStart = 0.8;
-  float desaturation = 0.15;
-};
-
-}
-
-namespace flim {
-
-struct Options {
-  float preExposure;
-  float3 preFormationFilter;
-  float preFormationFilterStrength;
-
-  float3 extendedGamutScale;
-  float3 extendedGamutRotation;
-  float3 extendedGamutMul;
-
-  float sigmoidLog2Min;
-  float sigmoidLog2Max;
-  float2 sigmoidToe;
-  float2 sigmoidShoulder;
-
-  float negativeExposure;
-  float negativeDensity;
-
-  float3 printBacklight;
-  float printExposure;
-  float printDensity;
-
-  float blackPoint;
-  bool autoBlackPoint;
-  float3 postFormationFilter;
-  float postFormationFilterStrength;
-
-  float midtoneSaturation;
-};
-
-namespace presets {
-
-address_space(constant) constexpr const Options flim{
-  .preExposure = 4.3,
-  .preFormationFilter = {1.0, 1.0, 1.0},
-  .preFormationFilterStrength = 0.0,
-
-  .extendedGamutScale = {1.05, 1.12, 1.045},
-  .extendedGamutRotation = {0.5, 2.0, 0.1},
-  .extendedGamutMul = {1.0, 1.0, 1.0},
-
-  .sigmoidLog2Min = -10.0,
-  .sigmoidLog2Max = 22.0,
-  .sigmoidToe = {0.440, 0.280},
-  .sigmoidShoulder = {0.591, 0.779},
-
-  .negativeExposure = 6.0,
-  .negativeDensity = 5.0,
-
-  .printBacklight = {1.0, 1.0, 1.0},
-  .printExposure = 6.0,
-  .printDensity = 27.5,
-
-  .blackPoint = 0.0,
-  .autoBlackPoint = true,
-  .postFormationFilter = {1.0, 1.0, 1.0},
-  .postFormationFilterStrength = 0.0,
-
-  .midtoneSaturation = 1.02,
-};
-
-address_space(constant) constexpr const Options silver{
-  .preExposure = 3.9,
-  .preFormationFilter = {0.0, 0.5, 1.0},
-  .preFormationFilterStrength = 0.05,
-
-  .extendedGamutScale = {1.05, 1.12, 1.045},
-  .extendedGamutRotation = {0.5, 2.0, 0.1},
-  .extendedGamutMul = {1.0, 1.0, 1.06},
-
-  .sigmoidLog2Min = -10.0,
-  .sigmoidLog2Max = 22.0,
-  .sigmoidToe = {0.440, 0.280},
-  .sigmoidShoulder = {0.591, 0.779},
-
-  .negativeExposure = 4.7,
-  .negativeDensity = 7.0,
-
-  .printBacklight = {0.9992, 0.99, 1.0},
-  .printExposure = 4.7,
-  .printDensity = 30.0,
-
-  .blackPoint = 0.5,
-  .autoBlackPoint = false,
-  .postFormationFilter = {1.0, 1.0, 0.0},
-  .postFormationFilterStrength = 0.04,
-
-  .midtoneSaturation = 1.0,
-};
-
-}
-
-}
-
-enum class Tonemap {
-  None,
-  AgX,
-  KhronosPBR,
-  flim,
-};
-
-struct TonemapOptions {
-  Tonemap tonemapper = Tonemap::AgX;
-  agx::Options agxOptions;
-  khronos_pbr::Options khrOptions;
-  flim::Options flimOptions = flim::presets::flim;
-};
-
-struct PostProcessOptions {
-  float exposure = 0.0f;
-  TonemapOptions tonemap;
 };
 
 }

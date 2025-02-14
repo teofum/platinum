@@ -4,6 +4,7 @@
 #include <imgui.h>
 #include <SDL.h>
 
+#include <core/postprocessing.hpp>
 #include <frontend/window.hpp>
 #include <frontend/widgets.hpp>
 #include <renderer_pt/renderer_pt.hpp>
@@ -72,11 +73,11 @@ private:
   int m_renderFlags = shaders_pt::RendererFlags_MultiscatterGGX;
 
   // Post process settings
-  const hashmap<postprocess::Tonemap, std::string> m_tonemappers = {
-    {postprocess::Tonemap::None,       "None"},
-    {postprocess::Tonemap::AgX,        "AgX"},
-    {postprocess::Tonemap::KhronosPBR, "Khronos PBR Neutral"},
-    {postprocess::Tonemap::flim,       "flim"},
+  const hashmap<postprocess::Tonemapper, std::string> m_tonemappers = {
+    {postprocess::Tonemapper::None,       "None"},
+    {postprocess::Tonemapper::AgX,        "AgX"},
+    {postprocess::Tonemapper::KhronosPBR, "Khronos PBR Neutral"},
+    {postprocess::Tonemapper::flim,       "flim"},
   };
 
   void updateScrollAndZoomState();
