@@ -215,9 +215,8 @@ intersector<triangle_data, instancing> createTriangleIntersector() {
 kernel void pathtracingKernel(
   uint2                                                 tid         				[[thread_position_in_grid]],
 	constant Arguments&                                   args								[[buffer(0)]],
-  texture2d<float>                                      src         				[[texture(0)]],
-  texture2d<float, access::write>                       dst         				[[texture(1)]],
-  texture2d<uint32_t>                                   randomTex   				[[texture(2)]]
+  texture2d<float, access::read_write>                  acc         				[[texture(0)]],
+  texture2d<uint32_t>                                   randomTex   				[[texture(1)]]
 ) {
   if (tid.x < args.constants.size.x && tid.y < args.constants.size.y) {
     constant CameraData& camera = args.constants.camera;
@@ -320,13 +319,13 @@ kernel void pathtracingKernel(
      * Accumulate samples
      */
     if (args.constants.frameIdx > 0) {
-      float3 L_prev = src.read(tid).xyz;
+      float3 L_prev = acc.read(tid).xyz;
       
       L += L_prev * args.constants.frameIdx;
       L /= (args.constants.frameIdx + 1);
     }
     
-    dst.write(float4(L, 1.0f), tid);
+    acc.write(float4(L, 1.0f), tid);
   }
 }
 
@@ -427,9 +426,8 @@ LightSample sampleEnvironmentLight(thread const Hit& hit, const device Texture* 
 kernel void misKernel(
   uint2                                                 tid                 [[thread_position_in_grid]],
   constant Arguments&                                   args           			[[buffer(0)]],
-  texture2d<float>                                      src                 [[texture(0)]],
-  texture2d<float, access::write>                       dst                 [[texture(1)]],
-  texture2d<uint32_t>                                   randomTex           [[texture(2)]]
+  texture2d<float, access::read_write>                  acc                 [[texture(0)]],
+  texture2d<uint32_t>                                   randomTex           [[texture(1)]]
 ) {
   if (tid.x < args.constants.size.x && tid.y < args.constants.size.y) {
     constant CameraData& camera = args.constants.camera;
@@ -620,12 +618,12 @@ kernel void misKernel(
      * Accumulate samples
      */
     if (args.constants.frameIdx > 0) {
-      float3 L_prev = src.read(tid).xyz;
+      float3 L_prev = acc.read(tid).xyz;
       
       L += L_prev * args.constants.frameIdx;
       L /= (args.constants.frameIdx + 1);
     }
     
-    dst.write(float4(L, 1.0f), tid);
+    acc.write(float4(L, 1.0f), tid);
   }
 }

@@ -25,8 +25,7 @@ Renderer::Renderer(
 
 Renderer::~Renderer() {
   if (m_renderTarget != nullptr) m_renderTarget->release();
-  if (m_accumulator[0] != nullptr) m_accumulator[0]->release();
-  if (m_accumulator[1] != nullptr) m_accumulator[1]->release();
+  if (m_accumulator != nullptr) m_accumulator->release();
   if (m_postProcessBuffer[0] != nullptr) m_postProcessBuffer[0]->release();
   if (m_postProcessBuffer[1] != nullptr) m_postProcessBuffer[1]->release();
 
@@ -74,10 +73,8 @@ void Renderer::render() {
     auto computeEnc = cmd->computeCommandEncoder();
 
     computeEnc->setBuffer(m_argumentBuffer, 0, 0);
-
-    computeEnc->setTexture(m_accumulator[0], 0);
-    computeEnc->setTexture(m_accumulator[1], 1);
-    computeEnc->setTexture(m_randomSource, 2);
+    computeEnc->setTexture(m_accumulator, 0);
+    computeEnc->setTexture(m_randomSource, 1);
 
     /*
      * Use resources
@@ -140,17 +137,13 @@ void Renderer::render() {
     m_timer = millis.count();
   }
 
-  if (m_accumulatedFrames <= m_accumulationFrames) {
-    std::swap(m_accumulator[0], m_accumulator[1]);
-  }
-
   /*
    * Post processing pipeline
    */
   for (size_t i = 0; i < m_postProcessPasses.size(); i++) {
     auto& pass = m_postProcessPasses[i];
 
-    pass->apply(i == 0 ? m_accumulator[0] : m_postProcessBuffer[0], m_postProcessBuffer[1], cmd);
+    pass->apply(i == 0 ? m_accumulator : m_postProcessBuffer[0], m_postProcessBuffer[1], cmd);
     std::swap(m_postProcessBuffer[0], m_postProcessBuffer[1]);
   }
 
@@ -682,8 +675,7 @@ void Renderer::rebuildArgumentBuffer() {
 
 void Renderer::rebuildRenderTargets() {
   if (m_renderTarget != nullptr) m_renderTarget->release();
-  if (m_accumulator[0] != nullptr) m_accumulator[0]->release();
-  if (m_accumulator[1] != nullptr) m_accumulator[1]->release();
+  if (m_accumulator != nullptr) m_accumulator->release();
   if (m_postProcessBuffer[0] != nullptr) m_postProcessBuffer[0]->release();
   if (m_postProcessBuffer[1] != nullptr) m_postProcessBuffer[1]->release();
 
@@ -697,8 +689,7 @@ void Renderer::rebuildRenderTargets() {
 
   texd->setUsage(MTL::TextureUsageShaderWrite | MTL::TextureUsageShaderRead);
   texd->setPixelFormat(MTL::PixelFormatRGBA32Float);
-  m_accumulator[0] = m_device->newTexture(texd);
-  m_accumulator[1] = m_device->newTexture(texd);
+  m_accumulator = m_device->newTexture(texd);
   m_postProcessBuffer[0] = m_device->newTexture(texd);
   m_postProcessBuffer[1] = m_device->newTexture(texd);
 

@@ -88,7 +88,7 @@ private:
   std::vector<MTL::IntersectionFunctionTable*> m_intersectionFunctionTables;
 
   // Render targets
-  MTL::Texture* m_accumulator[2] = {nullptr, nullptr};
+  MTL::Texture* m_accumulator = nullptr;
   MTL::Texture* m_renderTarget = nullptr;
   MTL::Texture* m_randomSource = nullptr;
 
