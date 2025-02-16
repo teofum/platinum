@@ -316,6 +316,7 @@ void Renderer::buildPipelines() {
    * Build the post-process pipeline
    */
   m_postProcessPasses.push_back(std::make_unique<postprocess::Exposure>(m_device, lib));
+  m_postProcessPasses.push_back(std::make_unique<postprocess::ToneCurve>(m_device, lib));
   m_tonemapPass = std::make_unique<postprocess::Tonemap>(m_device, lib);
 }
 

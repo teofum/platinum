@@ -179,6 +179,14 @@ struct ExposureOptions {
   float exposure = 0.0f;
 };
 
+struct ToneCurveOptions {
+  float k = 1.0f; // Debug option!
+  float blacks = 0.0f;
+  float shadows = 0.0f;
+  float highlights = 0.0f;
+  float whites = 0.0f;
+};
+
 struct TonemapOptions {
   Tonemapper tonemapper = Tonemapper::AgX;
   agx::Options agxOptions;
@@ -192,6 +200,7 @@ class PostProcessPass {
 public:
   enum class Type {
     Exposure,
+    ToneCurve,
     Tonemap,
   };
 
@@ -199,6 +208,7 @@ public:
     Type type = Type::Exposure;
     union {
       ExposureOptions* exposure = nullptr;
+      ToneCurveOptions* toneCurve;
       TonemapOptions* tonemap;
     };
   };
@@ -265,6 +275,7 @@ private:
 };
 
 using Exposure = BasicPostProcessPass<ExposureOptions, PostProcessPass::Type::Exposure, "exposure">;
+using ToneCurve = BasicPostProcessPass<ToneCurveOptions, PostProcessPass::Type::ToneCurve, "toneCurve">;
 using Tonemap = BasicPostProcessPass<TonemapOptions, PostProcessPass::Type::Tonemap, "tonemap", true>;
 
 #endif

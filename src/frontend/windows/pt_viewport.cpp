@@ -216,15 +216,26 @@ void RenderViewport::renderPostprocessSettings() {
         ImGui::SeparatorText("Exposure");
 
         widgets::dragFloat("Exposure", &exposureOptions.exposure, 0.1f, -5.0f, 5.0f, "%.1f EV");
+        break;
+      }
+      case postprocess::PostProcessPass::Type::ToneCurve: {
+        auto& toneCurveOptions = *options.toneCurve;
 
-        ImGui::Spacing();
-        ImGui::SeparatorText("Tone mapping");
+        ImGui::SeparatorText("Tone Curve");
+
+        widgets::dragFloat("Blacks", &toneCurveOptions.blacks, 1.0f, -100.0f, 100.0f, "%.0f");
+        widgets::dragFloat("Shadows", &toneCurveOptions.shadows, 1.0f, -100.0f, 100.0f, "%.0f");
+        widgets::dragFloat("Highlights", &toneCurveOptions.highlights, 1.0f, -100.0f, 100.0f, "%.0f");
+        widgets::dragFloat("Whites", &toneCurveOptions.whites, 1.0f, -100.0f, 100.0f, "%.0f");
         break;
       }
       default: break;
     }
     ImGui::PopID();
   }
+
+  ImGui::Spacing();
+  ImGui::SeparatorText("Tone mapping");
 
   /*
    * Tonemapper select
