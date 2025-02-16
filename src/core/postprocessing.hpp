@@ -187,6 +187,14 @@ struct ToneCurveOptions {
   float whites = 0.0f;
 };
 
+struct VignetteOptions {
+  float amount = 0.0f;
+  float midpoint = 0.0f;
+  float feather = 50.0f;
+  float power = 20.0f;
+  float roundness = 100.0f;
+};
+
 struct LiftGammaGain {
   float3 shadowColor = {0.5, 0.5, 0.5};
   float3 midtoneColor = {0.5, 0.5, 0.5};
@@ -214,8 +222,8 @@ public:
   enum class Type {
     Exposure,
     ToneCurve,
+    Vignette,
     Tonemap,
-    LiftGammaGain,
   };
 
   struct Options {
@@ -223,6 +231,7 @@ public:
     union {
       ExposureOptions* exposure = nullptr;
       ToneCurveOptions* toneCurve;
+      VignetteOptions* vignette;
       TonemapOptions* tonemap;
     };
   };
@@ -290,6 +299,7 @@ private:
 
 using Exposure = BasicPostProcessPass<ExposureOptions, PostProcessPass::Type::Exposure, "exposure">;
 using ToneCurve = BasicPostProcessPass<ToneCurveOptions, PostProcessPass::Type::ToneCurve, "toneCurve">;
+using Vignette = BasicPostProcessPass<VignetteOptions, PostProcessPass::Type::Vignette, "vignette">;
 using Tonemap = BasicPostProcessPass<TonemapOptions, PostProcessPass::Type::Tonemap, "tonemap", true>;
 
 #endif

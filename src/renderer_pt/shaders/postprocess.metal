@@ -80,6 +80,10 @@ float rgbMin(float3 color) {
   return min3(color.r, color.g, color.b);
 }
 
+float invLerp(float x, float start, float end) {
+  return saturate((x - start) / (end - start));
+}
+
 /*
  * AgX tonemapping
  * https://iolite-engine.com/blog_posts/minimal_agx_implementation
@@ -177,10 +181,6 @@ namespace flim {
 
 float wrap(float x, float start, float end) {
   return start + fmod(x - start, end - start);
-}
-
-float invLerp(float x, float start, float end) {
-  return saturate((x - start) / (end - start));
 }
 
 float3 rgbUniformOffset(float3 color, float blackPoint, float whitePoint) {
@@ -478,7 +478,37 @@ fragment float4 toneCurve(
   color *= exp2(0.01 * options.highlights * highlights);
   color *= exp2(0.01 * options.whites * whites);
 
-  return float4(color, 1.0f);
+  return float4(color, 1.0);
+}
+
+fragment float4 vignette(
+  VertexOut in [[stage_in]],
+  texture2d<float> src,
+  constant pp::VignetteOptions& options [[buffer(0)]]
+) {
+  constexpr sampler sampler(min_filter::nearest, mag_filter::nearest, mip_filter::none);
+
+  float3 color = src.sample(sampler, in.uv).xyz;
+
+  float aspect = float(src.get_width()) / float(src.get_height());
+  aspect = mix(1.0, aspect, options.roundness * 0.01);
+  float2 uvMapped = in.uv;
+  if (aspect > 1.0) uvMapped.y = (uvMapped.y - 0.5) / aspect + 0.5;
+  else uvMapped.x = (uvMapped.x - 0.5) * aspect + 0.5;
+
+  float cornerToCenter = distance(float2(0.0), float2(0.5));
+  float distanceToCenter = distance(uvMapped, float2(0.5));
+  float distanceNorm = distanceToCenter / cornerToCenter;
+
+  float end = 1.0 - options.midpoint * 0.01;
+  float start = end * (1.0 - options.feather * 0.01);
+  float power = options.power * 0.05;
+  float d = invLerp(distanceNorm, start, end);
+
+  float vignetting = (d == 0.0 ? 0.0 : powr(d, power)) * smoothstep(start, end, distanceNorm);
+  color *= exp2(options.amount * vignetting);
+
+  return float4(color, 1.0);
 }
 
 fragment float4 tonemap(
@@ -525,5 +555,5 @@ fragment float4 tonemap(
   float3 t = saturate(powr(color, 1.0 / gamma));
   color = mix(lift, gain, t);
   
-  return float4(color, 1.0f);
+  return float4(color, 1.0);
 }

@@ -230,6 +230,18 @@ void RenderViewport::renderPostprocessSettings() {
         widgets::dragFloat("Whites", &toneCurveOptions.whites, 1.0f, -100.0f, 100.0f, "%.0f");
         break;
       }
+      case postprocess::PostProcessPass::Type::Vignette: {
+        auto& vignetteOptions = *options.vignette;
+
+        ImGui::SeparatorText("Vignetting");
+
+        widgets::dragFloat("Amount", &vignetteOptions.amount, 0.1f, -5.0f, 5.0f, "%.1f EV");
+        widgets::dragFloat("Midpoint", &vignetteOptions.midpoint, 1.0f, -100.0f, 100.0f, "%.0f");
+        widgets::dragFloat("Feather", &vignetteOptions.feather, 1.0f, 0.0f, 100.0f, "%.0f");
+        widgets::dragFloat("Power", &vignetteOptions.power, 1.0f, 0.0f, 100.0f, "%.0f");
+        widgets::dragFloat("Roundness", &vignetteOptions.roundness, 1.0f, 0.0f, 100.0f, "%.0f");
+        break;
+      }
       default: break;
     }
     ImGui::PopID();
@@ -335,20 +347,6 @@ void RenderViewport::renderPostprocessSettings() {
       widgets::dragFloat("Pre strength", &options.preFormationFilterStrength, 0.001f, 0.0f, 1.0f);
       widgets::color("Post filter", (float*) &options.postFormationFilter);
       widgets::dragFloat("Post strength", &options.postFormationFilterStrength, 0.001f, 0.0f, 1.0f);
-
-//      ImGui::Spacing();
-//
-//      widgets::dragVec3("EG Scale", (float*) &options.extendedGamutScale, 0.01f, 0.0f, 100.0f, "%.2f");
-//      widgets::dragVec3(
-//        "EG Rotation",
-//        (float*) &options.extendedGamutRotation,
-//        1.0f,
-//        0.0f,
-//        360.0f,
-//        "%.0f",
-//        ImGuiSliderFlags_WrapAround
-//      );
-//      widgets::dragVec3("EG Multiplier", (float*) &options.extendedGamutMul, 0.01f, 0.0f, 100.0f, "%.2f");
 
       ImGui::Spacing();
 
