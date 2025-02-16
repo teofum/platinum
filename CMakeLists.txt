@@ -65,6 +65,15 @@ target_include_directories(ImGui PRIVATE ${SDL2}/Headers)
 target_link_libraries(ImGui PRIVATE METAL_CPP)
 target_link_libraries(ImGui PRIVATE ${SDL2}/SDL2)
 
+# ImPlot
+file(GLOB IMPLOT_SOURCES deps/implot/*.cpp)
+add_library(ImPlot STATIC
+        ${IMPLOT_SOURCES}
+)
+
+target_include_directories(ImPlot PUBLIC deps/implot)
+target_link_libraries(ImPlot PRIVATE ImGui)
+
 # mikktspace
 add_library(mikktspace STATIC
         deps/mikkt/mikktspace.c
@@ -126,6 +135,7 @@ target_include_directories(platinum PRIVATE ${HOMEBREW_OIIO}/include)
 target_link_libraries(platinum PRIVATE METAL_CPP)
 target_link_libraries(platinum PRIVATE ${SDL2}/SDL2)
 target_link_libraries(platinum PRIVATE ImGui)
+target_link_libraries(platinum PRIVATE ImPlot)
 target_link_libraries(platinum PRIVATE mikktspace)
 target_link_libraries(platinum PRIVATE ${fastgltf}/libfastgltf)
 target_link_libraries(platinum PRIVATE ${NFD}/libnfd)

@@ -62,6 +62,25 @@ float3x3 inverse(float3x3 m) {
 }
 
 /*
+ * Utility functions
+ */
+float rgbSum(float3 color) {
+  return color.r + color.g + color.b;
+}
+
+float rgbAvg(float3 color) {
+  return (color.r + color.g + color.b) / 3.0;
+}
+
+float rgbMax(float3 color) {
+  return max3(color.r, color.g, color.b);
+}
+
+float rgbMin(float3 color) {
+  return min3(color.r, color.g, color.b);
+}
+
+/*
  * AgX tonemapping
  * https://iolite-engine.com/blog_posts/minimal_agx_implementation
  */
@@ -162,22 +181,6 @@ float wrap(float x, float start, float end) {
 
 float invLerp(float x, float start, float end) {
   return saturate((x - start) / (end - start));
-}
-
-float rgbSum(float3 color) {
-  return color.r + color.g + color.b;
-}
-
-float rgbAvg(float3 color) {
-  return (color.r + color.g + color.b) / 3.0;
-}
-
-float rgbMax(float3 color) {
-  return max(color.r, max(color.g, color.b));
-}
-
-float rgbMin(float3 color) {
-  return min(color.r, min(color.g, color.b));
 }
 
 float3 rgbUniformOffset(float3 color, float blackPoint, float whitePoint) {
@@ -486,6 +489,8 @@ fragment float4 tonemap(
   constexpr sampler sampler(min_filter::nearest, mag_filter::nearest, mip_filter::none);
   
   float3 color = src.sample(sampler, in.uv).xyz;
+
+  // Apply tonemapping
   switch (options.tonemapper) {
     case pp::Tonemapper::AgX:
       color = agx::apply(color, options.agxOptions);
@@ -502,6 +507,23 @@ fragment float4 tonemap(
       color = sRGB(color);
       break;
   }
+
+  // Apply final grading (lift/gamma/gain)
+  float3 liftColor = options.postTonemap.shadowColor;
+  liftColor -= rgbAvg(liftColor);
+  float3 gammaColor = options.postTonemap.midtoneColor;
+  gammaColor -= rgbAvg(gammaColor);
+  float3 gainColor = options.postTonemap.highlightColor;
+  gainColor -= rgbAvg(gainColor);
+
+  float3 lift = liftColor + options.postTonemap.shadowOffset * 0.01;
+  float3 gain = 1.0 + gainColor + options.postTonemap.highlightOffset * 0.01;
+
+  float3 midGray = 0.5 + gammaColor + options.postTonemap.midtoneOffset * 0.01;
+  float3 gamma = log10((0.5 - lift) / (gain - lift)) / log10(midGray);
+
+  float3 t = saturate(powr(color, 1.0 / gamma));
+  color = mix(lift, gain, t);
   
   return float4(color, 1.0f);
 }

@@ -1,6 +1,7 @@
 #include "pt_viewport.hpp"
 
 #include <OpenImageIO/imageio.h>
+#include <implot.h>
 
 #include <utils/utils.hpp>
 
@@ -369,6 +370,32 @@ void RenderViewport::renderPostprocessSettings() {
     }
     default: {}
   }
+
+  /*
+   * Final grading
+   */
+  ImGui::Spacing();
+  ImGui::SeparatorText("Final grading");
+
+//  float xs[101], ys[101];
+//  for (size_t i = 0; i <= 100; i++) {
+//    float x = float(i) / 100.0f;
+//    xs[i] = x;
+//    ys[i] = x * x;
+//  }
+//
+//  if (ImPlot::BeginPlot("##GradingCurves")) {
+//    ImPlot::SetupAxes("x", "y", ImPlotAxisFlags_Lock, ImPlotAxisFlags_Lock);
+//    ImPlot::PlotLine("", xs, ys, 101);
+//    ImPlot::EndPlot();
+//  }
+
+  widgets::color("Shadows", (float*) &tonemapOptions.postTonemap.shadowColor);
+  widgets::color("Midtones", (float*) &tonemapOptions.postTonemap.midtoneColor);
+  widgets::color("Highlights", (float*) &tonemapOptions.postTonemap.highlightColor);
+  widgets::dragFloat("Shadows", &tonemapOptions.postTonemap.shadowOffset, 1.0f, -100.0f, 100.0f, "%.0f");
+  widgets::dragFloat("Midtones", &tonemapOptions.postTonemap.midtoneOffset, 1.0f, -100.0f, 100.0f, "%.0f");
+  widgets::dragFloat("Highlights", &tonemapOptions.postTonemap.highlightOffset, 1.0f, -100.0f, 100.0f, "%.0f");
 }
 
 void RenderViewport::startRender() {

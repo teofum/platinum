@@ -187,11 +187,24 @@ struct ToneCurveOptions {
   float whites = 0.0f;
 };
 
+struct LiftGammaGain {
+  float3 shadowColor = {0.5, 0.5, 0.5};
+  float3 midtoneColor = {0.5, 0.5, 0.5};
+  float3 highlightColor = {0.5, 0.5, 0.5};
+
+  float shadowOffset = 0.0f;
+  float midtoneOffset = 0.0f;
+  float highlightOffset = 0.0f;
+};
+
 struct TonemapOptions {
   Tonemapper tonemapper = Tonemapper::AgX;
+
   agx::Options agxOptions;
   khronos_pbr::Options khrOptions;
   flim::Options flimOptions = flim::presets::flim;
+
+  LiftGammaGain postTonemap;
 };
 
 #ifndef __METAL_VERSION__
@@ -202,6 +215,7 @@ public:
     Exposure,
     ToneCurve,
     Tonemap,
+    LiftGammaGain,
   };
 
   struct Options {
