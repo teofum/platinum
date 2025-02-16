@@ -377,18 +377,45 @@ void RenderViewport::renderPostprocessSettings() {
   ImGui::Spacing();
   ImGui::SeparatorText("Final grading");
 
-//  float xs[101], ys[101];
-//  for (size_t i = 0; i <= 100; i++) {
-//    float x = float(i) / 100.0f;
-//    xs[i] = x;
-//    ys[i] = x * x;
-//  }
-//
-//  if (ImPlot::BeginPlot("##GradingCurves")) {
-//    ImPlot::SetupAxes("x", "y", ImPlotAxisFlags_Lock, ImPlotAxisFlags_Lock);
-//    ImPlot::PlotLine("", xs, ys, 101);
-//    ImPlot::EndPlot();
-//  }
+  auto rgbAvg = [](float3 rgb) { return (rgb.r + rgb.g + rgb.b) / 3.0; };
+
+  float3 liftColor = tonemapOptions.postTonemap.shadowColor;
+  liftColor -= rgbAvg(liftColor);
+  float3 gammaColor = tonemapOptions.postTonemap.midtoneColor;
+  gammaColor -= rgbAvg(gammaColor);
+  float3 gainColor = tonemapOptions.postTonemap.highlightColor;
+  gainColor -= rgbAvg(gainColor);
+
+  float3 lift = liftColor + tonemapOptions.postTonemap.shadowOffset * 0.01;
+  float3 gain = 1.0 + gainColor + tonemapOptions.postTonemap.highlightOffset * 0.01;
+
+  float3 midGray = 0.5 + gammaColor + tonemapOptions.postTonemap.midtoneOffset * 0.01;
+  float3 gamma = log10((0.5 - lift) / (gain - lift)) / log10(midGray);
+
+  float xs[101], rs[101], gs[101], bs[101];
+  for (size_t i = 0; i <= 100; i++) {
+    float x = float(i) / 100.0f;
+    float3 t = clamp(pow(float3(x), 1.0 / gamma), float3(0), float3(1));
+    float3 c = mix(lift, gain, t);
+
+    xs[i] = x;
+    rs[i] = c.r;
+    gs[i] = c.g;
+    bs[i] = c.b;
+  }
+
+  if (ImPlot::BeginPlot("##GradingCurves", {-1, 150})) {
+    auto flags =
+      ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoTickLabels | ImPlotAxisFlags_NoHighlight | ImPlotAxisFlags_NoLabel;
+    ImPlot::SetupAxes("x", "y", flags, flags);
+    ImPlot::SetNextLineStyle({1, 0, 0, 1});
+    ImPlot::PlotLine("", xs, rs, 101);
+    ImPlot::SetNextLineStyle({0, 1, 0, 1});
+    ImPlot::PlotLine("", xs, gs, 101);
+    ImPlot::SetNextLineStyle({0, 0, 1, 1});
+    ImPlot::PlotLine("", xs, bs, 101);
+    ImPlot::EndPlot();
+  }
 
   widgets::color("Shadows", (float*) &tonemapOptions.postTonemap.shadowColor);
   widgets::color("Midtones", (float*) &tonemapOptions.postTonemap.midtoneColor);

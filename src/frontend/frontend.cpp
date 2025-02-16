@@ -3,6 +3,7 @@
 #include <print>
 #include <Foundation/Foundation.hpp>
 #include <imgui_internal.h>
+#include <implot.h>
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_metal.h>
 
@@ -44,6 +45,7 @@ Frontend::InitResult Frontend::init() {
    */
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
+  ImPlot::CreateContext();
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -225,6 +227,7 @@ void Frontend::start() {
    */
   ImGui_ImplMetal_Shutdown();
   ImGui_ImplSDL2_Shutdown();
+  ImPlot::DestroyContext();
   ImGui::DestroyContext();
 
   SDL_DestroyRenderer(m_sdlRenderer);
@@ -344,7 +347,7 @@ void Frontend::renderMenuBar() {
 
     if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S))
       m_store.saveAs();
-    
+
     if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_I))
       m_store.importGltf();
 
