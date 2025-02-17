@@ -234,6 +234,15 @@ void RenderViewport::renderPostprocessSettings() {
         widgets::dragFloat("Roundness", &vignetteOptions.roundness, 1.0f, 0.0f, 100.0f, "%.0f");
         break;
       }
+      case postprocess::PostProcessPass::Type::ChromaticAberration: {
+        auto& caOptions = *options.chromaticAberration;
+
+        ImGui::SeparatorText("Lateral CA");
+
+        widgets::dragFloat("Amount", &caOptions.amount, 1.0f, -100.0f, 100.0f, "%.0f");
+        widgets::dragFloat("Green Shift", &caOptions.greenShift, 1.0f, -100.0f, 100.0f, "%.0f");
+        break;
+      }
       default: break;
     }
     ImGui::PopID();

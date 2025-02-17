@@ -427,7 +427,7 @@ fragment float4 exposure(
   texture2d<float> src,
   constant pp::ExposureOptions& options [[buffer(0)]]
 ) {
-  constexpr sampler sampler(min_filter::nearest, mag_filter::nearest, mip_filter::none);
+  constexpr sampler sampler(min_filter::linear, mag_filter::linear, mip_filter::none);
 
   float3 color = src.sample(sampler, in.uv).xyz;
   color *= exp2(options.exposure);
@@ -440,7 +440,7 @@ fragment float4 toneCurve(
   texture2d<float> src,
   constant pp::ToneCurveOptions& options [[buffer(0)]]
 ) {
-  constexpr sampler sampler(min_filter::nearest, mag_filter::nearest, mip_filter::none);
+  constexpr sampler sampler(min_filter::linear, mag_filter::linear, mip_filter::none);
 
   float3 color = src.sample(sampler, in.uv).xyz;
 
@@ -460,20 +460,32 @@ fragment float4 toneCurve(
   return float4(color, 1.0);
 }
 
+float2 aspectCompensatedUv(float2 uv, float aspect) {
+  if (aspect > 1.0) uv.y = (uv.y - 0.5) / aspect + 0.5;
+  else uv.x = (uv.x - 0.5) * aspect + 0.5;
+
+  return uv;
+}
+
+float2 aspectCompensatedUvInverse(float2 uv, float aspect) {
+  if (aspect > 1.0) uv.y = (uv.y - 0.5) * aspect + 0.5;
+  else uv.x = (uv.x - 0.5) / aspect + 0.5;
+
+  return uv;
+}
+
 fragment float4 vignette(
   VertexOut in [[stage_in]],
   texture2d<float> src,
   constant pp::VignetteOptions& options [[buffer(0)]]
 ) {
-  constexpr sampler sampler(min_filter::nearest, mag_filter::nearest, mip_filter::none);
+  constexpr sampler sampler(min_filter::linear, mag_filter::linear, mip_filter::none);
 
   float3 color = src.sample(sampler, in.uv).xyz;
 
   float aspect = float(src.get_width()) / float(src.get_height());
   aspect = mix(1.0, aspect, options.roundness * 0.01);
-  float2 uvMapped = in.uv;
-  if (aspect > 1.0) uvMapped.y = (uvMapped.y - 0.5) / aspect + 0.5;
-  else uvMapped.x = (uvMapped.x - 0.5) * aspect + 0.5;
+  float2 uvMapped = aspectCompensatedUv(in.uv, aspect);
 
   float cornerToCenter = distance(float2(0.0), float2(0.5));
   float distanceToCenter = distance(uvMapped, float2(0.5));
@@ -490,12 +502,37 @@ fragment float4 vignette(
   return float4(color, 1.0);
 }
 
+fragment float4 chromaticAberration(
+  VertexOut in [[stage_in]],
+  texture2d<float> src,
+  constant pp::ChromaticAberrationOptions& options [[buffer(0)]]
+) {
+  constexpr sampler sampler(min_filter::linear, mag_filter::linear, mip_filter::none);
+
+  float3 color = src.sample(sampler, in.uv).rgb;
+  if (options.amount == 0.0) return float4(color, 1.0);
+
+  float aspect = float(src.get_width()) / float(src.get_height());
+  float2 uvMapped = aspectCompensatedUv(in.uv, aspect);
+
+  float amount = options.amount * 0.005 * 0.01;
+  float2 uvRed = aspectCompensatedUvInverse((uvMapped - 0.5) * (1.0 + amount) + 0.5, aspect);
+  float2 uvGreen = aspectCompensatedUvInverse((uvMapped - 0.5) * (1.0 - amount * options.greenShift * 0.01) + 0.5, aspect);
+  float2 uvBlue = aspectCompensatedUvInverse((uvMapped - 0.5) * (1.0 - amount) + 0.5, aspect);
+
+  color.r = src.sample(sampler, uvRed).r;
+  color.g = src.sample(sampler, uvGreen).g;
+  color.b = src.sample(sampler, uvBlue).b;
+
+  return float4(color, 1.0);
+}
+
 fragment float4 tonemap(
   VertexOut in [[stage_in]],
   texture2d<float> src,
   constant pp::TonemapOptions& options [[buffer(0)]]
 ) {
-  constexpr sampler sampler(min_filter::nearest, mag_filter::nearest, mip_filter::none);
+  constexpr sampler sampler(min_filter::linear, mag_filter::linear, mip_filter::none);
   
   float3 color = src.sample(sampler, in.uv).xyz;
 

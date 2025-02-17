@@ -60,7 +60,7 @@ void Renderer::render() {
     m_renderStart = std::chrono::high_resolution_clock::now();
     m_startRender = false;
   }
-  
+
   if (!m_renderTarget) return;
 
   auto cmd = m_commandQueue->commandBuffer();
@@ -324,6 +324,7 @@ void Renderer::buildPipelines() {
    * Build the post-process pipeline
    */
   m_postProcessPasses.push_back(std::make_unique<postprocess::Exposure>(m_device, lib));
+  m_postProcessPasses.push_back(std::make_unique<postprocess::ChromaticAberration>(m_device, lib));
   m_postProcessPasses.push_back(std::make_unique<postprocess::ToneCurve>(m_device, lib));
   m_postProcessPasses.push_back(std::make_unique<postprocess::Vignette>(m_device, lib));
   m_tonemapPass = std::make_unique<postprocess::Tonemap>(m_device, lib);
