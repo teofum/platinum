@@ -435,27 +435,6 @@ fragment float4 exposure(
   return float4(color, 1.0f);
 }
 
-/*
- * Modified Reinhard curve with an additional parameter to change the shape of the curve.
- * Used to remap HDR values to 0-1 range in a trivially invertible way.
- */
-template<typename T>
-T compress(T x, float k) {
-  T kx = k * x;
-  return kx / (kx + 1.0);
-}
-
-template<typename T>
-T decompress(T x, float k) {
-  return x / (k * (-x + 1.0));
-}
-
-template<typename T>
-T doubleSmoothstep(T edge0, T edge1, T x) {
-  T middle = (edge0 + edge1) / 2.0;
-  return min(smoothstep(edge0, middle, x), smoothstep(edge1, middle, x));
-}
-
 fragment float4 toneCurve(
   VertexOut in [[stage_in]],
   texture2d<float> src,
@@ -466,12 +445,12 @@ fragment float4 toneCurve(
   float3 color = src.sample(sampler, in.uv).xyz;
 
   // Apply exposure adjustments
-  float luma = dot(compress(color, options.k), lw);
+  float luma = dot(color, lw);
 
-  float blacks = smoothstep(1.0 / 3.0, 0.0, luma);
-  float shadows = smoothstep(2.0 / 3.0, 0.0, luma);
-  float highlights = smoothstep(1.0 / 3.0, 1.0, luma);
-  float whites = smoothstep(2.0 / 3.0, 1.0, luma);
+  float blacks = smoothstep(0.04, 0.0, luma);
+  float shadows = smoothstep(0.18, 0.0, luma);
+  float highlights = smoothstep(0.18, 1.0, luma);
+  float whites = smoothstep(0.75, 1.0, luma);
 
   color *= exp2(0.01 * options.blacks * blacks);
   color *= exp2(0.01 * options.shadows * shadows);
