@@ -435,6 +435,30 @@ fragment float4 exposure(
   return float4(color, 1.0f);
 }
 
+float3 contrast(float3 color, float logMidpoint, float contrast) {
+  constexpr float eps = 1e-6;
+  float3 logColor = log2(color + eps);
+  float3 adjColor = mix(float3(logMidpoint), logColor, contrast);
+  return max(float3(0.0), exp2(adjColor) - eps);
+}
+
+fragment float4 contrastSaturation(
+  VertexOut in [[stage_in]],
+  texture2d<float> src,
+  constant pp::ContrastSaturationOptions& options [[buffer(0)]]
+) {
+  constexpr sampler sampler(min_filter::linear, mag_filter::linear, mip_filter::none);
+
+  float3 color = src.sample(sampler, in.uv).xyz;
+
+  color = contrast(color, 0.18, 1.0 + options.contrast * 0.01);
+
+  float3 gray(dot(color, lw));
+  color = mix(gray, color, 1.0 + options.saturation * 0.01);
+
+  return float4(color, 1.0f);
+}
+
 fragment float4 toneCurve(
   VertexOut in [[stage_in]],
   texture2d<float> src,

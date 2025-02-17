@@ -325,6 +325,7 @@ void Renderer::buildPipelines() {
    */
   m_postProcessPasses.push_back(std::make_unique<postprocess::Exposure>(m_device, lib));
   m_postProcessPasses.push_back(std::make_unique<postprocess::ChromaticAberration>(m_device, lib));
+  m_postProcessPasses.push_back(std::make_unique<postprocess::ContrastSaturation>(m_device, lib));
   m_postProcessPasses.push_back(std::make_unique<postprocess::ToneCurve>(m_device, lib));
   m_postProcessPasses.push_back(std::make_unique<postprocess::Vignette>(m_device, lib));
   m_tonemapPass = std::make_unique<postprocess::Tonemap>(m_device, lib);

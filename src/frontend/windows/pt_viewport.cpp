@@ -211,6 +211,15 @@ void RenderViewport::renderPostprocessSettings() {
         widgets::dragFloat("Exposure", &exposureOptions.exposure, 0.1f, -5.0f, 5.0f, "%.1f EV");
         break;
       }
+      case postprocess::PostProcessPass::Type::ContrastSaturation: {
+        auto& csOptions = *options.contrastSaturation;
+
+        ImGui::SeparatorText("Contrast/Saturation");
+
+        widgets::dragFloat("Contrast", &csOptions.contrast, 1.0f, -100.0f, 100.0f, "%.0f");
+        widgets::dragFloat("Saturation", &csOptions.saturation, 1.0f, -100.0f, 100.0f, "%.0f");
+        break;
+      }
       case postprocess::PostProcessPass::Type::ToneCurve: {
         auto& toneCurveOptions = *options.toneCurve;
 

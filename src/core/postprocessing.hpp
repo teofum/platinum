@@ -200,6 +200,11 @@ struct ChromaticAberrationOptions {
   float greenShift = 70.0f;
 };
 
+struct ContrastSaturationOptions {
+  float contrast = 0.0f;
+  float saturation = 0.0f;
+};
+
 struct LiftGammaGain {
   float3 shadowColor = {0.5, 0.5, 0.5};
   float3 midtoneColor = {0.5, 0.5, 0.5};
@@ -229,6 +234,7 @@ public:
     ToneCurve,
     Vignette,
     ChromaticAberration,
+    ContrastSaturation,
     Tonemap,
   };
 
@@ -239,6 +245,7 @@ public:
       ToneCurveOptions* toneCurve;
       VignetteOptions* vignette;
       ChromaticAberrationOptions* chromaticAberration;
+      ContrastSaturationOptions* contrastSaturation;
       TonemapOptions* tonemap;
     };
   };
@@ -307,6 +314,7 @@ private:
 using Exposure = BasicPostProcessPass<ExposureOptions, PostProcessPass::Type::Exposure, "exposure">;
 using Vignette = BasicPostProcessPass<VignetteOptions, PostProcessPass::Type::Vignette, "vignette">;
 using ChromaticAberration = BasicPostProcessPass<ChromaticAberrationOptions, PostProcessPass::Type::ChromaticAberration, "chromaticAberration">;
+using ContrastSaturation = BasicPostProcessPass<ContrastSaturationOptions, PostProcessPass::Type::ContrastSaturation, "contrastSaturation">;
 using ToneCurve = BasicPostProcessPass<ToneCurveOptions, PostProcessPass::Type::ToneCurve, "toneCurve">;
 using Tonemap = BasicPostProcessPass<TonemapOptions, PostProcessPass::Type::Tonemap, "tonemap", true>;
 
