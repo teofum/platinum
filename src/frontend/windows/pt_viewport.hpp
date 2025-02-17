@@ -4,6 +4,7 @@
 #include <imgui.h>
 #include <SDL.h>
 
+#include <core/postprocessing.hpp>
 #include <frontend/window.hpp>
 #include <frontend/widgets.hpp>
 #include <renderer_pt/renderer_pt.hpp>
@@ -13,20 +14,18 @@ namespace pt::frontend::windows {
 
 class RenderViewport final : Window {
 public:
-  constexpr RenderViewport(Store& store, State& state, float& dpiScaling, bool* open = nullptr) noexcept
-    : Window(store, state, open), m_dpiScaling(dpiScaling) {
-  }
-  
-  void init(MTL::Device* device, MTL::CommandQueue* commandQueue);
+  RenderViewport(Store& store, State& state, float& dpiScaling, bool* open = nullptr) noexcept;
+
+  void init(renderer_pt::Renderer* renderer);
 
   void render() final;
-  
+
   void startRender();
 
   [[nodiscard]] bool canRender() const;
-  
+
   [[nodiscard]] bool hasImage() const;
-  
+
   void exportImage() const;
 
   bool handleInputs(const SDL_Event& event);
@@ -35,7 +34,7 @@ public:
 
 private:
   // Renderer
-  std::unique_ptr<renderer_pt::Renderer> m_renderer;
+  renderer_pt::Renderer* m_renderer = nullptr;
 
   // Scroll state (smooth scrolling/trackpad support)
   static constexpr const float m_scrollSensitivity = 20.0f;
@@ -72,9 +71,20 @@ private:
   int32_t m_nextRenderSampleCount = 128;
   bool m_useViewportSizeForRender = true;
   int m_renderFlags = shaders_pt::RendererFlags_MultiscatterGGX;
-  shaders_pt::PostProcessOptions m_postProcessOptions;
+
+  // Post process settings
+  const hashmap<postprocess::Tonemapper, std::string> m_tonemappers = {
+    {postprocess::Tonemapper::None,       "None"},
+    {postprocess::Tonemapper::AgX,        "AgX"},
+    {postprocess::Tonemapper::KhronosPBR, "Khronos PBR Neutral"},
+    {postprocess::Tonemapper::flim,       "flim"},
+  };
 
   void updateScrollAndZoomState();
+
+  void renderSettingsWindow(const std::vector<Scene::CameraInstance>& cameras, const std::string& label);
+
+  void renderPostprocessSettings();
 };
 
 }

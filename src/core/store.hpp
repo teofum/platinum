@@ -36,9 +36,9 @@ public:
   constexpr void setCommandQueue(MTL::CommandQueue* commandQueue) {
     m_commandQueue = commandQueue->retain();
   }
-  
-  void open(const fs::path& path);
-  void saveAs(const fs::path& path);
+
+  void open();
+  void saveAs();
 
   void importGltf();
   void importTexture(loaders::texture::TextureType type);

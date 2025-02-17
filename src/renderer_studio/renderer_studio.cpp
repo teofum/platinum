@@ -16,8 +16,8 @@ Renderer::Renderer(
   MTL::CommandQueue* commandQueue,
   Store& store
 ) noexcept
-: m_store(store), m_camera(float3{2, 3, 5}),
-m_device(device), m_commandQueue(commandQueue) {
+  : m_store(store), m_camera(float3{2, 3, 5}),
+    m_device(device), m_commandQueue(commandQueue) {
   /*
    * Build the constants buffer
    */
@@ -141,7 +141,7 @@ Scene::NodeID Renderer::readbackObjectIdAt(uint32_t x, uint32_t y) const {
     m_objectIdRenderTarget,
     0,
     0,
-    MTL::Origin(x * 2, y * 2, 0),
+    MTL::Origin(x * 2, y * 2, 0), // FIXME: account for display scaling here
     MTL::Size(1, 1, 1),
     m_objectIdReadbackBuffer,
     0,
@@ -228,7 +228,7 @@ void Renderer::render(Scene::NodeID selectedNodeId) {
       MTL::PrimitiveTypeTriangle,
       md.mesh.asset->indexCount(),
       MTL::IndexTypeUInt32,
-			md.mesh.asset->indices(),
+      md.mesh.asset->indices(),
       0
     );
 
@@ -573,15 +573,15 @@ void Renderer::rebuildDataBuffers() {
    */
   m_instances = m_store.scene().getInstances();
   m_instanceBuffer = m_device->newBuffer(
-		m_instances.size() * sizeof(shaders_studio::NodeData),
-		MTL::ResourceStorageModeShared
+    m_instances.size() * sizeof(shaders_studio::NodeData),
+    MTL::ResourceStorageModeShared
   );
 
   m_cameras = m_store.scene().getCameras();
   m_cameraBuffer = m_device->newBuffer(
-		m_cameras.size() * sizeof(shaders_studio::NodeData),
-		MTL::ResourceStorageModeShared
-	);
+    m_cameras.size() * sizeof(shaders_studio::NodeData),
+    MTL::ResourceStorageModeShared
+  );
 
   /*
    * Fill transform buffers
@@ -685,11 +685,11 @@ void Renderer::updateConstants() {
 void Renderer::updateTheme() {
   m_clearColor.xyz = frontend::theme::Theme::currentTheme->viewportBackground;
   m_objectColor = frontend::theme::Theme::currentTheme->viewportModel;
-  
+
   m_gridProperties.lineColor = frontend::theme::Theme::currentTheme->viewportGrid;
   m_gridProperties.xAxisColor = frontend::theme::Theme::currentTheme->viewportAxisX;
   m_gridProperties.zAxisColor = frontend::theme::Theme::currentTheme->viewportAxisZ;
-  
+
   m_edgeConstants.selectionColor = frontend::theme::Theme::currentTheme->primary;
   m_edgeConstants.outlineColor = frontend::theme::Theme::currentTheme->viewportOutline;
 }

@@ -3,10 +3,10 @@
 #include <print>
 #include <Foundation/Foundation.hpp>
 #include <imgui_internal.h>
+#include <implot.h>
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_metal.h>
 
-#include <utils/utils.hpp>
 #include <utils/metal_utils.hpp>
 #include <utils/cocoa_utils.h>
 
@@ -44,6 +44,7 @@ Frontend::InitResult Frontend::init() {
    */
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
+  ImPlot::CreateContext();
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -145,10 +146,19 @@ Frontend::InitResult Frontend::init() {
   m_store.setCommandQueue(m_commandQueue);
 
   /*
+   * Initialize PT renderer
+   */
+  m_renderer = std::make_unique<renderer_pt::Renderer>(
+    m_device,
+    m_commandQueue,
+    m_store
+  );
+
+  /*
    * Initialize windows that need it
    */
   m_studioViewport.init(m_device, m_commandQueue);
-  m_renderViewport.init(m_device, m_commandQueue);
+  m_renderViewport.init(m_renderer.get());
   m_multiscatterLutGenerator.init(m_device, m_commandQueue);
 
   return Frontend::InitResult_Ok;
@@ -174,6 +184,9 @@ void Frontend::start() {
         handleInput(event);
       }
     }
+
+    // PT Renderer
+    m_renderer->render();
 
     // Rendering
     auto drawable = metal_utils::nextDrawable(m_layer);
@@ -225,6 +238,7 @@ void Frontend::start() {
    */
   ImGui_ImplMetal_Shutdown();
   ImGui_ImplSDL2_Shutdown();
+  ImPlot::DestroyContext();
   ImGui::DestroyContext();
 
   SDL_DestroyRenderer(m_sdlRenderer);
@@ -339,6 +353,12 @@ void Frontend::renderMenuBar() {
    */
   if (!ImGui::IsItemActive()) {
     // File
+    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_O))
+      m_store.open();
+
+    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S))
+      m_store.saveAs();
+
     if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_I))
       m_store.importGltf();
 
@@ -365,14 +385,8 @@ void Frontend::renderMenuBar() {
 
     ImGui::SetNextWindowSize({160, 0});
     if (widgets::menu("File")) {
-      if (widgets::menuItem("Open")) {
-        auto path = utils::fileOpen("/", "json");
-        if (path) m_store.open(path.value());
-      }
-      if (widgets::menuItem("Save As...")) {
-        auto path = utils::fileSave("/", "json");
-        if (path) m_store.saveAs(path.value());
-      }
+      if (widgets::menuItem("Open", "Cmd + O")) m_store.open();
+      if (widgets::menuItem("Save As...", "Cmd + S")) m_store.saveAs();
 
       ImGui::Separator();
 
