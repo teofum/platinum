@@ -16,7 +16,7 @@ class RenderViewport final : Window {
 public:
   RenderViewport(Store& store, State& state, float& dpiScaling, bool* open = nullptr) noexcept;
 
-  void init(MTL::Device* device, MTL::CommandQueue* commandQueue);
+  void init(renderer_pt::Renderer* renderer);
 
   void render() final;
 
@@ -34,7 +34,7 @@ public:
 
 private:
   // Renderer
-  std::unique_ptr<renderer_pt::Renderer> m_renderer;
+  renderer_pt::Renderer* m_renderer = nullptr;
 
   // Scroll state (smooth scrolling/trackpad support)
   static constexpr const float m_scrollSensitivity = 20.0f;

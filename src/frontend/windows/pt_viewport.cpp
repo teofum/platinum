@@ -10,15 +10,8 @@ namespace pt::frontend::windows {
 RenderViewport::RenderViewport(Store& store, State& state, float& dpiScaling, bool* open) noexcept
   : Window(store, state, open), m_dpiScaling(dpiScaling) {}
 
-void RenderViewport::init(MTL::Device* device, MTL::CommandQueue* commandQueue) {
-  /*
-   * Initialize PT renderer
-   */
-  m_renderer = std::make_unique<renderer_pt::Renderer>(
-    device,
-    commandQueue,
-    m_store
-  );
+void RenderViewport::init(renderer_pt::Renderer* renderer) {
+  m_renderer = renderer;
 }
 
 void RenderViewport::render() {
@@ -82,7 +75,6 @@ void RenderViewport::render() {
     m_viewportSize = {size.x, size.y};
 
     if (render) startRender();
-    m_renderer->render();
 
     /*
      * Render viewport

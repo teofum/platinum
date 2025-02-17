@@ -153,6 +153,9 @@ private:
   size_t m_frameIdx = 0, m_accumulationFrames = 128, m_accumulatedFrames = 0;
   size_t m_timer = 0;
   std::chrono::time_point<std::chrono::high_resolution_clock> m_renderStart;
+  bool m_startRender = false;
+  Scene::NodeID m_cameraNodeId;
+  int m_flags;
 
   /*
    * Postprocess pipeline

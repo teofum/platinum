@@ -54,15 +54,18 @@ private:
   Store& m_store;
   State m_state;
 
+  // Renderers
+  std::unique_ptr<renderer_pt::Renderer> m_renderer;
+
   // Windows
   windows::Properties m_properties;
   windows::SceneExplorer m_sceneExplorer;
   windows::AssetManager m_assetManager;
   windows::StudioViewport m_studioViewport;
   windows::RenderViewport m_renderViewport;
-  
+
   windows::MultiscatterLutGenerator m_multiscatterLutGenerator;
-  
+
   // Closeable windows open state
   bool m_toolMultiscatterLutGeneratorOpen = false;
 
@@ -76,7 +79,7 @@ private:
   void handleInput(const SDL_Event& event);
 
   void mainDockSpace();
-  
+
   void renderMenuBar();
 };
 

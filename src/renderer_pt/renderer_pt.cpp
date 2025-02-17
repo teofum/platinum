@@ -48,6 +48,19 @@ std::vector<postprocess::PostProcessPass::Options> Renderer::postProcessOptions(
 }
 
 void Renderer::render() {
+  if (m_startRender) {
+    rebuildResourceBuffers();
+    rebuildLightData();
+    rebuildRenderTargets();
+    rebuildAccelerationStructures();
+    updateConstants(m_cameraNodeId, m_flags);
+    rebuildArgumentBuffer();
+
+    m_timer = 0;
+    m_renderStart = std::chrono::high_resolution_clock::now();
+    m_startRender = false;
+  }
+  
   if (!m_renderTarget) return;
 
   auto cmd = m_commandQueue->commandBuffer();
@@ -163,17 +176,12 @@ void Renderer::startRender(
     m_aspect = m_currentRenderSize.x / m_currentRenderSize.y;
   }
 
-  rebuildResourceBuffers();
-  rebuildLightData();
-  rebuildRenderTargets();
-  rebuildAccelerationStructures();
-  updateConstants(cameraNodeId, flags);
-  rebuildArgumentBuffer();
-
   m_accumulatedFrames = 0;
   m_accumulationFrames = sampleCount;
-  m_timer = 0;
-  m_renderStart = std::chrono::high_resolution_clock::now();
+
+  m_cameraNodeId = cameraNodeId;
+  m_flags = flags;
+  m_startRender = true;
 }
 
 const MTL::Texture* Renderer::presentRenderTarget() const {
