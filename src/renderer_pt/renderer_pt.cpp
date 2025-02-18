@@ -90,7 +90,8 @@ void Renderer::render() {
   /*
    * If rendering the scene, run the path tracing kernel to accumulate samples
    */
-  uint32_t gmonIdx = m_accumulatedFrames % m_gmonBuckets;
+  uint32_t samplesPerBucket = (m_accumulationFrames + m_gmonBuckets - 1) / m_gmonBuckets;
+  uint32_t gmonIdx = m_accumulatedFrames / samplesPerBucket;
   if (m_accumulatedFrames < m_accumulationFrames) {
     /*
      * Determine the accumulator texture to use
@@ -171,16 +172,17 @@ void Renderer::render() {
    * Every N frames or in the last frame, accumulate GMoN buffers into the
    * main accumulator buffer
    */
-  if ((m_flags & shaders_pt::RendererFlags_GMoN) &&
-      (gmonIdx == m_gmonBuckets - 1 || m_accumulatedFrames == m_accumulationFrames)) {
+  if ((m_flags & shaders_pt::RendererFlags_GMoN)) {
     auto gmonEnc = cmd->computeCommandEncoder();
 
     for (auto* acc: m_gmonAccumulators) {
       gmonEnc->useResource(acc, MTL::ResourceUsageRead);
     }
 
+    uint32_t fullBuckets = gmonIdx + 1;
+
     gmonEnc->setBuffer(m_gmonAccumulatorBuffer, 0, 0);
-    gmonEnc->setBytes(&m_gmonBuckets, sizeof(uint32_t), 1);
+    gmonEnc->setBytes(&fullBuckets, sizeof(uint32_t), 1);
     gmonEnc->setBytes(&m_gmonOptions, sizeof(shaders_pt::GmonOptions), 2);
     gmonEnc->setTexture(m_accumulator, 0);
 
