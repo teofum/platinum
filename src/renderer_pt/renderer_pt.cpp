@@ -19,23 +19,31 @@ Renderer::Renderer(
   pt::Store& store
 ) noexcept: m_store(store), m_device(device), m_commandQueue(commandQueue) {
   buildPipelines();
+  buildResidencySets();
   buildConstantsBuffer();
   loadGgxLutTextures();
 }
 
 Renderer::~Renderer() {
+  // Release textures
   if (m_renderTarget != nullptr) m_renderTarget->release();
   if (m_accumulator != nullptr) m_accumulator->release();
   if (m_postProcessBuffer[0] != nullptr) m_postProcessBuffer[0]->release();
   if (m_postProcessBuffer[1] != nullptr) m_postProcessBuffer[1]->release();
   for (auto* acc: m_gmonAccumulators) acc->release();
+  for (auto* lut: m_luts) lut->release();
 
+  // Release pipelines
   for (auto* pipeline: m_pathtracingPipelines) pipeline->release();
   for (auto* ift: m_intersectionFunctionTables) ift->release();
-  if (m_constantsBuffer != nullptr) m_constantsBuffer->release();
   if (m_gmonPipeline != nullptr) m_gmonPipeline->release();
 
-  for (auto* lut: m_luts) lut->release();
+  // Release buffers
+  if (m_constantsBuffer != nullptr) m_constantsBuffer->release();
+
+  // Release residency sets
+  if (m_pathtracingResidencySet) m_pathtracingResidencySet->release();
+  if (m_gmonResidencySet) m_gmonResidencySet->release();
 }
 
 std::vector<postprocess::PostProcessPass::Options> Renderer::postProcessOptions() {
@@ -52,6 +60,12 @@ std::vector<postprocess::PostProcessPass::Options> Renderer::postProcessOptions(
 void Renderer::render() {
   if (m_startRender) {
     /*
+     * Clear residency sets
+     */
+    m_pathtracingResidencySet->removeAllAllocations();
+    m_gmonResidencySet->removeAllAllocations();
+
+    /*
      * Setup render
      */
     rebuildRenderTargets();
@@ -60,6 +74,12 @@ void Renderer::render() {
     rebuildAccelerationStructures();
     updateConstants(m_cameraNodeId, m_flags);
     rebuildArgumentBuffer();
+
+    /*
+     * Commit residency sets
+     */
+    m_pathtracingResidencySet->commit();
+    m_gmonResidencySet->commit();
 
     /*
      * Calculate threadgroup size and count
@@ -79,82 +99,35 @@ void Renderer::render() {
 
   if (!m_renderTarget) return;
 
-  auto cmd = m_commandQueue->commandBuffer();
-
   /*
    * Update frame index
    */
   auto arguments = static_cast<shaders_pt::Arguments*>(m_argumentBuffer->contents());
   arguments->constants.frameIdx = (uint32_t) m_accumulatedFrames;
 
+  auto cmd = m_commandQueue->commandBuffer();
+  uint32_t samplesPerBucket = (m_accumulationFrames + m_gmonBuckets - 1) / m_gmonBuckets;
+  uint32_t gmonIdx = m_accumulatedFrames / samplesPerBucket;
+
   /*
    * If rendering the scene, run the path tracing kernel to accumulate samples
    */
-  uint32_t samplesPerBucket = (m_accumulationFrames + m_gmonBuckets - 1) / m_gmonBuckets;
-  uint32_t gmonIdx = m_accumulatedFrames / samplesPerBucket;
   if (m_accumulatedFrames < m_accumulationFrames) {
-    /*
-     * Determine the accumulator texture to use
-     */
+    // Make PT resources resident
+    cmd->useResidencySet(m_pathtracingResidencySet);
+
+    // Determine the accumulator texture to use
     auto* accumulator = m_accumulator;
     if (m_flags & shaders_pt::RendererFlags_GMoN) {
       accumulator = m_gmonAccumulators[gmonIdx];
     }
 
+    // Create and set up a compute command encoder
     auto computeEnc = cmd->computeCommandEncoder();
 
     computeEnc->setBuffer(m_argumentBuffer, 0, 0);
     computeEnc->setTexture(accumulator, 0);
     computeEnc->setTexture(m_randomSource, 1);
-
-    /*
-     * Use resources
-     * TODO: clean this up using residency sets
-     */
-    computeEnc->useResource(m_vertexResourcesBuffer, MTL::ResourceUsageRead);
-    computeEnc->useResource(m_primitiveResourcesBuffer, MTL::ResourceUsageRead);
-    computeEnc->useResource(m_instanceResourcesBuffer, MTL::ResourceUsageRead);
-    computeEnc->useResource(m_instanceBuffer, MTL::ResourceUsageRead);
-    computeEnc->useResource(m_instanceAccelStruct, MTL::ResourceUsageRead);
-    computeEnc->useResource(m_intersectionFunctionTables[m_selectedPipeline], MTL::ResourceUsageRead);
-    computeEnc->useResource(m_lightDataBuffer, MTL::ResourceUsageRead);
-    computeEnc->useResource(m_envLightDataBuffer, MTL::ResourceUsageRead);
-    computeEnc->useResource(m_texturesBuffer, MTL::ResourceUsageRead);
-
-    for (const auto& m_lut: m_luts) {
-      computeEnc->useResource(m_lut, MTL::ResourceUsageRead);
-    }
-
-    for (uint32_t i = 0; i < m_meshAccelStructs->count(); i++) {
-      computeEnc->useResource(
-        (MTL::AccelerationStructure*) m_meshAccelStructs->object(i),
-        MTL::ResourceUsageRead
-      );
-    }
-
-    for (auto meshVertexPositionBuffer: m_meshVertexPositionBuffers) {
-      computeEnc->useResource(meshVertexPositionBuffer, MTL::ResourceUsageRead);
-    }
-
-    for (auto meshVertexDataBuffer: m_meshVertexDataBuffers) {
-      computeEnc->useResource(meshVertexDataBuffer, MTL::ResourceUsageRead);
-    }
-
-    for (auto meshMaterialIdxBuffer: m_meshMaterialIndexBuffers) {
-      computeEnc->useResource(meshMaterialIdxBuffer, MTL::ResourceUsageRead);
-    }
-
-    for (auto instanceMaterialBuffer: m_instanceMaterialBuffers) {
-      computeEnc->useResource(instanceMaterialBuffer, MTL::ResourceUsageRead);
-    }
-
-    for (const auto& texture: m_store.scene().getAll<Texture>()) {
-      computeEnc->useResource(texture.asset->texture(), MTL::ResourceUsageRead);
-    }
-
-    for (const auto& aliasTable: m_envLightAliasTables) {
-      computeEnc->useResource(aliasTable, MTL::ResourceUsageRead);
-    }
 
     computeEnc->setComputePipelineState(m_pathtracingPipelines[m_selectedPipeline]);
     computeEnc->dispatchThreadgroups(m_threadgroups, m_threadsPerThreadgroup);
@@ -173,11 +146,8 @@ void Renderer::render() {
    * main accumulator buffer
    */
   if ((m_flags & shaders_pt::RendererFlags_GMoN)) {
+    cmd->useResidencySet(m_gmonResidencySet);
     auto gmonEnc = cmd->computeCommandEncoder();
-
-    for (auto* acc: m_gmonAccumulators) {
-      gmonEnc->useResource(acc, MTL::ResourceUsageRead);
-    }
 
     uint32_t fullBuckets = gmonIdx + 1;
 
@@ -400,6 +370,32 @@ void Renderer::buildPipelines() {
   m_tonemapPass = std::make_unique<postprocess::Tonemap>(m_device, lib);
 }
 
+void Renderer::buildResidencySets() {
+  auto makeResidencySet = [&](std::string_view label) {
+    NS::Error* error = nullptr;
+    auto fullLabel = std::format("{} residency set", label);
+
+    auto* residencySet = m_device->newResidencySet(
+      metal_utils::makeResidencySetDescriptor(fullLabel.c_str(), 1),
+      &error
+    );
+    if (error) {
+      std::println(
+        stderr,
+        "renderer_pt: Failed to create {} residency set: {}",
+        label,
+        error->localizedDescription()->utf8String()
+      );
+      assert(false);
+    }
+
+    return residencySet;
+  };
+
+  m_pathtracingResidencySet = makeResidencySet("Path Tracing");
+  m_gmonResidencySet = makeResidencySet("GMoN");
+}
+
 void Renderer::buildConstantsBuffer() {
   m_constantsSize = sizeof(shaders_pt::Constants);
   m_constantsStride = utils::align(m_constantsSize, 256);
@@ -476,7 +472,9 @@ void Renderer::loadGgxLutTextures() {
 }
 
 void Renderer::rebuildResourceBuffers() {
-  // Clear old buffers if present
+  /*
+   * Clear old buffers if present
+   */
   if (m_vertexResourcesBuffer != nullptr) m_vertexResourcesBuffer->release();
   m_meshVertexPositionBuffers.clear();
   m_meshVertexDataBuffers.clear();
@@ -495,6 +493,9 @@ void Renderer::rebuildResourceBuffers() {
     m_gmonAccumulatorBuffer = nullptr;
   }
 
+  m_pathtracingResidencySet->addAllocation(m_intersectionFunctionTables[m_selectedPipeline]);
+  for (const auto* lut: m_luts) m_pathtracingResidencySet->addAllocation(lut);
+
   /*
    * Create vertex resources buffer, pointing to each mesh's vertex data buffer
    * and primitive resources buffer, pointing to each mesh's material slot index buffer
@@ -509,6 +510,9 @@ void Renderer::rebuildResourceBuffers() {
     m_resourcesStride * meshes.size(),
     MTL::ResourceStorageModeShared
   );
+
+  m_pathtracingResidencySet->addAllocation(m_vertexResourcesBuffer);
+  m_pathtracingResidencySet->addAllocation(m_primitiveResourcesBuffer);
 
   size_t idx = 0;
   m_meshVertexPositionBuffers.reserve(meshes.size());
@@ -526,6 +530,10 @@ void Renderer::rebuildResourceBuffers() {
     m_meshVertexDataBuffers.push_back(mesh.asset->vertexData());
     m_meshMaterialIndexBuffers.push_back(mesh.asset->materialIndices());
 
+    m_pathtracingResidencySet->addAllocation(mesh.asset->vertexPositions());
+    m_pathtracingResidencySet->addAllocation(mesh.asset->vertexData());
+    m_pathtracingResidencySet->addAllocation(mesh.asset->materialIndices());
+
     idx++;
   }
 
@@ -541,6 +549,8 @@ void Renderer::rebuildResourceBuffers() {
   for (const auto& texture: textures) {
     m_textureIndices[texture.id] = texturePointers.size();
     texturePointers.push_back(texture.asset->texture()->gpuResourceID());
+
+    m_pathtracingResidencySet->addAllocation(texture.asset->texture());
   }
 
   m_texturesBuffer = m_device->newBuffer(
@@ -548,6 +558,7 @@ void Renderer::rebuildResourceBuffers() {
     MTL::ResourceStorageModeShared
   );
   memcpy(m_texturesBuffer->contents(), texturePointers.data(), sizeof(MTL::ResourceID) * texturePointers.size());
+  if (m_texturesBuffer) m_pathtracingResidencySet->addAllocation(m_texturesBuffer);
 
   /*
    * Create instance resources buffer, pointing to each *instance's* materials buffer
@@ -560,6 +571,7 @@ void Renderer::rebuildResourceBuffers() {
     m_resourcesStride * instances.size(),
     MTL::ResourceStorageModeShared
   );
+  m_pathtracingResidencySet->addAllocation(m_instanceResourcesBuffer);
 
   idx = 0;
   m_instanceMaterialBuffers.reserve(instances.size());
@@ -624,6 +636,7 @@ void Renderer::rebuildResourceBuffers() {
     *instanceResourceHandle = materialsBuffer->gpuAddress();
 
     m_instanceMaterialBuffers.push_back(materialsBuffer);
+    m_pathtracingResidencySet->addAllocation(materialsBuffer);
   }
 
   /*
@@ -670,8 +683,11 @@ void Renderer::rebuildAccelerationStructures() {
     auto accelDesc = ns_shared<MTL::PrimitiveAccelerationStructureDescriptor>();
     accelDesc->setGeometryDescriptors(NS::Array::array(geometryDesc));
 
-    meshAccelStructs.push_back(makeAccelStruct(accelDesc));
     meshIds.push_back(mesh.id);
+
+    auto* meshAccelStruct = makeAccelStruct(accelDesc);
+    meshAccelStructs.push_back(meshAccelStruct);
+    m_pathtracingResidencySet->addAllocation(meshAccelStruct);
   }
 
   m_meshAccelStructs = NS::Array::array(
@@ -687,9 +703,10 @@ void Renderer::rebuildAccelerationStructures() {
     sizeof(MTL::AccelerationStructureInstanceDescriptor) * instances.size(),
     MTL::ResourceStorageModeShared
   );
-  auto instanceDescriptors = static_cast<MTL::AccelerationStructureInstanceDescriptor*>(m_instanceBuffer->contents());
+  m_pathtracingResidencySet->addAllocation(m_instanceBuffer);
 
   idx = 0;
+  auto instanceDescriptors = static_cast<MTL::AccelerationStructureInstanceDescriptor*>(m_instanceBuffer->contents());
   for (const auto& instance: instances) {
     auto& id = instanceDescriptors[idx];
     // TODO: use a map for id -> index instead
@@ -731,6 +748,7 @@ void Renderer::rebuildAccelerationStructures() {
   instanceAccelDesc->setInstanceDescriptorBuffer(m_instanceBuffer);
 
   m_instanceAccelStruct = makeAccelStruct(instanceAccelDesc);
+  m_pathtracingResidencySet->addAllocation(m_instanceAccelStruct);
 }
 
 void Renderer::rebuildArgumentBuffer() {
@@ -803,8 +821,10 @@ void Renderer::rebuildRenderTargets() {
   m_postProcessBuffer[1] = m_device->newTexture(texd);
   if (m_flags & shaders_pt::RendererFlags_GMoN) {
     m_gmonAccumulators.resize(m_gmonBuckets, nullptr);
-    for (size_t i = 0; i < m_gmonBuckets; i++)
+    for (size_t i = 0; i < m_gmonBuckets; i++) {
       m_gmonAccumulators[i] = m_device->newTexture(texd);
+      m_gmonResidencySet->addAllocation(m_gmonAccumulators[i]);
+    }
   }
 
   // Create final render target
@@ -903,6 +923,7 @@ void Renderer::rebuildLightData() {
   size_t lightBufSize = sizeof(shaders_pt::AreaLight) * lights.size();
   m_lightDataBuffer = m_device->newBuffer(lightBufSize, MTL::ResourceStorageModeShared);
   memcpy(m_lightDataBuffer->contents(), lights.data(), lightBufSize);
+  if (m_lightDataBuffer) m_pathtracingResidencySet->addAllocation(m_lightDataBuffer);
 
   /*
    * Load environment lights into the argument buffer.
@@ -919,7 +940,10 @@ void Renderer::rebuildLightData() {
         .alias = envmap.aliasTable()->gpuAddress(),
       }
     );
-    m_envLightAliasTables.push_back(envmap.aliasTable());
+
+    MTL::Buffer* aliasTable = envmap.aliasTable();
+    m_envLightAliasTables.push_back(aliasTable);
+    m_pathtracingResidencySet->addAllocation(aliasTable);
   }
 
   m_envLightCount = (uint32_t) envLights.size();
@@ -930,6 +954,7 @@ void Renderer::rebuildLightData() {
   size_t envLightBufSize = sizeof(shaders_pt::EnvironmentLight) * envLights.size();
   m_envLightDataBuffer = m_device->newBuffer(envLightBufSize, MTL::ResourceStorageModeShared);
   memcpy(m_envLightDataBuffer->contents(), envLights.data(), envLightBufSize);
+  if (m_envLightDataBuffer) m_pathtracingResidencySet->addAllocation(m_envLightDataBuffer);
 }
 
 void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {

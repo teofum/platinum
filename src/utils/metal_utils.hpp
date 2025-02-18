@@ -122,6 +122,8 @@ void enableBlending(
   MTL::BlendFactor destFactor = MTL::BlendFactorOneMinusSourceAlpha
 );
 
+NS::SharedPtr<MTL::ResidencySetDescriptor> makeResidencySetDescriptor(const char* label, uint32_t initialCapacity = 1);
+
 }
 
 #endif //PLATINUM_METAL_UTILS_HPP

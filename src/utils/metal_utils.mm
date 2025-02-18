@@ -58,7 +58,7 @@ NS::SharedPtr<MTL::VertexDescriptor> makeVertexDescriptor(const VertexParams& pa
 
 NS::SharedPtr<MTL::TextureDescriptor> makeTextureDescriptor(const TextureParams& params) {
   auto texd = ns_shared<MTL::TextureDescriptor>();
-  
+
   texd->setTextureType(params.type);
   texd->setWidth(params.width);
   texd->setHeight(params.height);
@@ -66,7 +66,7 @@ NS::SharedPtr<MTL::TextureDescriptor> makeTextureDescriptor(const TextureParams&
   texd->setStorageMode(params.storageMode);
   texd->setUsage(params.usage);
   texd->setPixelFormat(params.format);
-  
+
   return texd;
 }
 
@@ -103,12 +103,12 @@ NS::SharedPtr<MTL::RenderPipelineDescriptor> makeRenderPipelineDescriptor(const 
 NS::SharedPtr<MTL::ComputePipelineDescriptor> makeComputePipelineDescriptor(const ComputePipelineParams& params) {
   auto desc = ns_shared<MTL::ComputePipelineDescriptor>();
   desc->setComputeFunction(params.function);
-  
+
   auto linkedFunctions = MTL::LinkedFunctions::alloc()->init();
   linkedFunctions->autorelease();
   linkedFunctions->setFunctions(
-		NS::Array::array((NS::Object**)params.linkedFunctions.data(), params.linkedFunctions.size())
-	);
+    NS::Array::array((NS::Object**) params.linkedFunctions.data(), params.linkedFunctions.size())
+  );
   desc->setLinkedFunctions(linkedFunctions);
 
   desc->setThreadGroupSizeIsMultipleOfThreadExecutionWidth(params.threadGroupSizeIsMultipleOfExecutionWidth);
@@ -133,6 +133,15 @@ NS::SharedPtr<MTL::Function> getFunction(
 
   auto nsName = NS::String::string(name, NS::UTF8StringEncoding);
   return NS::TransferPtr(lib->newFunction(nsName, constantValues, (NS::Error**) nullptr));
+}
+
+NS::SharedPtr<MTL::ResidencySetDescriptor> makeResidencySetDescriptor(const char* label, uint32_t initialCapacity) {
+  auto desc = ns_shared<MTL::ResidencySetDescriptor>();
+
+  desc->setLabel(NS::String::string(label, NS::UTF8StringEncoding));
+  desc->setInitialCapacity(initialCapacity);
+
+  return desc;
 }
 
 }

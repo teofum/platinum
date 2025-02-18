@@ -80,6 +80,9 @@ private:
   MTL::CommandQueue* m_commandQueue = nullptr;
   MTL::Size m_threadsPerThreadgroup, m_threadgroups;
 
+  MTL::ResidencySet* m_pathtracingResidencySet;
+  MTL::ResidencySet* m_gmonResidencySet;
+
   /*
    * Path tracing pipeline state
    */
@@ -179,24 +182,21 @@ private:
 
   static NS::SharedPtr<MTL::AccelerationStructureGeometryDescriptor> makeGeometryDescriptor(const Mesh* mesh);
 
+  // Init functions
   void buildPipelines();
-
+  void buildResidencySets();
   void buildConstantsBuffer();
-
   void loadGgxLutTextures();
 
+  // Render start functions
   void rebuildResourceBuffers();
-
   void rebuildAccelerationStructures();
-
   void rebuildArgumentBuffer();
-
   void rebuildRenderTargets();
-
   void rebuildLightData();
-
   void updateConstants(Scene::NodeID cameraNodeId, int flags);
 
+  // Utility functions
   Material* getMaterialOrDefault(std::optional<Scene::AssetID> id);
 };
 
