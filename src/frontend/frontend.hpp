@@ -49,6 +49,7 @@ private:
   CA::MetalLayer* m_layer = nullptr;
   MTL::Device* m_device = nullptr;
   MTL::CommandQueue* m_commandQueue = nullptr;
+  dispatch_semaphore_t m_semaphore;
 
   // Store and frontend shared state
   Store& m_store;

@@ -31,6 +31,7 @@ Frontend::Frontend(Store& store) noexcept
     m_studioViewport(m_store, m_state, m_dpiScaling),
     m_renderViewport(m_store, m_state, m_dpiScaling),
     m_multiscatterLutGenerator(m_store, m_state, &m_toolMultiscatterLutGeneratorOpen) {
+  m_semaphore = dispatch_semaphore_create(1);
 }
 
 Frontend::~Frontend() {
@@ -189,6 +190,10 @@ void Frontend::start() {
     m_renderer->render();
 
     // Rendering
+    auto cmd = m_commandQueue->commandBuffer();
+    dispatch_semaphore_wait(m_semaphore, DISPATCH_TIME_FOREVER);
+    cmd->addCompletedHandler([&](MTL::CommandBuffer* cmd) { dispatch_semaphore_signal(m_semaphore); });
+
     auto drawable = metal_utils::nextDrawable(m_layer);
 
     auto rpd = metal_utils::ns_shared<MTL::RenderPassDescriptor>();
@@ -206,7 +211,6 @@ void Frontend::start() {
     colorAttachment->setStoreAction(MTL::StoreActionStore);
 
     // Render ImGui
-    auto cmd = m_commandQueue->commandBuffer();
     auto enc = cmd->renderCommandEncoder(rpd);
     enc->pushDebugGroup("ImGui"_ns);
 
