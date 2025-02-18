@@ -5,15 +5,27 @@
 using namespace metal;
 using namespace pt::shaders_studio;
 
+// Screen filling quad in normalized device coordinates
+constant float2 quadVertices[] = {
+  float2(-1, -1),
+  float2( 1,  1),
+  float2(-1,  1),
+  float2(-1, -1),
+  float2( 1, -1),
+  float2( 1,  1),
+};
+
 struct VertexOut {
   float4 position [[position]];
   float2 texCoords;
 };
 
-vertex VertexOut edgePassVertex(PostPassVertex in [[stage_in]]) {
+vertex VertexOut edgePassVertex(unsigned short vid [[vertex_id]]) {
+  float2 position = quadVertices[vid];
+
   VertexOut out;
-  out.position = float4(in.position, 0.0, 1.0);
-  out.texCoords = in.position * float2(0.5, -0.5) + 0.5;
+  out.position = float4(position, 0.0, 1.0);
+  out.texCoords = position * float2(0.5, -0.5) + 0.5;
 
   return out;
 }

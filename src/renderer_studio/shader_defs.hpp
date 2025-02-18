@@ -12,10 +12,6 @@ using namespace simd;
 namespace pt { // NOLINT(*-concat-nested-namespaces)
 namespace shaders_studio {
 
-struct PostPassVertex {
-  float2 position [[attribute(0)]];
-};
-
 struct Vertex {
   float3 position [[attribute(0)]];
   float3 normal [[attribute(1)]];

@@ -31,26 +31,6 @@ Renderer::Renderer(
   );
 
   /*
-   * Build quad buffers, for rendering grid and postprocess pass
-   */
-  m_simpleQuadVertexBuffer = m_device->newBuffer(
-    4 * sizeof(float2),
-    MTL::ResourceStorageModeShared
-  );
-  float2 quadVertices[] = {{-1.0, 1.0},
-                           {1.0,  1.0},
-                           {-1.0, -1.0},
-                           {1.0,  -1.0}};
-  memcpy(m_simpleQuadVertexBuffer->contents(), quadVertices, 4 * sizeof(float2));
-
-  m_simpleQuadIndexBuffer = m_device->newBuffer(
-    6 * sizeof(uint32_t),
-    MTL::ResourceStorageModeShared
-  );
-  uint32_t quadIndices[] = {0, 2, 1, 1, 2, 3};
-  memcpy(m_simpleQuadIndexBuffer->contents(), quadIndices, 6 * sizeof(uint32_t));
-
-  /*
    * Build the camera object buffer
    */
   m_cameraVertexBuffer = m_device->newBuffer(
@@ -97,8 +77,6 @@ Renderer::~Renderer() {
   m_cameraBuffer->release();
   m_cameraVertexBuffer->release();
   m_cameraIndexBuffer->release();
-  m_simpleQuadVertexBuffer->release();
-  m_simpleQuadIndexBuffer->release();
   m_objectIdReadbackBuffer->release();
 }
 
@@ -294,21 +272,14 @@ void Renderer::render(Scene::NodeID selectedNodeId) {
   enc->setStencilReferenceValue(1);
 
   enc->setViewport(viewport);
-  enc->setVertexBuffer(m_simpleQuadVertexBuffer, 0, 0);
   enc->setVertexBuffer(m_constantsBuffer, m_constantsOffset, 1);
   enc->setFragmentBytes(&m_camera.position, sizeof(m_camera.position), 1);
 
   auto grid = m_gridProperties;
   for (int i = 0; i < 4; i++) {
-    enc->setVertexBytes(&grid, sizeof(grid), 2);
+    enc->setVertexBytes(&grid, sizeof(grid), 0);
     enc->setFragmentBytes(&grid, sizeof(grid), 0);
-    enc->drawIndexedPrimitives(
-      MTL::PrimitiveTypeTriangle,
-      6,
-      MTL::IndexTypeUInt32,
-      m_simpleQuadIndexBuffer,
-      0
-    );
+    enc->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger) 0, 6);
 
     grid.level++;
     grid.spacing *= 10.0f;
@@ -335,17 +306,10 @@ void Renderer::render(Scene::NodeID selectedNodeId) {
   enc->setFragmentSamplerState(m_postPassSso, 0);
 
   enc->setViewport(viewport);
-  enc->setVertexBuffer(m_simpleQuadVertexBuffer, 0, 0);
   enc->setFragmentBytes(&m_viewportSize, sizeof(m_viewportSize), 0);
   enc->setFragmentBytes(&selectedNodeId, sizeof(selectedNodeId), 1);
   enc->setFragmentBytes(&m_edgeConstants, sizeof(m_edgeConstants), 2);
-  enc->drawIndexedPrimitives(
-    MTL::PrimitiveTypeTriangle,
-    6,
-    MTL::IndexTypeUInt32,
-    m_simpleQuadIndexBuffer,
-    0
-  );
+  enc->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger) 0, 6);
 
   enc->endEncoding();
   cmd->commit();
@@ -360,8 +324,7 @@ void Renderer::buildPipelines() {
    * Load the shader library
    */
   NS::Error* error = nullptr;
-  MTL::Library* lib = m_device
-    ->newLibrary("renderer_studio.metallib"_ns, &error);
+  MTL::Library* lib = m_device->newLibrary("renderer_studio.metallib"_ns, &error);
   if (!lib) {
     std::println(
       "renderer_studio: Failed to load shader library: {}\n",
@@ -563,25 +526,29 @@ void Renderer::buildPipelines() {
 
 void Renderer::rebuildDataBuffers() {
   /*
-   * Discard existing buffers
+   * Discard existing buffers and create new ones as needed
    */
-  if (m_instanceBuffer != nullptr) m_instanceBuffer->release();
-  if (m_cameraBuffer != nullptr) m_cameraBuffer->release();
+  auto instances = m_store.scene().getInstances();
+  auto cameras = m_store.scene().getCameras();
 
-  /*
-   * Calculate buffer sizes and create buffers
-   */
-  m_instances = m_store.scene().getInstances();
-  m_instanceBuffer = m_device->newBuffer(
-    m_instances.size() * sizeof(shaders_studio::NodeData),
-    MTL::ResourceStorageModeShared
-  );
+  if (m_instances.size() != instances.size()) {
+    if (m_instanceBuffer != nullptr) m_instanceBuffer->release();
+    m_instanceBuffer = m_device->newBuffer(
+      instances.size() * sizeof(shaders_studio::NodeData),
+      MTL::ResourceStorageModeShared
+    );
+  }
 
-  m_cameras = m_store.scene().getCameras();
-  m_cameraBuffer = m_device->newBuffer(
-    m_cameras.size() * sizeof(shaders_studio::NodeData),
-    MTL::ResourceStorageModeShared
-  );
+  if (m_cameras.size() != cameras.size()) {
+    if (m_cameraBuffer != nullptr) m_cameraBuffer->release();
+    m_cameraBuffer = m_device->newBuffer(
+      cameras.size() * sizeof(shaders_studio::NodeData),
+      MTL::ResourceStorageModeShared
+    );
+  }
+
+  m_instances = std::move(instances);
+  m_cameras = std::move(cameras);
 
   /*
    * Fill transform buffers
@@ -655,7 +622,6 @@ void Renderer::rebuildRenderTargets() {
 
   texd->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
   m_auxRenderTarget = m_device->newTexture(texd);
-  //  texd->setPixelFormat(MTL::PixelFormatRGBA8Unorm_sRGB);
   m_primaryRenderTarget = m_device->newTexture(texd);
 
   texd->setPixelFormat(MTL::PixelFormatR16Uint);

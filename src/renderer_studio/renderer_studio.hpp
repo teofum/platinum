@@ -44,7 +44,7 @@ private:
   float2 m_viewportSize = {1, 1};
   float m_aspect = 1.0;
   float4 m_clearColor = {0.8f, 0.8f, 0.8f, 1.0f};
-  
+
   // Shader colors
   float3 m_objectColor = {0.50, 0.50, 0.50};
   shaders_studio::EdgeConstants m_edgeConstants = {
@@ -62,10 +62,6 @@ private:
   MTL::Texture* m_objectIdRenderTarget = nullptr;
   MTL::Texture* m_depthTexture = nullptr;
   MTL::Texture* m_stencilTexture = nullptr;
-
-  // Shared buffers
-  MTL::Buffer* m_simpleQuadVertexBuffer = nullptr;
-  MTL::Buffer* m_simpleQuadIndexBuffer = nullptr;
 
   // Main pass pipeline state and buffers
   MTL::RenderPipelineState* m_pso = nullptr;
@@ -112,13 +108,15 @@ private:
   std::chrono::time_point<std::chrono::high_resolution_clock> m_startTime;
 
   void rebuildDataBuffers();
+  void rebuildInstanceBuffers();
+  void rebuildCameraBuffers();
 
   void buildPipelines();
 
   void rebuildRenderTargets();
 
   void updateConstants();
-  
+
   void updateTheme();
 };
 
