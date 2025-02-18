@@ -28,12 +28,14 @@ Renderer::~Renderer() {
   if (m_accumulator != nullptr) m_accumulator->release();
   if (m_postProcessBuffer[0] != nullptr) m_postProcessBuffer[0]->release();
   if (m_postProcessBuffer[1] != nullptr) m_postProcessBuffer[1]->release();
+  for (auto* acc: m_gmonAccumulators) acc->release();
 
-  for (auto pipeline: m_pathtracingPipelines) pipeline->release();
-  for (auto ift: m_intersectionFunctionTables) ift->release();
+  for (auto* pipeline: m_pathtracingPipelines) pipeline->release();
+  for (auto* ift: m_intersectionFunctionTables) ift->release();
   if (m_constantsBuffer != nullptr) m_constantsBuffer->release();
+  if (m_gmonPipeline != nullptr) m_gmonPipeline->release();
 
-  for (auto lut: m_luts) lut->release();
+  for (auto* lut: m_luts) lut->release();
 }
 
 std::vector<postprocess::PostProcessPass::Options> Renderer::postProcessOptions() {
@@ -49,12 +51,26 @@ std::vector<postprocess::PostProcessPass::Options> Renderer::postProcessOptions(
 
 void Renderer::render() {
   if (m_startRender) {
+    /*
+     * Setup render
+     */
+    rebuildRenderTargets();
     rebuildResourceBuffers();
     rebuildLightData();
-    rebuildRenderTargets();
     rebuildAccelerationStructures();
     updateConstants(m_cameraNodeId, m_flags);
     rebuildArgumentBuffer();
+
+    /*
+     * Calculate threadgroup size and count
+     */
+    uint2 size{(uint32_t) m_currentRenderSize.x, (uint32_t) m_currentRenderSize.y};
+    m_threadsPerThreadgroup = MTL::Size(8, 8, 1);
+    m_threadgroups = MTL::Size(
+      (size.x + m_threadsPerThreadgroup.width - 1) / m_threadsPerThreadgroup.width,
+      (size.y + m_threadsPerThreadgroup.height - 1) / m_threadsPerThreadgroup.height,
+      1
+    );
 
     m_timer = 0;
     m_renderStart = std::chrono::high_resolution_clock::now();
@@ -74,19 +90,20 @@ void Renderer::render() {
   /*
    * If rendering the scene, run the path tracing kernel to accumulate samples
    */
+  uint32_t gmonIdx = m_accumulatedFrames % m_gmonBuckets;
   if (m_accumulatedFrames < m_accumulationFrames) {
-    uint2 size{(uint32_t) m_currentRenderSize.x, (uint32_t) m_currentRenderSize.y};
-    auto threadsPerThreadgroup = MTL::Size(8, 8, 1);
-    auto threadgroups = MTL::Size(
-      (size.x + threadsPerThreadgroup.width - 1) / threadsPerThreadgroup.width,
-      (size.y + threadsPerThreadgroup.height - 1) / threadsPerThreadgroup.height,
-      1
-    );
+    /*
+     * Determine the accumulator texture to use
+     */
+    auto* accumulator = m_accumulator;
+    if (m_flags & shaders_pt::RendererFlags_GMoN) {
+      accumulator = m_gmonAccumulators[gmonIdx];
+    }
 
     auto computeEnc = cmd->computeCommandEncoder();
 
     computeEnc->setBuffer(m_argumentBuffer, 0, 0);
-    computeEnc->setTexture(m_accumulator, 0);
+    computeEnc->setTexture(accumulator, 0);
     computeEnc->setTexture(m_randomSource, 1);
 
     /*
@@ -139,7 +156,7 @@ void Renderer::render() {
     }
 
     computeEnc->setComputePipelineState(m_pathtracingPipelines[m_selectedPipeline]);
-    computeEnc->dispatchThreadgroups(threadgroups, threadsPerThreadgroup);
+    computeEnc->dispatchThreadgroups(m_threadgroups, m_threadsPerThreadgroup);
     computeEnc->endEncoding();
 
     m_accumulatedFrames++;
@@ -148,6 +165,29 @@ void Renderer::render() {
     auto time = now - m_renderStart;
     auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(time);
     m_timer = millis.count();
+  }
+
+  /*
+   * Every N frames or in the last frame, accumulate GMoN buffers into the
+   * main accumulator buffer
+   */
+  if ((m_flags & shaders_pt::RendererFlags_GMoN) &&
+      (gmonIdx == m_gmonBuckets - 1 || m_accumulatedFrames == m_accumulationFrames)) {
+    auto gmonEnc = cmd->computeCommandEncoder();
+
+    for (auto* acc: m_gmonAccumulators) {
+      gmonEnc->useResource(acc, MTL::ResourceUsageRead);
+    }
+
+    gmonEnc->setBuffer(m_gmonAccumulatorBuffer, 0, 0);
+    gmonEnc->setBytes(&m_gmonBuckets, sizeof(uint32_t), 1);
+    gmonEnc->setBytes(&m_gmonOptions, sizeof(shaders_pt::GmonOptions), 2);
+    gmonEnc->setTexture(m_accumulator, 0);
+
+    gmonEnc->setComputePipelineState(m_gmonPipeline);
+    gmonEnc->dispatchThreadgroups(m_threadgroups, m_threadsPerThreadgroup);
+
+    gmonEnc->endEncoding();
   }
 
   /*
@@ -169,6 +209,7 @@ void Renderer::startRender(
   Scene::NodeID cameraNodeId,
   float2 viewportSize,
   uint32_t sampleCount,
+  uint32_t gmonBuckets,
   int flags
 ) {
   if (!equal(viewportSize, m_currentRenderSize)) {
@@ -181,6 +222,8 @@ void Renderer::startRender(
 
   m_cameraNodeId = cameraNodeId;
   m_flags = flags;
+  m_gmonBuckets = gmonBuckets;
+
   m_startRender = true;
 }
 
@@ -321,6 +364,30 @@ void Renderer::buildPipelines() {
   }
 
   /*
+   * Build the GMoN accumulation pipeline
+   */
+  auto desc = metal_utils::makeComputePipelineDescriptor(
+    {
+      .function = metal_utils::getFunction(lib, "gmon"),
+      .threadGroupSizeIsMultipleOfExecutionWidth = true,
+    }
+  );
+  m_gmonPipeline = m_device->newComputePipelineState(
+    desc,
+    MTL::PipelineOptionNone,
+    nullptr,
+    &error
+  );
+  if (!m_gmonPipeline) {
+    std::println(
+      stderr,
+      "renderer_pt: Failed to create GMoN accumulation pipeline: {}",
+      error->localizedDescription()->utf8String()
+    );
+    assert(false);
+  }
+
+  /*
    * Build the post-process pipeline
    */
   m_postProcessPasses.push_back(std::make_unique<postprocess::Exposure>(m_device, lib));
@@ -420,6 +487,11 @@ void Renderer::rebuildResourceBuffers() {
   m_instanceMaterialBuffers.clear();
 
   if (m_texturesBuffer != nullptr) m_texturesBuffer->release();
+
+  if (m_gmonAccumulatorBuffer != nullptr) {
+    m_gmonAccumulatorBuffer->release();
+    m_gmonAccumulatorBuffer = nullptr;
+  }
 
   /*
    * Create vertex resources buffer, pointing to each mesh's vertex data buffer
@@ -550,6 +622,22 @@ void Renderer::rebuildResourceBuffers() {
     *instanceResourceHandle = materialsBuffer->gpuAddress();
 
     m_instanceMaterialBuffers.push_back(materialsBuffer);
+  }
+
+  /*
+   * Create GMoN accumulators buffer, contains pointers to all the accumulator
+   * textures
+   */
+  if (m_flags & shaders_pt::RendererFlags_GMoN) {
+    m_gmonAccumulatorBuffer = m_device->newBuffer(
+      m_gmonBuckets * sizeof(MTL::ResourceID),
+      MTL::ResourceStorageModeShared
+    );
+
+    for (size_t i = 0; i < m_gmonBuckets; i++) {
+      auto* gmonAccHandle = (MTL::ResourceID*) m_gmonAccumulatorBuffer->contents() + i;
+      *gmonAccHandle = m_gmonAccumulators[i]->gpuResourceID();
+    }
   }
 }
 
@@ -686,25 +774,38 @@ void Renderer::rebuildArgumentBuffer() {
 }
 
 void Renderer::rebuildRenderTargets() {
-  if (m_renderTarget != nullptr) m_renderTarget->release();
+  // Free current textures
+  // TODO: we don't need to rebuild the textures if the render size didn't change
   if (m_accumulator != nullptr) m_accumulator->release();
+  for (auto* gmonAcc: m_gmonAccumulators) gmonAcc->release();
+  m_gmonAccumulators.clear();
+
   if (m_postProcessBuffer[0] != nullptr) m_postProcessBuffer[0]->release();
   if (m_postProcessBuffer[1] != nullptr) m_postProcessBuffer[1]->release();
 
+  if (m_renderTarget != nullptr) m_renderTarget->release();
   if (m_randomSource != nullptr) m_randomSource->release();
 
-  auto texd = MTL::TextureDescriptor::alloc()->init();
-  texd->setTextureType(MTL::TextureType2D);
-  texd->setWidth(static_cast<uint32_t>(m_currentRenderSize.x));
-  texd->setHeight(static_cast<uint32_t>(m_currentRenderSize.y));
-  texd->setStorageMode(MTL::StorageModeShared);
+  auto texd = metal_utils::makeTextureDescriptor(
+    {
+      .width = uint32_t(m_currentRenderSize.x),
+      .height = uint32_t(m_currentRenderSize.y),
+      .format = MTL::PixelFormatRGBA32Float,
+      .usage = MTL::TextureUsageShaderWrite | MTL::TextureUsageShaderRead,
+    }
+  );
 
-  texd->setUsage(MTL::TextureUsageShaderWrite | MTL::TextureUsageShaderRead);
-  texd->setPixelFormat(MTL::PixelFormatRGBA32Float);
+  // Create accumulator and post process RTs
   m_accumulator = m_device->newTexture(texd);
   m_postProcessBuffer[0] = m_device->newTexture(texd);
   m_postProcessBuffer[1] = m_device->newTexture(texd);
+  if (m_flags & shaders_pt::RendererFlags_GMoN) {
+    m_gmonAccumulators.resize(m_gmonBuckets, nullptr);
+    for (size_t i = 0; i < m_gmonBuckets; i++)
+      m_gmonAccumulators[i] = m_device->newTexture(texd);
+  }
 
+  // Create final render target
   texd->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
   texd->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
   m_renderTarget = m_device->newTexture(texd);
@@ -724,8 +825,6 @@ void Renderer::rebuildRenderTargets() {
     random.data(),
     sizeof(uint32_t) * (size_t) m_currentRenderSize.x
   );
-
-  texd->release();
 }
 
 void Renderer::rebuildLightData() {
@@ -862,6 +961,7 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
 
   m_constants = {
     .frameIdx = 0,
+    .gmonBuckets = (m_flags & shaders_pt::RendererFlags_GMoN) ? m_gmonBuckets : 1,
     .lightCount = m_lightCount,
     .envLightCount = m_envLightCount,
     .lutSizeE = m_lutSizes[0],

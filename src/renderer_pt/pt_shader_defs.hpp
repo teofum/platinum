@@ -71,6 +71,7 @@ struct EnvironmentLight {
 enum RendererFlags {
   RendererFlags_None = 0,
   RendererFlags_MultiscatterGGX = 1 << 0,
+  RendererFlags_GMoN = 1 << 1,
 };
 
 /*
@@ -98,7 +99,7 @@ struct MaterialGPU {
 };
 
 struct Constants {
-  uint32_t frameIdx;
+  uint32_t frameIdx, gmonBuckets;
   uint32_t lightCount;
   uint32_t envLightCount;
   uint32_t lutSizeE, lutSizeEavg;
@@ -153,6 +154,10 @@ struct Arguments {
   metal_ptr(Texture, device) textures;
 
   Luts luts;
+};
+
+struct GmonOptions {
+  float cap = 1.0f;
 };
 
 }

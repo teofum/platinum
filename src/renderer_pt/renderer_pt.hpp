@@ -11,9 +11,9 @@ namespace pt::renderer_pt {
 
 class Renderer {
 public:
-  enum Integrators {
-    Integrator_Simple = 0,
-    Integrator_MIS,
+  enum class Integrators {
+    Simple = 0,
+    MIS,
   };
 
   enum Status {
@@ -37,14 +37,15 @@ public:
     Scene::NodeID cameraNodeId,
     float2 viewportSize,
     uint32_t sampleCount,
+    uint32_t gmonBuckets,
     int flags = 0
   );
 
-  [[nodiscard]] constexpr int selectedKernel() const {
+  [[nodiscard]] constexpr uint32_t selectedKernel() const {
     return m_selectedPipeline;
   }
 
-  constexpr void selectKernel(int kernel) {
+  constexpr void selectKernel(uint32_t kernel) {
     m_selectedPipeline = kernel;
   }
 
@@ -64,6 +65,8 @@ public:
     return m_tonemapPass->options().tonemap;
   }
 
+  [[nodiscard]] constexpr shaders_pt::GmonOptions& gmonOptions() { return m_gmonOptions; }
+
 private:
   // Store
   Store& m_store;
@@ -75,6 +78,7 @@ private:
   // Metal
   MTL::Device* m_device = nullptr;
   MTL::CommandQueue* m_commandQueue = nullptr;
+  MTL::Size m_threadsPerThreadgroup, m_threadgroups;
 
   /*
    * Path tracing pipeline state
@@ -83,7 +87,7 @@ private:
     "pathtracingKernel",
     "misKernel",
   };
-  int m_selectedPipeline = Integrator_MIS;
+  uint32_t m_selectedPipeline = uint32_t(Integrators::MIS);
   std::vector<MTL::ComputePipelineState*> m_pathtracingPipelines;
   std::vector<MTL::IntersectionFunctionTable*> m_intersectionFunctionTables;
 
@@ -91,6 +95,13 @@ private:
   MTL::Texture* m_accumulator = nullptr;
   MTL::Texture* m_renderTarget = nullptr;
   MTL::Texture* m_randomSource = nullptr;
+
+  // GMoN
+  uint32_t m_gmonBuckets = 0;
+  std::vector<MTL::Texture*> m_gmonAccumulators;
+  MTL::ComputePipelineState* m_gmonPipeline = nullptr;
+  MTL::Buffer* m_gmonAccumulatorBuffer = nullptr;
+  shaders_pt::GmonOptions m_gmonOptions;
 
   // Acceleration structures
   NS::Array* m_meshAccelStructs = nullptr;
@@ -154,8 +165,8 @@ private:
   size_t m_timer = 0;
   std::chrono::time_point<std::chrono::high_resolution_clock> m_renderStart;
   bool m_startRender = false;
-  Scene::NodeID m_cameraNodeId;
-  int m_flags;
+  Scene::NodeID m_cameraNodeId = Scene::null;
+  int m_flags = 0;
 
   /*
    * Postprocess pipeline
