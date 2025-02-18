@@ -168,11 +168,11 @@ void RenderViewport::renderSettingsWindow(const std::vector<Scene::CameraInstanc
   std::array<std::string, 2> kernelNames = {"Simple BSDF sampler", "MIS + NEE"};
   if (widgets::combo("Render kernel", kernelNames[selectedKernel].c_str())) {
     if (widgets::comboItem(kernelNames[0].c_str(), selectedKernel == 0))
-      m_renderer->selectKernel(renderer_pt::Renderer::Integrator_Simple);
+      m_renderer->selectKernel(uint32_t(renderer_pt::Renderer::Integrators::Simple));
     if (selectedKernel == 0) ImGui::SetItemDefaultFocus();
 
     if (widgets::comboItem(kernelNames[1].c_str(), selectedKernel == 1))
-      m_renderer->selectKernel(renderer_pt::Renderer::Integrator_MIS);
+      m_renderer->selectKernel(uint32_t(renderer_pt::Renderer::Integrators::MIS));
     if (selectedKernel == 1) ImGui::SetItemDefaultFocus();
 
     ImGui::EndCombo();
@@ -183,8 +183,21 @@ void RenderViewport::renderSettingsWindow(const std::vector<Scene::CameraInstanc
   ImGui::SeparatorText("Options");
 
   ImGui::CheckboxFlags("Multiscatter GGX", &m_renderFlags, shaders_pt::RendererFlags_MultiscatterGGX);
+  ImGui::CheckboxFlags("GMoN Estimator", &m_renderFlags, shaders_pt::RendererFlags_GMoN);
 
   ImGui::EndDisabled();
+
+  if (m_renderFlags & shaders_pt::RendererFlags_GMoN) {
+    auto& gmon = m_renderer->gmonOptions();
+
+    ImGui::SeparatorText("GMoN settings");
+
+    ImGui::BeginDisabled(!(m_renderer->status() & renderer_pt::Renderer::Status_Ready));
+    widgets::dragInt("Buckets", (int*) &m_gmonBuckets, 2, 5, 25);
+    ImGui::EndDisabled();
+    
+    widgets::dragFloat("Cap", &gmon.cap, 0.01f, 0.0f, 1.0f, "%.2f");
+  }
   ImGui::Spacing();
 
   if (ImGui::CollapsingHeader("Post processing", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -440,6 +453,7 @@ void RenderViewport::startRender() {
       m_cameraNodeId.value(),
       m_renderSize,
       (uint32_t) m_nextRenderSampleCount,
+      m_gmonBuckets,
       m_renderFlags
     );
     m_state.setRendering(true);

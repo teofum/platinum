@@ -318,11 +318,12 @@ kernel void pathtracingKernel(
     /*
      * Accumulate samples
      */
-    if (args.constants.frameIdx > 0) {
+    uint32_t localFrameIdx = args.constants.frameIdx / args.constants.gmonBuckets;
+    if (localFrameIdx > 0) {
       float3 L_prev = acc.read(tid).xyz;
-      
-      L += L_prev * args.constants.frameIdx;
-      L /= (args.constants.frameIdx + 1);
+
+      L += L_prev * localFrameIdx;
+      L /= (localFrameIdx + 1);
     }
     
     acc.write(float4(L, 1.0f), tid);
@@ -617,11 +618,12 @@ kernel void misKernel(
     /*
      * Accumulate samples
      */
-    if (args.constants.frameIdx > 0) {
+    uint32_t localFrameIdx = args.constants.frameIdx / args.constants.gmonBuckets;
+    if (localFrameIdx > 0) {
       float3 L_prev = acc.read(tid).xyz;
       
-      L += L_prev * args.constants.frameIdx;
-      L /= (args.constants.frameIdx + 1);
+      L += L_prev * localFrameIdx;
+      L /= (localFrameIdx + 1);
     }
     
     acc.write(float4(L, 1.0f), tid);

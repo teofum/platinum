@@ -70,7 +70,8 @@ private:
   float2 m_nextRenderSize = {1280, 800};
   int32_t m_nextRenderSampleCount = 128;
   bool m_useViewportSizeForRender = true;
-  int m_renderFlags = shaders_pt::RendererFlags_MultiscatterGGX;
+  int m_renderFlags = shaders_pt::RendererFlags_MultiscatterGGX | shaders_pt::RendererFlags_GMoN;
+  uint32_t m_gmonBuckets = 15;
 
   // Post process settings
   const hashmap<postprocess::Tonemapper, std::string> m_tonemappers = {

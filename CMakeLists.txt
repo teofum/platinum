@@ -98,6 +98,7 @@ build_shaders(renderer_pt.metallib
         src/renderer_pt/shaders/samplers.metal
         src/renderer_pt/shaders/kernel.metal
         src/renderer_pt/shaders/postprocess.metal
+        src/renderer_pt/shaders/gmon.metal
 )
 
 build_shaders(tools.metallib
