@@ -539,8 +539,6 @@ void Renderer::rebuildResourceBuffers() {
 
   /*
    * Create texture resource buffer, pointing to each scene texture.
-   * Right now we include all textures, even unused ones.
-   * TODO: figure out if there's even any perf benefit to including only textures that are used.
    */
   auto textures = m_store.scene().getAll<Texture>();
   std::vector<MTL::ResourceID> texturePointers;
@@ -670,8 +668,7 @@ void Renderer::rebuildAccelerationStructures() {
    * Get mesh data and build mesh acceleration structures (BLAS)
    */
   auto meshes = m_store.scene().getAll<Mesh>();
-  std::vector<Scene::AssetID> meshIds;
-  meshIds.reserve(meshes.size());
+  hashmap<Scene::AssetID, size_t> meshIndices;
   std::vector<MTL::AccelerationStructure*> meshAccelStructs;
   meshAccelStructs.reserve(meshes.size());
 
@@ -683,11 +680,11 @@ void Renderer::rebuildAccelerationStructures() {
     auto accelDesc = ns_shared<MTL::PrimitiveAccelerationStructureDescriptor>();
     accelDesc->setGeometryDescriptors(NS::Array::array(geometryDesc));
 
-    meshIds.push_back(mesh.id);
-
     auto* meshAccelStruct = makeAccelStruct(accelDesc);
     meshAccelStructs.push_back(meshAccelStruct);
     m_pathtracingResidencySet->addAllocation(meshAccelStruct);
+
+    meshIndices[mesh.id] = idx++;
   }
 
   m_meshAccelStructs = NS::Array::array(
@@ -709,12 +706,7 @@ void Renderer::rebuildAccelerationStructures() {
   auto instanceDescriptors = static_cast<MTL::AccelerationStructureInstanceDescriptor*>(m_instanceBuffer->contents());
   for (const auto& instance: instances) {
     auto& id = instanceDescriptors[idx];
-    // TODO: use a map for id -> index instead
-    auto meshIdx = std::find_if(
-      meshIds.begin(), meshIds.end(), [&](Scene::AssetID id) {
-        return id == instance.mesh.id;
-      }
-    ) - meshIds.begin();
+    auto meshIdx = meshIndices.at(instance.mesh.id);
 
     id.accelerationStructureIndex = (uint32_t) meshIdx;
     id.intersectionFunctionTableOffset = 0;
