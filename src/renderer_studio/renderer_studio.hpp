@@ -33,7 +33,7 @@ public:
 
   [[nodiscard]] const MTL::Texture* presentRenderTarget() const;
 
-  [[nodiscard]] Scene::NodeID readbackObjectIdAt(uint32_t x, uint32_t y) const;
+  [[nodiscard]] Scene::NodeID readbackObjectIdAt(uint32_t x, uint32_t y, float dpiScaling = 2.0f) const;
 
 private:
   // Store
@@ -108,8 +108,6 @@ private:
   std::chrono::time_point<std::chrono::high_resolution_clock> m_startTime;
 
   void rebuildDataBuffers();
-  void rebuildInstanceBuffers();
-  void rebuildCameraBuffers();
 
   void buildPipelines();
 

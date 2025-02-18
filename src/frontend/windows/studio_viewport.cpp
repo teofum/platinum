@@ -96,7 +96,7 @@ bool StudioViewport::handleInputs(const SDL_Event& event) {
       uint32_t x = button.x - static_cast<uint32_t>(m_viewportTopLeft.x);
       uint32_t y = button.y - static_cast<uint32_t>(m_viewportTopLeft.y);
 
-      auto objectId = m_renderer->readbackObjectIdAt(x, y);
+      auto objectId = m_renderer->readbackObjectIdAt(x, y, m_dpiScaling);
       if (objectId != Scene::NodeID(0)) {
         m_state.selectNode(objectId);
       } else {

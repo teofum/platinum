@@ -111,7 +111,7 @@ const MTL::Texture* Renderer::presentRenderTarget() const {
   return m_primaryRenderTarget;
 }
 
-Scene::NodeID Renderer::readbackObjectIdAt(uint32_t x, uint32_t y) const {
+Scene::NodeID Renderer::readbackObjectIdAt(uint32_t x, uint32_t y, float dpiScaling) const {
   auto cmd = m_commandQueue->commandBuffer();
   auto benc = cmd->blitCommandEncoder();
 
@@ -119,7 +119,7 @@ Scene::NodeID Renderer::readbackObjectIdAt(uint32_t x, uint32_t y) const {
     m_objectIdRenderTarget,
     0,
     0,
-    MTL::Origin(x * 2, y * 2, 0), // FIXME: account for display scaling here
+    MTL::Origin(uint32_t(x * dpiScaling), uint32_t(y * dpiScaling), 0),
     MTL::Size(1, 1, 1),
     m_objectIdReadbackBuffer,
     0,
