@@ -199,6 +199,17 @@ private:
   float halton(uint32_t i, uint32_t d);
 };
 
+class PCG4DSampler {
+public:
+  PCG4DSampler(uint2 tid, uint2 size, uint32_t spp, uint32_t sample);
+
+  float sample1d();
+  float2 sample2d();
+
+private:
+  uint4 m_v;
+};
+
 float2 sampleDisk(float2 u);
 
 float3 sampleCosineHemisphere(float2 u);

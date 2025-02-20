@@ -181,6 +181,20 @@ float HaltonSampler::halton(uint32_t i, uint32_t d) {
   return min(r, oneMinusEpsilon);
 }
 
+PCG4DSampler::PCG4DSampler(uint2 tid, uint2 size, uint32_t spp, uint32_t sample) {
+  m_v = pcg4d(uint4(tid, sample, tid.x + tid.y)).x;
+}
+
+float PCG4DSampler::sample1d() {
+  m_v = pcg4d(m_v);
+  return fixedPt2Float(m_v.x);
+}
+
+float2 PCG4DSampler::sample2d() {
+  m_v = pcg4d(m_v);
+  return float2(fixedPt2Float(m_v.x), fixedPt2Float(m_v.y));
+}
+
 float2 sampleDisk(float2 u) {
   const auto r = sqrt(u.x);
   const auto theta = 2.0f * M_PI_F * u.y;
