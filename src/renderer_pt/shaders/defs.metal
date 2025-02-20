@@ -312,7 +312,7 @@ struct Eval {
 
 class BSDF {
 public:
-  BSDF(thread ShadingContext& ctx, constant Constants& constants, constant Luts& luts);
+  BSDF(thread ShadingContext& ctx, device Constants& constants, device Luts& luts);
 
   Eval eval(float3 wo, float3 wi);
 
@@ -321,8 +321,8 @@ public:
 private:
   thread ShadingContext& m_ctx;
   GGX m_ggx, m_ggxCoat;
-  constant Constants& m_constants;
-  constant Luts& m_luts;
+  device Constants& m_constants;
+  device Luts& m_luts;
   constant constexpr static float m_clearcoatIor = 1.5f;
 
   /*

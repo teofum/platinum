@@ -106,8 +106,12 @@ struct Constants {
   uint32_t lutSizeE, lutSizeEavg;
   int flags;
   float totalLightPower;
+  float apertureRadius;
   uint2 size;
-  CameraData camera;
+  float3 position;
+  float3 topLeft;
+  float3 pixelDeltaU;
+  float3 pixelDeltaV;
 };
 
 struct VertexResource {

@@ -965,16 +965,14 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
     .lutSizeEavg = m_lutSizes[1],
     .flags = flags,
     .totalLightPower = m_lightTotalPower,
+    .apertureRadius = camera->aperture > 0.0f
+                      ? (camera->focalLength / 2000.0f) / camera->aperture
+                      : 0.0f,
     .size = {(uint32_t) m_currentRenderSize.x, (uint32_t) m_currentRenderSize.y},
-    .camera = {
-      .position = pos,
-      .topLeft = pos - camera->focusDistance * w - (vu + vv) * 0.5f,
-      .pixelDeltaU = vu / m_currentRenderSize.x,
-      .pixelDeltaV = vv / m_currentRenderSize.y,
-      .apertureRadius = camera->aperture > 0.0f
-                        ? (camera->focalLength / 2000.0f) / camera->aperture
-                        : 0.0f,
-    },
+    .position = pos,
+    .topLeft = pos - camera->focusDistance * w - (vu + vv) * 0.5f,
+    .pixelDeltaU = vu / m_currentRenderSize.x,
+    .pixelDeltaV = vv / m_currentRenderSize.y,
   };
 }
 
