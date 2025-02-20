@@ -160,7 +160,9 @@ float HaltonSampler::sample1d() {
 }
 
 float2 HaltonSampler::sample2d() {
-  return float2(halton(m_offset, m_dim++), halton(m_offset, m_dim++));
+  float x = halton(m_offset, m_dim++);
+  float y = halton(m_offset, m_dim++);
+  return float2(x, y);
 }
 
 __attribute__((always_inline))

@@ -936,20 +936,15 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
   auto transform = m_store.scene().worldTransform(cameraNodeId);
   auto camera = node.get<Camera>().value();
 
-  // Rescale the camera transform
-  const float3 scale = {
-    length(transform.columns[0]),
-    length(transform.columns[1]),
-    length(transform.columns[2]),
-  };
+  // Rescale the camera transform to ignore any scaling
   transform = {
-    transform.columns[0] / scale.x,
-    transform.columns[1] / scale.y,
-    transform.columns[2] / scale.z,
+    transform.columns[0] / length(transform.columns[0]),
+    transform.columns[1] / length(transform.columns[1]),
+    transform.columns[2] / length(transform.columns[2]),
     transform.columns[3],
   };
 
-  auto vh = camera->croppedSensorHeight(m_aspect) / camera->focalLength;
+  auto vh = camera->focusDistance * camera->croppedSensorHeight(m_aspect) / camera->focalLength;
   auto vw = vh * m_aspect;
 
   auto u = transform.columns[0].xyz;
@@ -973,9 +968,12 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
     .size = {(uint32_t) m_currentRenderSize.x, (uint32_t) m_currentRenderSize.y},
     .camera = {
       .position = pos,
-      .topLeft = pos - w - (vu + vv) * 0.5f,
+      .topLeft = pos - camera->focusDistance * w - (vu + vv) * 0.5f,
       .pixelDeltaU = vu / m_currentRenderSize.x,
       .pixelDeltaV = vv / m_currentRenderSize.y,
+      .apertureRadius = camera->aperture > 0.0f
+                        ? (camera->focalLength / 2000.0f) / camera->aperture
+                        : 0.0f,
     },
   };
 }
