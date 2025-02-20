@@ -10,9 +10,8 @@ namespace pt::frontend::windows {
 
 class SceneExplorer final : Window {
 public:
-  constexpr SceneExplorer(Store& store, State& state, bool* open = nullptr) noexcept
-    : Window(store, state, open) {
-  }
+  explicit constexpr SceneExplorer(Store& store, bool* open = nullptr) noexcept
+    : Window(store, open) {}
 
   void render() final;
 
@@ -22,7 +21,7 @@ private:
   static constexpr const ImGuiTreeNodeFlags m_baseFlags =
     ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
     ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_AllowItemOverlap;
-  
+
   void renderNode(const Scene::Node& node, uint32_t level = 1);
 };
 

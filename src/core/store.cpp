@@ -16,7 +16,10 @@ Store::~Store() {
 
 void Store::open() {
   auto path = utils::fileOpen("/", "json");
-  if (path) m_scene = std::make_unique<Scene>(path.value(), m_device);
+  if (path) {
+    m_selectedNodeId = m_nextNodeId = std::nullopt;
+    m_scene = std::make_unique<Scene>(path.value(), m_device);
+  }
 }
 
 void Store::saveAs() {
@@ -38,6 +41,16 @@ void Store::importTexture(loaders::texture::TextureType type) {
   if (texturePath) {
     loaders::texture::TextureLoader loader(m_device, m_commandQueue, *m_scene);
     loader.loadFromFile(texturePath.value(), texturePath->stem().string(), type);
+  }
+}
+
+void Store::update() {
+  m_selectedNodeId = m_nextNodeId;
+
+  if (m_nodeAction == NodeAction::Remove && m_actionNodeId) {
+    m_scene->removeNode(m_actionNodeId.value(), m_removeMode);
+    m_selectedNodeId = m_nextNodeId = m_actionNodeId = std::nullopt;
+    m_removeMode = Scene::RemoveMode::Recursive;
   }
 }
 

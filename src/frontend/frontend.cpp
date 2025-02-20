@@ -24,13 +24,13 @@ static bool isExitEvent(const SDL_Event& event, uint32_t windowID) {
 }
 
 Frontend::Frontend(Store& store) noexcept
-  : m_store(store), m_state(store),
-    m_properties(m_store, m_state),
-    m_sceneExplorer(m_store, m_state),
-    m_assetManager(m_store, m_state),
-    m_studioViewport(m_store, m_state, m_dpiScaling),
-    m_renderViewport(m_store, m_state, m_dpiScaling),
-    m_multiscatterLutGenerator(m_store, m_state, &m_toolMultiscatterLutGeneratorOpen) {
+  : m_store(store),
+    m_properties(m_store),
+    m_sceneExplorer(m_store),
+    m_assetManager(m_store),
+    m_studioViewport(m_store, m_dpiScaling),
+    m_renderViewport(m_store, m_dpiScaling),
+    m_multiscatterLutGenerator(m_store, &m_toolMultiscatterLutGeneratorOpen) {
   m_semaphore = dispatch_semaphore_create(1);
 }
 
@@ -232,7 +232,7 @@ void Frontend::start() {
     // Update frontend shared state
     //  We do this after the frame has been drawn to avoid issues with deleted assets being added
     //  to drawlists. This introduces a 1-frame delay to see changes reflected in the viewport.
-    m_state.update();
+    m_store.update();
 
     autoreleasePool->release();
   }

@@ -7,8 +7,8 @@ namespace pt::frontend::windows {
 
 void Properties::render() {
   ImGui::Begin("Properties");
-  if (m_state.selectedNode()) {
-    renderNodeProperties(m_state.selectedNode().value());
+  if (m_store.selectedNode()) {
+    renderNodeProperties(m_store.selectedNode().value());
   } else {
     ImGui::Text("[ Nothing selected ]");
   }
@@ -37,10 +37,10 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
     if (widgets::buttonDanger("Remove", {buttonWidth, 0}) ||
         (ImGui::IsKeyPressed(ImGuiKey_Backspace, false) && !ImGui::IsAnyItemActive())) {
       if (!node.isLeaf()) ImGui::OpenPopup("Remove_Popup");
-      else m_state.removeNode(id);
+      else m_store.removeNode(id);
     }
     if (!node.isLeaf()) {
-      widgets::removeNodePopup(m_state, id);
+      widgets::removeNodePopup(m_store, id);
     }
   }
 

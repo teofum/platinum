@@ -3,7 +3,7 @@
 
 #include <imgui.h>
 
-#include <frontend/state.hpp>
+#include <core/store.hpp>
 
 namespace pt::frontend::widgets {
 
@@ -16,7 +16,7 @@ std::tuple<float, std::string> leftAlignedLabel(const char* label);
 
 float getWidthForItems(uint32_t n);
 
-void removeNodePopup(State& state, Scene::NodeID id);
+void removeNodePopup(Store& state, Scene::NodeID id);
 
 void transformEditor(Transform& transform);
 

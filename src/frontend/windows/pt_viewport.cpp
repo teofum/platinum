@@ -7,8 +7,8 @@
 
 namespace pt::frontend::windows {
 
-RenderViewport::RenderViewport(Store& store, State& state, float& dpiScaling, bool* open) noexcept
-  : Window(store, state, open), m_dpiScaling(dpiScaling) {}
+RenderViewport::RenderViewport(Store& store, float& dpiScaling, bool* open) noexcept
+  : Window(store, open), m_dpiScaling(dpiScaling) {}
 
 void RenderViewport::init(renderer_pt::Renderer* renderer) {
   m_renderer = renderer;
@@ -118,7 +118,7 @@ void RenderViewport::render() {
     auto width = min(ImGui::GetContentRegionAvail().x - 80.0f, 300.0f);
     ImGui::ProgressBar(progress, {width, 0}, progressStr.c_str());
 
-    if (accumulated == total) m_state.setRendering(false);
+    if (accumulated == total) m_store.setRendering(false);
 
     auto time = std::format("{:.3f}s", (float) m_renderer->renderTime() / 1000.0f);
     auto textWidth = ImGui::CalcTextSize(time.c_str()).x;
@@ -195,7 +195,7 @@ void RenderViewport::renderSettingsWindow(const std::vector<Scene::CameraInstanc
     ImGui::BeginDisabled(!(m_renderer->status() & renderer_pt::Renderer::Status_Ready));
     widgets::dragInt("Buckets", (int*) &m_gmonBuckets, 2, 5, 25);
     ImGui::EndDisabled();
-    
+
     widgets::dragFloat("Cap", &gmon.cap, 0.01f, 0.0f, 1.0f, "%.2f");
   }
   ImGui::Spacing();
@@ -456,7 +456,7 @@ void RenderViewport::startRender() {
       m_gmonBuckets,
       m_renderFlags
     );
-    m_state.setRendering(true);
+    m_store.setRendering(true);
   }
 }
 

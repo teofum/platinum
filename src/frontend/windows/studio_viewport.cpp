@@ -16,8 +16,8 @@ void StudioViewport::init(MTL::Device* device, MTL::CommandQueue* commandQueue) 
 void StudioViewport::render() {
   updateScrollAndZoomState();
 
-  auto [action, nodeId] = m_state.getNodeAction();
-  if (action == State::NodeAction_CenterCamera) {
+  auto [action, nodeId] = m_store.getNodeAction();
+  if (action == Store::NodeAction::CenterCamera) {
     m_renderer->cameraTo(m_store.scene().worldTransform(nodeId).columns[3].xyz);
   }
 
@@ -33,8 +33,8 @@ void StudioViewport::render() {
     m_viewportSize = {size.x, size.y};
     m_renderer->handleResizeViewport(m_viewportSize * m_dpiScaling);
 
-    if (!m_state.rendering()) {
-      m_renderer->render(m_state.selectedNode().value_or(Scene::null));
+    if (!m_store.rendering()) {
+      m_renderer->render(m_store.selectedNode().value_or(Scene::null));
     }
 
     ImGui::Image(
@@ -98,9 +98,9 @@ bool StudioViewport::handleInputs(const SDL_Event& event) {
 
       auto objectId = m_renderer->readbackObjectIdAt(x, y, m_dpiScaling);
       if (objectId != Scene::NodeID(0)) {
-        m_state.selectNode(objectId);
+        m_store.selectNode(objectId);
       } else {
-        m_state.selectNode(std::nullopt);
+        m_store.selectNode(std::nullopt);
       }
       return true;
     }

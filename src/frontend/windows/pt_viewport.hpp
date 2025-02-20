@@ -14,7 +14,7 @@ namespace pt::frontend::windows {
 
 class RenderViewport final : Window {
 public:
-  RenderViewport(Store& store, State& state, float& dpiScaling, bool* open = nullptr) noexcept;
+  RenderViewport(Store& store, float& dpiScaling, bool* open = nullptr) noexcept;
 
   void init(renderer_pt::Renderer* renderer);
 
