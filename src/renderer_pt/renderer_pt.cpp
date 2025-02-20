@@ -127,7 +127,6 @@ void Renderer::render() {
 
     computeEnc->setBuffer(m_argumentBuffer, 0, 0);
     computeEnc->setTexture(accumulator, 0);
-    computeEnc->setTexture(m_randomSource, 1);
 
     computeEnc->setComputePipelineState(m_pathtracingPipelines[m_selectedPipeline]);
     computeEnc->dispatchThreadgroups(m_threadgroups, m_threadsPerThreadgroup);
@@ -796,7 +795,6 @@ void Renderer::rebuildRenderTargets() {
   if (m_postProcessBuffer[1] != nullptr) m_postProcessBuffer[1]->release();
 
   if (m_renderTarget != nullptr) m_renderTarget->release();
-  if (m_randomSource != nullptr) m_randomSource->release();
 
   auto texd = metal_utils::makeTextureDescriptor(
     {
@@ -823,22 +821,6 @@ void Renderer::rebuildRenderTargets() {
   texd->setUsage(MTL::TextureUsageRenderTarget | MTL::TextureUsageShaderRead);
   texd->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
   m_renderTarget = m_device->newTexture(texd);
-
-  // Temporary crap way of getting randomness into the shader
-  // TODO: get a better source of scrambling (fast owen?)
-  texd->setUsage(MTL::TextureUsageShaderRead);
-  texd->setPixelFormat(MTL::PixelFormatR32Uint);
-  m_randomSource = m_device->newTexture(texd);
-
-  auto k = (size_t) m_currentRenderSize.x * (size_t) m_currentRenderSize.y;
-  std::vector<uint32_t> random(k);
-  for (size_t i = 0; i < k; i++) random[i] = rand() % (1024 * 1024);
-  m_randomSource->replaceRegion(
-    MTL::Region::Make2D(0, 0, (size_t) m_currentRenderSize.x, (size_t) m_currentRenderSize.y),
-    0,
-    random.data(),
-    sizeof(uint32_t) * (size_t) m_currentRenderSize.x
-  );
 }
 
 void Renderer::rebuildLightData() {
@@ -980,6 +962,7 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
 
   m_constants = {
     .frameIdx = 0,
+    .spp = uint32_t(m_accumulationFrames),
     .gmonBuckets = (m_flags & shaders_pt::RendererFlags_GMoN) ? m_gmonBuckets : 1,
     .lightCount = m_lightCount,
     .envLightCount = m_envLightCount,

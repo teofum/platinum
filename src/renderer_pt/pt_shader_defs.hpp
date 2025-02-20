@@ -99,7 +99,7 @@ struct MaterialGPU {
 };
 
 struct Constants {
-  uint32_t frameIdx, gmonBuckets;
+  uint32_t frameIdx, spp, gmonBuckets;
   uint32_t lightCount;
   uint32_t envLightCount;
   uint32_t lutSizeE, lutSizeEavg;

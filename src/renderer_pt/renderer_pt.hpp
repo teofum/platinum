@@ -97,7 +97,6 @@ private:
   // Render targets
   MTL::Texture* m_accumulator = nullptr;
   MTL::Texture* m_renderTarget = nullptr;
-  MTL::Texture* m_randomSource = nullptr;
 
   // GMoN
   uint32_t m_gmonBuckets = 0;
