@@ -24,20 +24,21 @@ enum class TextureType {
 class TextureLoader {
 public:
   explicit TextureLoader(MTL::Device* device, MTL::CommandQueue* commandQueue, Scene& scene) noexcept;
-  
+
   Scene::AssetID loadFromFile(const fs::path& path, std::string_view name, TextureType type);
-  
+
   Scene::AssetID loadFromMemory(const uint8_t* data, uint32_t len, std::string_view name, TextureType type);
-  
+
 private:
   MTL::Device* m_device;
   MTL::CommandQueue* m_commandQueue;
   MTL::ComputePipelineState* m_textureConverterPso = nullptr;
-  
+
   Scene& m_scene;
-  
-  static std::tuple<MTL::PixelFormat, MTL::PixelFormat, std::vector<uint8_t>> getAttributesForTexture(TextureType type);
-  
+
+  static MTL::PixelFormat getSourceTextureFormat(TextureType type, OIIO::TypeDesc format);
+  static std::tuple<MTL::PixelFormat, std::vector<uint8_t>> getAttributesForTexture(TextureType type);
+
   Scene::AssetID load(const std::unique_ptr<OIIO::ImageInput>& in, std::string_view name, TextureType type);
 };
 
