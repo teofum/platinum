@@ -132,8 +132,7 @@ Scene::AssetID TextureLoader::load(
   // All textures are loaded as 4bpc as Metal does not support RGB textures with
   // no alpha channel.
   const size_t pixelStride = spec.channel_bytes() * 4;
-
-  std::println("{} bpc, {} bpp", spec.channel_bytes(), spec.pixel_bytes());
+  
   auto readBuffer = m_device->newBuffer(
     pixelStride * spec.width * spec.height,
     MTL::ResourceStorageModeShared
