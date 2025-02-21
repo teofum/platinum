@@ -510,8 +510,8 @@ void Renderer::rebuildResourceBuffers() {
     MTL::ResourceStorageModeShared
   );
 
-  m_pathtracingResidencySet->addAllocation(m_vertexResourcesBuffer);
-  m_pathtracingResidencySet->addAllocation(m_primitiveResourcesBuffer);
+  if (m_vertexResourcesBuffer) m_pathtracingResidencySet->addAllocation(m_vertexResourcesBuffer);
+  if (m_primitiveResourcesBuffer) m_pathtracingResidencySet->addAllocation(m_primitiveResourcesBuffer);
 
   size_t idx = 0;
   m_meshVertexPositionBuffers.reserve(meshes.size());
@@ -568,7 +568,7 @@ void Renderer::rebuildResourceBuffers() {
     m_resourcesStride * instances.size(),
     MTL::ResourceStorageModeShared
   );
-  m_pathtracingResidencySet->addAllocation(m_instanceResourcesBuffer);
+  if (m_instanceResourcesBuffer) m_pathtracingResidencySet->addAllocation(m_instanceResourcesBuffer);
 
   idx = 0;
   m_instanceMaterialBuffers.reserve(instances.size());
@@ -699,7 +699,7 @@ void Renderer::rebuildAccelerationStructures() {
     sizeof(MTL::AccelerationStructureInstanceDescriptor) * instances.size(),
     MTL::ResourceStorageModeShared
   );
-  m_pathtracingResidencySet->addAllocation(m_instanceBuffer);
+  if (m_instanceBuffer) m_pathtracingResidencySet->addAllocation(m_instanceBuffer);
 
   idx = 0;
   auto instanceDescriptors = static_cast<MTL::AccelerationStructureInstanceDescriptor*>(m_instanceBuffer->contents());
