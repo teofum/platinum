@@ -190,7 +190,19 @@ ray spawnRayFromCamera(thread CameraData& camera, uint2 pixel, float2 pixelSampl
    */
   ray.origin = camera.position;
   if (camera.apertureRadius > 0.0) {
-    float2 lensPos = samplers::sampleDisk(lensSample) * camera.apertureRadius;
+    float2 lensPos = samplers::sampleDiskPolar(lensSample);
+
+    if (camera.apertureRoundness < 1.0) {
+      float n = float(camera.apertureBlades);
+      float rPolygon = cos(M_PI_F / n) / cos(fmod(lensPos.y + 1.5 * M_PI_F, 2.0 * M_PI_F / n) - M_PI_F / n);
+      float r = mix(rPolygon, 1.0, camera.apertureRoundness);
+
+      lensPos.x *= r;
+    }
+
+    float c;
+    float s = sincos(lensPos.y, c);
+    lensPos = float2(lensPos.x * c, lensPos.x * s) * camera.apertureRadius;
     ray.origin += lensPos.x * normalize(camera.pixelDeltaU) + lensPos.y * normalize(camera.pixelDeltaV);
   }
 
@@ -256,6 +268,8 @@ kernel void pathtracingKernel(
       args.constants.pixelDeltaU,
       args.constants.pixelDeltaV,
       args.constants.apertureRadius,
+      args.constants.apertureBlades,
+      args.constants.apertureRoundness,
     };
     auto ray = spawnRayFromCamera(camera, tid, halton.sample2d(), halton.sample2d());
     auto i = createTriangleIntersector();
@@ -467,6 +481,8 @@ kernel void misKernel(
       args.constants.pixelDeltaU,
       args.constants.pixelDeltaV,
       args.constants.apertureRadius,
+      args.constants.apertureBlades,
+      args.constants.apertureRoundness,
     };
     auto ray = spawnRayFromCamera(camera, tid, halton.sample2d(), halton.sample2d());
     auto i = createTriangleIntersector();

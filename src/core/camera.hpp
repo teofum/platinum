@@ -11,6 +11,8 @@ struct Camera {
   float2 sensorSize = {36.0f, 24.0f};   // Sensor/film size in mm
   float focalLength = 50.0f;            // Lens focal length in mm
   float aperture = 0.0f;                // Lens aperture as f-number (fraction of focal length)
+  uint32_t apertureBlades = 7;          // Aperture blade count
+  float roundness = 1.0f;               // Aperture shape
   float focusDistance = 1.0f;           // Focus distance in world units
 
   static constexpr Camera withFocalLength(

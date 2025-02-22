@@ -968,6 +968,8 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
     .apertureRadius = camera->aperture > 0.0f
                       ? (camera->focalLength / 2000.0f) / camera->aperture
                       : 0.0f,
+    .apertureBlades = camera->apertureBlades,
+    .apertureRoundness = camera->roundness,
     .size = {(uint32_t) m_currentRenderSize.x, (uint32_t) m_currentRenderSize.y},
     .position = pos,
     .topLeft = pos - camera->focusDistance * w - (vu + vv) * 0.5f,

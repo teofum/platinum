@@ -206,6 +206,13 @@ float2 sampleDisk(float2 u) {
   return float2(r * cos, r * sin);
 }
 
+float2 sampleDiskPolar(float2 u) {
+  const auto r = sqrt(u.x);
+  const auto theta = 2.0f * M_PI_F * u.y;
+
+  return float2(r, theta);
+}
+
 float3 sampleCosineHemisphere(float2 u) {
   const auto phi = u.x * 2.0f * M_PI_F;
   const auto sinTheta = sqrt(u.y);

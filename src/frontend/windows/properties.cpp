@@ -178,13 +178,18 @@ void Properties::renderMeshProperties(const Scene::AssetData<Mesh>& mesh) {
 }
 
 void Properties::renderCameraProperties(Camera* camera) {
-  ImGui::DragFloat("Focal length", &camera->focalLength, 1.0f, 5.0f, 1200.0f, "%.1fmm");
-  ImGui::DragFloat2("Sensor size", (float*) &camera->sensorSize, 1.0f, 0.0f, 100.0f, "%.1fmm");
-  ImGui::DragFloat("Aperture", &camera->aperture, 0.1f, 0.0f, 32.0f, "f/%.1f");
-  ImGui::DragFloat("Focus distance", &camera->focusDistance, 0.01f, 0.1f, 100.0f, "%.2fm");
+  widgets::dragFloat("Focal length", &camera->focalLength, 1.0f, 5.0f, 1200.0f, "%.1fmm");
+  widgets::dragVec2("Sensor size", (float*) &camera->sensorSize, 1.0f, 0.0f, 100.0f, "%.1fmm");
+  widgets::dragFloat("Aperture", &camera->aperture, 0.1f, 0.0f, 32.0f, "f/%.1f");
+  widgets::dragFloat("Focus distance", &camera->focusDistance, 0.01f, 0.1f, 100.0f, "%.2fm");
   ImGui::Spacing();
 
-  ImGui::SeparatorText("Presets");
+  ImGui::SeparatorText("Aperture");
+  widgets::dragInt("Blade count", (int*) &camera->apertureBlades, 1, 3, 15);
+  widgets::dragFloat("Roundness", &camera->roundness, 0.01f, 0.0f, 1.0f, "%.2f");
+  ImGui::Spacing();
+
+  ImGui::SeparatorText("Sensor Presets");
   auto buttonWidth = widgets::getWidthForItems(3);
   if (widgets::button("Micro 4/3", {buttonWidth, 0})) camera->sensorSize = float2{18.0f, 13.5f};
   ImGui::SameLine();

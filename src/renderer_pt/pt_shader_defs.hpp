@@ -55,6 +55,8 @@ struct CameraData {
   float3 pixelDeltaU;
   float3 pixelDeltaV;
   float apertureRadius;
+  uint32_t apertureBlades;
+  float apertureRoundness;
 };
 
 struct AreaLight {
@@ -107,6 +109,8 @@ struct Constants {
   int flags;
   float totalLightPower;
   float apertureRadius;
+  uint32_t apertureBlades;
+  float apertureRoundness;
   uint2 size;
   float3 position;
   float3 topLeft;

@@ -211,6 +211,7 @@ private:
 };
 
 float2 sampleDisk(float2 u);
+float2 sampleDiskPolar(float2 u);
 
 float3 sampleCosineHemisphere(float2 u);
 
