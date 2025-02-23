@@ -191,6 +191,7 @@ ray spawnRayFromCamera(thread CameraData& camera, uint2 pixel, float2 pixelSampl
   ray.origin = camera.position;
   if (camera.apertureRadius > 0.0) {
     float2 lensPos = samplers::sampleDiskPolar(lensSample);
+    lensPos.x = powr(lensPos.x, exp2(camera.bokehPower));
 
     if (camera.apertureRoundness < 1.0) {
       float n = float(camera.apertureBlades);
@@ -270,6 +271,7 @@ kernel void pathtracingKernel(
       args.constants.apertureRadius,
       args.constants.apertureBlades,
       args.constants.apertureRoundness,
+      args.constants.bokehPower,
     };
     auto ray = spawnRayFromCamera(camera, tid, halton.sample2d(), halton.sample2d());
     auto i = createTriangleIntersector();
@@ -483,6 +485,7 @@ kernel void misKernel(
       args.constants.apertureRadius,
       args.constants.apertureBlades,
       args.constants.apertureRoundness,
+      args.constants.bokehPower,
     };
     auto ray = spawnRayFromCamera(camera, tid, halton.sample2d(), halton.sample2d());
     auto i = createTriangleIntersector();

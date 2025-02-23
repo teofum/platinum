@@ -970,6 +970,7 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
                       : 0.0f,
     .apertureBlades = camera->apertureBlades,
     .apertureRoundness = camera->roundness,
+    .bokehPower = camera->bokehPower,
     .size = {(uint32_t) m_currentRenderSize.x, (uint32_t) m_currentRenderSize.y},
     .position = pos,
     .topLeft = pos - camera->focusDistance * w - (vu + vv) * 0.5f,

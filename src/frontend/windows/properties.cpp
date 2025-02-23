@@ -187,6 +187,7 @@ void Properties::renderCameraProperties(Camera* camera) {
   ImGui::SeparatorText("Aperture");
   widgets::dragInt("Blade count", (int*) &camera->apertureBlades, 1, 3, 15);
   widgets::dragFloat("Roundness", &camera->roundness, 0.01f, 0.0f, 1.0f, "%.2f");
+  widgets::dragFloat("Bokeh profile", &camera->bokehPower, 0.01f, -1.0f, 1.0f, "%.2f");
   ImGui::Spacing();
 
   ImGui::SeparatorText("Sensor Presets");

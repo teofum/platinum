@@ -13,6 +13,7 @@ struct Camera {
   float aperture = 0.0f;                // Lens aperture as f-number (fraction of focal length)
   uint32_t apertureBlades = 7;          // Aperture blade count
   float roundness = 1.0f;               // Aperture shape
+  float bokehPower = 0.0f;              // Bokeh profile power
   float focusDistance = 1.0f;           // Focus distance in world units
 
   static constexpr Camera withFocalLength(
