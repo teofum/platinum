@@ -184,8 +184,8 @@ namespace bsdf {
    */
   BSDF::BSDF(
 		thread ShadingContext& ctx,
-    device Constants& constants,
-    device Luts& luts
+    constant Constants& constants,
+    constant Luts& luts
   ) : m_ctx(ctx),
       m_ggx(ctx.roughness, ctx.anisotropy),
       m_ggxCoat(ctx.clearcoatRoughness),

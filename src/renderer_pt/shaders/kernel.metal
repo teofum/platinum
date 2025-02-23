@@ -182,7 +182,7 @@ struct Resources {
  * Utility function to reuse in multiple kernels
  */
 __attribute__((always_inline))
-ray spawnRayFromCamera(thread CameraData& camera, uint2 pixel, float2 pixelSample, float2 lensSample) {
+ray spawnRayFromCamera(constant CameraData& camera, uint2 pixel, float2 pixelSample, float2 lensSample) {
   ray ray;
 
   /*
@@ -240,7 +240,7 @@ intersector<triangle_data, instancing> createTriangleIntersector() {
  */
 kernel void pathtracingKernel(
   uint2                                                 tid         				[[thread_position_in_grid]],
-	device Arguments&                                     args								[[buffer(0)]],
+	constant Arguments&                                   args								[[buffer(0)]],
   texture2d<float, access::read_write>                  acc         				[[texture(0)]]
 ) {
   if (tid.x < args.constants.size.x && tid.y < args.constants.size.y) {
@@ -263,17 +263,7 @@ kernel void pathtracingKernel(
     /*
      * Spawn ray and create an intersector
      */
-    CameraData camera = {
-      args.constants.position,
-      args.constants.topLeft,
-      args.constants.pixelDeltaU,
-      args.constants.pixelDeltaV,
-      args.constants.apertureRadius,
-      args.constants.apertureBlades,
-      args.constants.apertureRoundness,
-      args.constants.bokehPower,
-    };
-    auto ray = spawnRayFromCamera(camera, tid, halton.sample2d(), halton.sample2d());
+    auto ray = spawnRayFromCamera(args.constants.camera, tid, halton.sample2d(), halton.sample2d());
     auto i = createTriangleIntersector();
     triangle_instance_intersection intersection;
     
@@ -364,7 +354,7 @@ kernel void pathtracingKernel(
  */
 device AreaLight& sampleLightPower(
   device AreaLight* lights,
-  device Constants& constants,
+  constant Constants& constants,
   float r
 ) {
   r *= constants.totalLightPower;
@@ -454,7 +444,7 @@ LightSample sampleEnvironmentLight(thread const Hit& hit, const device Texture* 
  */
 kernel void misKernel(
   uint2                                                 tid                 [[thread_position_in_grid]],
-  device Arguments&                                     args           			[[buffer(0)]],
+  constant Arguments&                                   args           			[[buffer(0)]],
   texture2d<float, access::read_write>                  acc                 [[texture(0)]]
 ) {
   if (tid.x < args.constants.size.x && tid.y < args.constants.size.y) {
@@ -477,17 +467,7 @@ kernel void misKernel(
     /*
      * Spawn ray and create an intersector
      */
-    CameraData camera = {
-      args.constants.position,
-      args.constants.topLeft,
-      args.constants.pixelDeltaU,
-      args.constants.pixelDeltaV,
-      args.constants.apertureRadius,
-      args.constants.apertureBlades,
-      args.constants.apertureRoundness,
-      args.constants.bokehPower,
-    };
-    auto ray = spawnRayFromCamera(camera, tid, halton.sample2d(), halton.sample2d());
+    auto ray = spawnRayFromCamera(args.constants.camera, tid, halton.sample2d(), halton.sample2d());
     auto i = createTriangleIntersector();
     triangle_instance_intersection intersection;
     
