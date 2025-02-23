@@ -10,7 +10,6 @@
 
 #include <core/store.hpp>
 #include <renderer_pt/renderer_pt.hpp>
-#include <frontend/state.hpp>
 #include <frontend/windows/properties.hpp>
 #include <frontend/windows/scene_explorer.hpp>
 #include <frontend/windows/asset_manager.hpp>
@@ -53,7 +52,6 @@ private:
 
   // Store and frontend shared state
   Store& m_store;
-  State m_state;
 
   // Renderers
   std::unique_ptr<renderer_pt::Renderer> m_renderer;

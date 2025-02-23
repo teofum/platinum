@@ -37,7 +37,7 @@ void SceneExplorer::render() {
   }
   if (widgets::popup("Add_Popup")) {
     if (widgets::selectable("Cube", false, 0, {100, 0})) {
-      auto parentId = m_state.selectedNode().value_or(Scene::null);
+      auto parentId = m_store.selectedNode().value_or(Scene::null);
 
       auto cube = pt::primitives::cube(m_store.device(), 2.0f);
       auto id = m_store.scene().createAsset(std::move(cube), false);
@@ -47,7 +47,7 @@ void SceneExplorer::render() {
     }
 
     if (widgets::selectable("Sphere", false, 0, {100, 0})) {
-      auto parentId = m_state.selectedNode().value_or(Scene::null);
+      auto parentId = m_store.selectedNode().value_or(Scene::null);
 
       auto sphere = pt::primitives::sphere(m_store.device(), 1.0f, 48, 64);
       auto id = m_store.scene().createAsset(std::move(sphere), false);
@@ -67,7 +67,7 @@ void SceneExplorer::render() {
     ImGui::Separator();
 
     if (widgets::selectable("Camera", false, 0, {100, 0})) {
-      auto parentId = m_state.selectedNode().value_or(Scene::null);
+      auto parentId = m_store.selectedNode().value_or(Scene::null);
 
       auto node = m_store.scene().createNode("Camera", parentId);
       node.transform().translation = {-5, 5, 5};
@@ -102,7 +102,7 @@ void SceneExplorer::render() {
 
 void SceneExplorer::renderNode(const Scene::Node& node, uint32_t level) {
   auto nodeFlags = m_baseFlags;
-  bool isSelected = m_state.selectedNode() == node.id();
+  bool isSelected = m_store.selectedNode() == node.id();
   if (isSelected) {
     nodeFlags |= ImGuiTreeNodeFlags_Selected;
   }
@@ -128,7 +128,7 @@ void SceneExplorer::renderNode(const Scene::Node& node, uint32_t level) {
   if (!isSelected) ImGui::PopStyleColor();
 
   if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-    m_state.selectNode(node.id());
+    m_store.selectNode(node.id());
   }
 
   /*
@@ -136,7 +136,7 @@ void SceneExplorer::renderNode(const Scene::Node& node, uint32_t level) {
    */
   if (widgets::context()) {
     if (widgets::selectable("Center camera")) {
-      m_state.setNodeAction(State::NodeAction_CenterCamera, node.id());
+      m_store.setNodeAction(Store::NodeAction::CenterCamera, node.id());
     }
 
     if (!node.isRoot()) {
@@ -146,11 +146,11 @@ void SceneExplorer::renderNode(const Scene::Node& node, uint32_t level) {
         ImGuiSelectableFlags_NoAutoClosePopups
       )) {
         if (!node.children().empty()) ImGui::OpenPopup("Remove_Popup");
-        else m_state.removeNode(node.id());
+        else m_store.removeNode(node.id());
       }
 
       if (!node.children().empty()) {
-        widgets::removeNodePopup(m_state, node.id());
+        widgets::removeNodePopup(m_store, node.id());
       }
     }
 

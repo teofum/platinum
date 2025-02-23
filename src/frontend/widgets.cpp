@@ -25,18 +25,18 @@ float getWidthForItems(uint32_t n) {
          ) / static_cast<float>(n);
 }
 
-void removeNodePopup(pt::frontend::State& state, pt::Scene::NodeID id) {
+void removeNodePopup(Store& store, pt::Scene::NodeID id) {
   if (popup("Remove_Popup")) {
     ImGui::TextDisabled("Action for children:");
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
     if (selectable("Remove")) {
-      state.removeNode(id);
+      store.removeNode(id);
     }
     if (selectable("Move to root")) {
-      state.removeNode(id, Scene::RemoveMode::MoveToRoot);
+      store.removeNode(id, Scene::RemoveMode::MoveToRoot);
     }
     if (selectable("Move to parent")) {
-      state.removeNode(id, Scene::RemoveMode::MoveToParent);
+      store.removeNode(id, Scene::RemoveMode::MoveToParent);
     }
     ImGui::PopStyleVar();
 

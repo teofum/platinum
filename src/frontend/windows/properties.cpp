@@ -7,8 +7,8 @@ namespace pt::frontend::windows {
 
 void Properties::render() {
   ImGui::Begin("Properties");
-  if (m_state.selectedNode()) {
-    renderNodeProperties(m_state.selectedNode().value());
+  if (m_store.selectedNode()) {
+    renderNodeProperties(m_store.selectedNode().value());
   } else {
     ImGui::Text("[ Nothing selected ]");
   }
@@ -18,7 +18,7 @@ void Properties::render() {
 
 void Properties::renderNodeProperties(Scene::NodeID id) {
   auto node = m_store.scene().node(id);
-  
+
   if (id != m_lastNodeId) m_selectedMaterialIdx = 0;
   m_lastNodeId = id;
 
@@ -37,10 +37,10 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
     if (widgets::buttonDanger("Remove", {buttonWidth, 0}) ||
         (ImGui::IsKeyPressed(ImGuiKey_Backspace, false) && !ImGui::IsAnyItemActive())) {
       if (!node.isLeaf()) ImGui::OpenPopup("Remove_Popup");
-      else m_state.removeNode(id);
+      else m_store.removeNode(id);
     }
     if (!node.isLeaf()) {
-      widgets::removeNodePopup(m_state, id);
+      widgets::removeNodePopup(m_store, id);
     }
   }
 
@@ -55,20 +55,20 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
     widgets::transformEditor(node.transform());
     ImGui::Spacing();
   }
-  
+
   if (node.isRoot()) {
     if (ImGui::CollapsingHeader("Scene")) {
       auto currentValue = m_store.scene().envmap().textureId();
       auto selection = widgets::textureSelect(m_store.scene(), "Environment", currentValue);
-      
+
       if (selection && selection != currentValue) {
         m_store.scene().envmap().setTexture(
           selection,
           m_store.device(),
-					m_store.scene().getAsset<Texture>(selection.value())->texture()
+          m_store.scene().getAsset<Texture>(selection.value())->texture()
         );
       }
-      
+
       ImGui::Spacing();
     }
   }
@@ -87,47 +87,47 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
       ImGui::Spacing();
     }
   }
-  
+
   auto materialIds = node.materialIds();
   if (materialIds && !materialIds.value()->empty()) {
     if (ImGui::CollapsingHeader("Materials")) {
       auto selected = node.material(m_selectedMaterialIdx);
       auto materials = *materialIds.value();
-      
+
       /*
        * Material slot selection
        */
       auto nextSlotId = m_selectedMaterialIdx;
-      
-     	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+
+      ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
       ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {8, 6});
       auto open = ImGui::BeginListBox("##SlotSelect", {0, 5 * ImGui::GetTextLineHeightWithSpacing()});
       ImGui::PopStyleVar(2);
-      
+
       if (open) {
         for (uint32_t i = 0; i < materials.size(); i++) {
           auto* material = node.material(i)
-            .transform([](auto material){ return material.asset; })
-            .value_or(&m_store.scene().defaultMaterial());
-          
+                               .transform([](auto material) { return material.asset; })
+                               .value_or(&m_store.scene().defaultMaterial());
+
           auto isSelected = i == m_selectedMaterialIdx;
           auto label = std::format("[{}]: {}", i, material->name);
-          
+
           if (widgets::selectable(label.c_str(), isSelected)) {
             nextSlotId = i;
           }
         }
         ImGui::EndListBox();
       }
-      
+
       /*
        * Material selection: change the material in selected slot
        */
-      auto selectedId = selected.transform([](auto s){ return s.id; });
+      auto selectedId = selected.transform([](auto s) { return s.id; });
       auto* selectedMaterial = selected
-        .transform([](auto material){ return material.asset; })
+        .transform([](auto material) { return material.asset; })
         .value_or(&m_store.scene().defaultMaterial());
-      
+
       auto nextMaterialId = selectedId;
       ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
       if (ImGui::BeginCombo("##MaterialSelect", selectedMaterial->name.c_str())) {
@@ -136,22 +136,22 @@ void Properties::renderNodeProperties(Scene::NodeID id) {
           if (widgets::comboItem(md.asset->name.c_str(), isSelected))
             nextMaterialId = md.id;
         }
-        
+
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
-        
+
         if (widgets::comboItem("New material", false)) {
           auto name = std::format("Material {}", m_store.scene().getAll<Material>().size() + 1);
-          nextMaterialId = m_store.scene().createAsset(Material { .name = name });
+          nextMaterialId = m_store.scene().createAsset(Material{.name = name});
         }
-        
+
         ImGui::EndCombo();
       }
-      
+
       renderMaterialProperties(selectedMaterial, selectedId);
       ImGui::Spacing();
-      
+
       // Update material ID
       if (nextMaterialId && nextMaterialId != selectedId) {
         node.setMaterial(m_selectedMaterialIdx, nextMaterialId);
@@ -178,12 +178,19 @@ void Properties::renderMeshProperties(const Scene::AssetData<Mesh>& mesh) {
 }
 
 void Properties::renderCameraProperties(Camera* camera) {
-  ImGui::DragFloat("Focal length", &camera->focalLength, 1.0f, 5.0f, 1200.0f, "%.1fmm");
-  ImGui::DragFloat2("Sensor size", (float*) &camera->sensorSize, 1.0f, 0.0f, 100.0f, "%.1fmm");
-  ImGui::DragFloat("Aperture", &camera->aperture, 0.1f, 0.0f, 32.0f, "f/%.1f");
+  widgets::dragFloat("Focal length", &camera->focalLength, 1.0f, 5.0f, 1200.0f, "%.1fmm");
+  widgets::dragVec2("Sensor size", (float*) &camera->sensorSize, 1.0f, 0.0f, 100.0f, "%.1fmm");
+  widgets::dragFloat("Aperture", &camera->aperture, 0.1f, 0.0f, 32.0f, "f/%.1f");
+  widgets::dragFloat("Focus distance", &camera->focusDistance, 0.01f, 0.1f, 100.0f, "%.2fm");
   ImGui::Spacing();
 
-  ImGui::SeparatorText("Presets");
+  ImGui::SeparatorText("Aperture");
+  widgets::dragInt("Blade count", (int*) &camera->apertureBlades, 1, 3, 15);
+  widgets::dragFloat("Roundness", &camera->roundness, 0.01f, 0.0f, 1.0f, "%.2f");
+  widgets::dragFloat("Bokeh profile", &camera->bokehPower, 0.01f, -1.0f, 1.0f, "%.2f");
+  ImGui::Spacing();
+
+  ImGui::SeparatorText("Sensor Presets");
   auto buttonWidth = widgets::getWidthForItems(3);
   if (widgets::button("Micro 4/3", {buttonWidth, 0})) camera->sensorSize = float2{18.0f, 13.5f};
   ImGui::SameLine();

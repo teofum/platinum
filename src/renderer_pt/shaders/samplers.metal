@@ -160,7 +160,9 @@ float HaltonSampler::sample1d() {
 }
 
 float2 HaltonSampler::sample2d() {
-  return float2(halton(m_offset, m_dim++), halton(m_offset, m_dim++));
+  float x = halton(m_offset, m_dim++);
+  float y = halton(m_offset, m_dim++);
+  return float2(x, y);
 }
 
 __attribute__((always_inline))
@@ -202,6 +204,13 @@ float2 sampleDisk(float2 u) {
   float cos;
   float sin = sincos(theta, cos);
   return float2(r * cos, r * sin);
+}
+
+float2 sampleDiskPolar(float2 u) {
+  const auto r = sqrt(u.x);
+  const auto theta = 2.0f * M_PI_F * u.y;
+
+  return float2(r, theta);
 }
 
 float3 sampleCosineHemisphere(float2 u) {

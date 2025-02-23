@@ -12,8 +12,8 @@ namespace pt::frontend::windows {
 
 class StudioViewport final : Window {
 public:
-  constexpr StudioViewport(Store& store, State& state, float& dpiScaling, bool* open = nullptr) noexcept
-    : Window(store, state, open), m_dpiScaling(dpiScaling) {
+  constexpr StudioViewport(Store& store, float& dpiScaling, bool* open = nullptr) noexcept
+    : Window(store, open), m_dpiScaling(dpiScaling) {
   }
 
   void init(MTL::Device* device, MTL::CommandQueue* commandQueue);

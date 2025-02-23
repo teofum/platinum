@@ -510,8 +510,8 @@ void Renderer::rebuildResourceBuffers() {
     MTL::ResourceStorageModeShared
   );
 
-  m_pathtracingResidencySet->addAllocation(m_vertexResourcesBuffer);
-  m_pathtracingResidencySet->addAllocation(m_primitiveResourcesBuffer);
+  if (m_vertexResourcesBuffer) m_pathtracingResidencySet->addAllocation(m_vertexResourcesBuffer);
+  if (m_primitiveResourcesBuffer) m_pathtracingResidencySet->addAllocation(m_primitiveResourcesBuffer);
 
   size_t idx = 0;
   m_meshVertexPositionBuffers.reserve(meshes.size());
@@ -568,7 +568,7 @@ void Renderer::rebuildResourceBuffers() {
     m_resourcesStride * instances.size(),
     MTL::ResourceStorageModeShared
   );
-  m_pathtracingResidencySet->addAllocation(m_instanceResourcesBuffer);
+  if (m_instanceResourcesBuffer) m_pathtracingResidencySet->addAllocation(m_instanceResourcesBuffer);
 
   idx = 0;
   m_instanceMaterialBuffers.reserve(instances.size());
@@ -699,7 +699,7 @@ void Renderer::rebuildAccelerationStructures() {
     sizeof(MTL::AccelerationStructureInstanceDescriptor) * instances.size(),
     MTL::ResourceStorageModeShared
   );
-  m_pathtracingResidencySet->addAllocation(m_instanceBuffer);
+  if (m_instanceBuffer) m_pathtracingResidencySet->addAllocation(m_instanceBuffer);
 
   idx = 0;
   auto instanceDescriptors = static_cast<MTL::AccelerationStructureInstanceDescriptor*>(m_instanceBuffer->contents());
@@ -936,20 +936,15 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
   auto transform = m_store.scene().worldTransform(cameraNodeId);
   auto camera = node.get<Camera>().value();
 
-  // Rescale the camera transform
-  const float3 scale = {
-    length(transform.columns[0]),
-    length(transform.columns[1]),
-    length(transform.columns[2]),
-  };
+  // Rescale the camera transform to ignore any scaling
   transform = {
-    transform.columns[0] / scale.x,
-    transform.columns[1] / scale.y,
-    transform.columns[2] / scale.z,
+    transform.columns[0] / length(transform.columns[0]),
+    transform.columns[1] / length(transform.columns[1]),
+    transform.columns[2] / length(transform.columns[2]),
     transform.columns[3],
   };
 
-  auto vh = camera->croppedSensorHeight(m_aspect) / camera->focalLength;
+  auto vh = camera->focusDistance * camera->croppedSensorHeight(m_aspect) / camera->focalLength;
   auto vw = vh * m_aspect;
 
   auto u = transform.columns[0].xyz;
@@ -973,10 +968,16 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
     .size = {(uint32_t) m_currentRenderSize.x, (uint32_t) m_currentRenderSize.y},
     .camera = {
       .position = pos,
-      .topLeft = pos - w - (vu + vv) * 0.5f,
+      .topLeft = pos - camera->focusDistance * w - (vu + vv) * 0.5f,
       .pixelDeltaU = vu / m_currentRenderSize.x,
       .pixelDeltaV = vv / m_currentRenderSize.y,
-    },
+      .apertureRadius = camera->aperture > 0.0f
+                        ? (camera->focalLength / 2000.0f) / camera->aperture
+                        : 0.0f,
+      .apertureBlades = camera->apertureBlades,
+      .apertureRoundness = camera->roundness,
+      .bokehPower = camera->bokehPower,
+    }
   };
 }
 

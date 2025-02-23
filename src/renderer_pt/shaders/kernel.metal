@@ -182,13 +182,40 @@ struct Resources {
  * Utility function to reuse in multiple kernels
  */
 __attribute__((always_inline))
-ray spawnRayFromCamera(constant CameraData& camera, float2 pixel) {
+ray spawnRayFromCamera(constant CameraData& camera, uint2 pixel, float2 pixelSample, float2 lensSample) {
   ray ray;
+
+  /*
+   * Set ray origin: if aperture is enabled, sample a disk around the camera position
+   */
   ray.origin = camera.position;
+  if (camera.apertureRadius > 0.0) {
+    float2 lensPos = samplers::sampleDiskPolar(lensSample);
+    lensPos.x = powr(lensPos.x, exp2(camera.bokehPower));
+
+    if (camera.apertureRoundness < 1.0) {
+      float n = float(camera.apertureBlades);
+      float rPolygon = cos(M_PI_F / n) / cos(fmod(lensPos.y + 1.5 * M_PI_F, 2.0 * M_PI_F / n) - M_PI_F / n);
+      float r = mix(rPolygon, 1.0, camera.apertureRoundness);
+
+      lensPos.x *= r;
+    }
+
+    float c;
+    float s = sincos(lensPos.y, c);
+    lensPos = float2(lensPos.x * c, lensPos.x * s) * camera.apertureRadius;
+    ray.origin += lensPos.x * normalize(camera.pixelDeltaU) + lensPos.y * normalize(camera.pixelDeltaV);
+  }
+
+  /*
+   * Add pixel jitter and calculate ray direction as vector from position on lens to
+   * position on (virtual, in front of the camera) film
+   */
+  float2 filmPos = float2(pixel) + pixelSample;
   ray.direction = normalize((camera.topLeft
-                             + pixel.x * camera.pixelDeltaU
-                             + pixel.y * camera.pixelDeltaV
-                             ) - camera.position);
+                             + filmPos.x * camera.pixelDeltaU
+                             + filmPos.y * camera.pixelDeltaV
+                             ) - ray.origin);
   ray.max_distance = INFINITY;
   ray.min_distance = 1e-3f;
   
@@ -217,14 +244,6 @@ kernel void pathtracingKernel(
   texture2d<float, access::read_write>                  acc         				[[texture(0)]]
 ) {
   if (tid.x < args.constants.size.x && tid.y < args.constants.size.y) {
-    constant CameraData& camera = args.constants.camera;
-    float2 pixel(tid.x, tid.y);
-
-    samplers::HaltonSampler halton(tid, args.constants.size, args.constants.spp, args.constants.frameIdx);
-
-    float2 r = halton.sample2d();
-    pixel += r;
-    
     /*
      * Create the resources struct for extracting intersection data
      */
@@ -235,11 +254,16 @@ kernel void pathtracingKernel(
       .instanceResources = args.instanceResources,
       .textures = args.textures,
     };
-    
+
+    /*
+     * Initialize the sampler
+     */
+    samplers::HaltonSampler halton(tid, args.constants.size, args.constants.spp, args.constants.frameIdx);
+
     /*
      * Spawn ray and create an intersector
      */
-    auto ray = spawnRayFromCamera(camera, pixel);
+    auto ray = spawnRayFromCamera(args.constants.camera, tid, halton.sample2d(), halton.sample2d());
     auto i = createTriangleIntersector();
     triangle_instance_intersection intersection;
     
@@ -424,14 +448,6 @@ kernel void misKernel(
   texture2d<float, access::read_write>                  acc                 [[texture(0)]]
 ) {
   if (tid.x < args.constants.size.x && tid.y < args.constants.size.y) {
-    constant CameraData& camera = args.constants.camera;
-    float2 pixel(tid.x, tid.y);
-
-    samplers::HaltonSampler halton(tid, args.constants.size, args.constants.spp, args.constants.frameIdx);
-
-    float2 r = halton.sample2d();
-    pixel += r;
-
     /*
      * Create the resources struct for extracting intersection data
      */
@@ -442,11 +458,16 @@ kernel void misKernel(
       .instanceResources = args.instanceResources,
       .textures = args.textures,
     };
-    
+
+    /*
+     * Initialize the sampler
+     */
+    samplers::HaltonSampler halton(tid, args.constants.size, args.constants.spp, args.constants.frameIdx);
+
     /*
      * Spawn ray and create an intersector
      */
-    auto ray = spawnRayFromCamera(camera, pixel);
+    auto ray = spawnRayFromCamera(args.constants.camera, tid, halton.sample2d(), halton.sample2d());
     auto i = createTriangleIntersector();
     triangle_instance_intersection intersection;
     
