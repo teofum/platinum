@@ -58,6 +58,20 @@ Scene::Scene(const fs::path& path, MTL::Device* device) noexcept: m_nextAssetId(
   json scene = data.at("root");
   m_root = nodeFromJson(scene);
 
+  /*
+   * Load envmap if present
+   */
+  if (data.contains("envmap")) {
+    json envmap = data.at("envmap");
+    AssetID textureId = envmap.at("texture");
+    size_t len = envmap.at("aliasTable").at(0);
+
+    MTL::Buffer* aliasTable = device->newBuffer(len, MTL::ResourceStorageModeShared);
+    binaryFile.read((char*) aliasTable->contents(), std::streamsize(len));
+
+    m_envmap.setTexture(textureId, aliasTable);
+  }
+
   auto end = std::chrono::high_resolution_clock::now();
   auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
