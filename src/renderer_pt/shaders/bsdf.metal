@@ -200,21 +200,20 @@ namespace bsdf {
    */
   Eval BSDF::eval(float3 wo, float3 wi) {
     if (wo.z < 1.5e-3f || wi.z < 1.5e-3f) return {};
-    
-    switch (m_ctx.lobe) {
-      case Lobe_Diffuse:
-        return evalDiffuse(wo, wi);
-      case Lobe_Metallic:
-        return evalMetallic(wo, wi);
-      case Lobe_Dielectric:
-        return evalOpaqueDielectric(wo, wi);
-      case Lobe_Transparent:
-        return evalTransparentDielectric(wo, wi);
-      case Lobe_Clearcoat:
-        return evalClearcoat(wo, wi);
-      default:
-        return {};
-    }
+
+    float metallic = m_ctx.metallic;
+    float transparent = (1.0 - metallic) * m_ctx.transmission;
+    float opaque = (1.0 - metallic) * (1.0 - transparent);
+
+    Eval result = { .f = 0.0, .Le = 0.0, .pdf = 0.0 };
+    if (metallic > 0.0) result += evalMetallic(wo, wi) * metallic;
+    if (transparent > 0.0) result += evalTransparentDielectric(wo, wi) * transparent;
+    if (opaque > 0.0) result += evalOpaqueDielectric(wo, wi) * opaque; // TODO glossy
+
+    float coat = m_ctx.clearcoat;
+    // TODO clearcoat
+
+    return result;
   }
   
   /*
@@ -232,8 +231,8 @@ namespace bsdf {
       pClearcoat *= fresnel(abs(dot(wo, wmCoat)), m_clearcoatIor);
     }
     
-    const float pMetallic = (1.0f - pClearcoat) * m;
-    const float pTransparent = (1.0f - pClearcoat) * m + (1.0f - m) * t;
+    const float pMetallic = pClearcoat + (1.0f - pClearcoat) * m;
+    const float pTransparent = pClearcoat + (1.0f - pClearcoat) * (m + (1.0f - m) * t);
     
     if (r.w < pClearcoat) return sampleClearcoat(wo, r.xyz);
     if (r.w < pMetallic) return sampleMetallic(wo, r.xyz);
@@ -288,11 +287,10 @@ namespace bsdf {
   
   /*
    * Blending factor for opaque dielectrics, accounting for a multiple scattering dielectric BRDF.
-   * Returns a float4 containing the blending weight of the dielectric component (x) and the sampled
-   * LUTs for E_wo, E_ms_wo, E_ms_avg in the yzw components to be reused later.
+   * Returns the blending weight of the dielectric component.
    */
   __attribute__((always_inline))
-  float4 BSDF::opaqueDielectricFactor(float3 wo, float F_avg) {
+  float BSDF::opaqueDielectricFactor(float3 wo, float F_avg) {
     // IOR parametrization optimized for the common IOR range 1 < eta < 2
     // See https://www.desmos.com/calculator/1pkvgrisbx for details.
     const auto iorParam = (m_ctx.ior - 1.0f) / m_ctx.ior;
@@ -305,7 +303,7 @@ namespace bsdf {
     const auto fresnel_ms = F_avg * F_avg * E_wo / (1.0f - F_avg * (1.0f - E_wo));
     const auto dielectricFactor = F_avg * E_ms_wo + fresnel_ms * (1.0f - E_ms_wo);
     
-    return float4(dielectricFactor, E_wo, E_ms_wo, E_ms_avg);
+    return dielectricFactor;
   }
   
   
@@ -420,31 +418,29 @@ namespace bsdf {
     return evalTransparentDielectric(wo, wi, wm, fresnel_ss, ior);
   }
   
-  Eval BSDF::evalDiffuse(float3 wo, float3 wi) {
-    const float cDiffuse = diffuseFactor(wo, wi);
-    const auto F_avg = avgDielectricFresnelFit(m_ctx.ior);
-    const auto blendingFactor = opaqueDielectricFactor(wo, F_avg);
-    
-    return {
-      .f = m_ctx.albedo * cDiffuse,
-      .pdf = abs(wi.z) / M_PI_F * (1.0f - blendingFactor.x),
-    };
-  }
-  
   /*
    * Evaluate GGX opaque dielectric BRDF (diffuse + dielectric GGX) and PDF
    */
   Eval BSDF::evalOpaqueDielectric(float3 wo, float3 wi) {
-    if (m_ggx.isSmooth()) return {};
-    
+    // GGX/Diffuse blending factor
+    const auto F_avg = avgDielectricFresnelFit(m_ctx.ior);
+    const auto blendingFactor = opaqueDielectricFactor(wo, F_avg);
+
+    // Diffuse BRDF
+    const float cDiffuse = diffuseFactor(wo, wi);
+    const float diffusePdf = abs(wi.z) / M_PI_F;
+
+    if (m_ggx.isSmooth()) return {
+      .f = m_ctx.albedo * cDiffuse,
+      .pdf = diffusePdf * (1.0f - blendingFactor),
+    };
+
     float3 wm = normalize(wo + wi);
     if (length_squared(wm) == 0.0f) return {};
     wm *= sign(wm.z);
-    
+
     const float fresnel_ss = fresnel(abs(dot(wo, wm)), m_ctx.ior);
-    const auto F_avg = avgDielectricFresnelFit(m_ctx.ior);
-    const auto blendingFactor = opaqueDielectricFactor(wo, F_avg);
-    
+
     // Dielectric single scattering BRDF
     float dielectricBrdf = fresnel_ss * m_ggx.singleScatterBRDF(wo, wi, wm);
     
@@ -454,8 +450,8 @@ namespace bsdf {
     }
     
     return {
-      .f = float3(dielectricBrdf),
-      .pdf = m_ggx.pdf(wo, wm) * blendingFactor.x,
+      .f = float3(dielectricBrdf) + m_ctx.albedo * cDiffuse,
+      .pdf = m_ggx.pdf(wo, wm) * blendingFactor + diffusePdf * (1.0f - blendingFactor),
     };
   }
   
@@ -593,7 +589,7 @@ namespace bsdf {
     const auto F_avg = avgDielectricFresnelFit(m_ctx.ior);
     const auto blendingFactor = opaqueDielectricFactor(wo, F_avg);
     
-    if (r.z < blendingFactor.x) {
+    if (r.z < blendingFactor) {
       // Sample the dielectric BRDF
       m_ctx.lobe = Lobe_Dielectric;
       
@@ -605,7 +601,7 @@ namespace bsdf {
           .flags  = Sample_Reflected | Sample_Specular,
           .wi     = wi,
           .f      = float3(fresnel_ss / abs(wi.z)),
-          .pdf    = blendingFactor.x,
+          .pdf    = blendingFactor,
         };
       }
       
@@ -624,7 +620,7 @@ namespace bsdf {
         .flags  = Sample_Reflected | Sample_Glossy,
         .wi     = wi,
         .f      = float3(dielectricBrdf),
-        .pdf    = m_ggx.pdf(wo, wm) * blendingFactor.x,
+        .pdf    = m_ggx.pdf(wo, wm) * blendingFactor,
       };
     } else {
       // Sample the underlying diffuse BRDF
@@ -641,8 +637,8 @@ namespace bsdf {
         .flags  = flags,
         .wi     = wi,
         .f      = m_ctx.albedo * cDiffuse,
-        .Le     = m_ctx.emission / (1.0f - blendingFactor.x),
-        .pdf    = abs(wi.z) / M_PI_F * (1.0f - blendingFactor.x),
+        .Le     = m_ctx.emission / (1.0f - blendingFactor),
+        .pdf    = abs(wi.z) / M_PI_F * (1.0f - blendingFactor),
       };
     }
   }

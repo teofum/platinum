@@ -309,6 +309,22 @@ struct Eval {
   float3 f;
   float3 Le;
   float pdf = 1.0f;
+
+  constexpr Eval operator+(thread const Eval& e) {
+    return { f + e.f, Le + e.Le, pdf + e.pdf };
+  }
+
+  constexpr thread Eval& operator+=(thread const Eval& e) {
+    f += e.f;
+    Le += e.Le;
+    pdf += e.pdf;
+
+    return *this;
+  }
+
+  constexpr Eval operator*(float c) {
+    return { f * c, Le * c, pdf * c };
+  }
 };
 
 class BSDF {
@@ -351,7 +367,7 @@ private:
   float diffuseFactor(float3 wo, float3 wi);
 
   __attribute__((always_inline))
-  float4 opaqueDielectricFactor(float3 wo, float F_avg);
+  float opaqueDielectricFactor(float3 wo, float F_avg);
 
   __attribute__((always_inline))
   Eval evalMetallic(float3 wo, float3 wi, float3 wm);
@@ -366,8 +382,6 @@ private:
   Eval evalTransparentDielectric(float3 wo, float3 wi);
 
   Sample sampleTransparentDielectric(float3 wo, float3 r);
-
-  Eval evalDiffuse(float3 wo, float3 wi);
 
   Eval evalOpaqueDielectric(float3 wo, float3 wi);
 
