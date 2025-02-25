@@ -44,6 +44,16 @@ void Store::importTexture(loaders::texture::TextureType type) {
   }
 }
 
+Scene::Node Store::createPrimitive(std::string_view name, Mesh&& mesh) {
+  auto parentId = m_selectedNodeId.value_or(Scene::null);
+  auto id = m_scene->createAsset(std::move(mesh), false);
+
+  auto node = m_scene->createNode(name, parentId);
+  node.setMesh(id);
+
+  return node;
+}
+
 void Store::update() {
   m_selectedNodeId = m_nextNodeId;
 
@@ -52,6 +62,8 @@ void Store::update() {
     m_selectedNodeId = m_nextNodeId = m_actionNodeId = std::nullopt;
     m_removeMode = Scene::RemoveMode::Recursive;
   }
+
+  clearNodeAction();
 }
 
 }

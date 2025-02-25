@@ -36,24 +36,40 @@ void SceneExplorer::render() {
     ImGui::OpenPopup("Add_Popup");
   }
   if (widgets::popup("Add_Popup")) {
-    if (widgets::selectable("Cube", false, 0, {100, 0})) {
-      auto parentId = m_store.selectedNode().value_or(Scene::null);
+    if (widgets::selectable("Plane", false, 0, {100, 0}))
+      m_store.createPrimitive("plane", pt::primitives::plane(m_store.device(), 2.0f));
 
-      auto cube = pt::primitives::cube(m_store.device(), 2.0f);
-      auto id = m_store.scene().createAsset(std::move(cube), false);
+    if (widgets::selectable("Cube", false, 0, {100, 0}))
+      m_store.createPrimitive("cube", pt::primitives::cube(m_store.device(), 2.0f));
 
-      auto node = m_store.scene().createNode("Cube", parentId);
-      node.setMesh(id);
-    }
+    if (widgets::selectable("Sphere", false, 0, {100, 0}))
+      m_store.createPrimitive("sphere", pt::primitives::sphere(m_store.device(), 1.0f, 48, 64));
 
-    if (widgets::selectable("Sphere", false, 0, {100, 0})) {
-      auto parentId = m_store.selectedNode().value_or(Scene::null);
+    ImGui::Separator();
 
-      auto sphere = pt::primitives::sphere(m_store.device(), 1.0f, 48, 64);
-      auto id = m_store.scene().createAsset(std::move(sphere), false);
+    if (widgets::selectable("Cornell Box", false, 0, {100, 0})) {
+      auto box = m_store.createPrimitive("cornell_box", pt::primitives::cornellBox(m_store.device()));
+      auto matBaseId = m_store.scene().createAsset(
+        Material{.name = "cornell_base", .baseColor = {1, 1, 1, 1}},
+        false
+      );
+      auto matLWallId = m_store.scene().createAsset(
+        Material{.name = "cornell_wall_l", .baseColor = {0.704, 0.016, 0.020, 1}},
+        false
+      );
+      auto matRWallId = m_store.scene().createAsset(
+        Material{.name = "cornell_wall_r", .baseColor = {0.009, 0.591, 0.006, 1}},
+        false
+      );
+      auto matLightId = m_store.scene().createAsset(
+        Material{.name = "cornell_base", .baseColor = {0, 0, 0, 1}, .emission = {1, 1, 1}, .emissionStrength = 50.0},
+        false
+      );
 
-      auto node = m_store.scene().createNode("Sphere", parentId);
-      node.setMesh(id);
+      box.setMaterial(0, matBaseId);
+      box.setMaterial(1, matLWallId);
+      box.setMaterial(2, matRWallId);
+      box.setMaterial(3, matLightId);
     }
 
     ImGui::Separator();
@@ -63,8 +79,6 @@ void SceneExplorer::render() {
       Material material = {.name = name};
       m_store.scene().createAsset(std::move(material));
     }
-
-    ImGui::Separator();
 
     if (widgets::selectable("Camera", false, 0, {100, 0})) {
       auto parentId = m_store.selectedNode().value_or(Scene::null);
