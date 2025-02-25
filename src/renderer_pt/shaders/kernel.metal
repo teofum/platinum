@@ -301,7 +301,7 @@ kernel void pathtracingKernel(
       
       bsdf::ShadingContext ctx(*hit.material, hit.uv, args.textures);
       auto bsdf = bsdf::BSDF(ctx, args.constants, args.luts);
-      auto sample = bsdf.sample(hit.wo, r);
+      auto sample = bsdf.sample(hit.wo, r, halton.sample2d());
       
       /*
        * Handle light hit
@@ -522,7 +522,7 @@ kernel void misKernel(
       
       bsdf::ShadingContext ctx(*hit.material, hit.uv, args.textures);
       auto bsdf = bsdf::BSDF(ctx, args.constants, args.luts);
-      auto sample = bsdf.sample(hit.wo, r);
+      auto sample = bsdf.sample(hit.wo, r, halton.sample2d());
       
       /*
        * Handle light hit

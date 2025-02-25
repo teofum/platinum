@@ -309,6 +309,22 @@ struct Eval {
   float3 f;
   float3 Le;
   float pdf = 1.0f;
+
+  constexpr Eval operator+(thread const Eval& e) {
+    return { f + e.f, Le + e.Le, pdf + e.pdf };
+  }
+
+  constexpr thread Eval& operator+=(thread const Eval& e) {
+    f += e.f;
+    Le += e.Le;
+    pdf += e.pdf;
+
+    return *this;
+  }
+
+  constexpr Eval operator*(float c) {
+    return { f * c, Le * c, pdf * c };
+  }
 };
 
 class BSDF {
@@ -317,7 +333,7 @@ public:
 
   Eval eval(float3 wo, float3 wi);
 
-  Sample sample(float3 wo, float4 r);
+  Sample sample(float3 wo, float4 r, float2 rc);
 
 private:
   thread ShadingContext& m_ctx;
@@ -351,7 +367,7 @@ private:
   float diffuseFactor(float3 wo, float3 wi);
 
   __attribute__((always_inline))
-  float4 opaqueDielectricFactor(float3 wo, float F_avg);
+  float opaqueDielectricFactor(float3 wo, float F_avg);
 
   __attribute__((always_inline))
   Eval evalMetallic(float3 wo, float3 wi, float3 wm);
@@ -367,13 +383,11 @@ private:
 
   Sample sampleTransparentDielectric(float3 wo, float3 r);
 
-  Eval evalDiffuse(float3 wo, float3 wi);
-
   Eval evalOpaqueDielectric(float3 wo, float3 wi);
 
   Sample sampleOpaqueDielectric(float3 wo, float3 r);
 
-  Eval evalClearcoat(float3 wo, float3 wi);
+  Eval evalClearcoat(float3 wo, float3 wi, thread float& fresnel_ss);
 
   Sample sampleClearcoat(float3 wo, float3 r);
 };
