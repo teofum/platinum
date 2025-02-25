@@ -29,6 +29,10 @@ std::tuple<MTL::PixelFormat, std::vector<uint8_t>> TextureLoader::getAttributesF
 ) {
   switch (type) {
     case TextureType::sRGB:
+      return std::make_tuple(
+        MTL::PixelFormatRGBA8Unorm_sRGB,
+        std::vector<uint8_t>{0, 1, 2, 3}
+      );
     case TextureType::LinearRGB:
       return std::make_tuple(
         MTL::PixelFormatRGBA8Unorm,
@@ -132,7 +136,7 @@ Scene::AssetID TextureLoader::load(
   // All textures are loaded as 4bpc as Metal does not support RGB textures with
   // no alpha channel.
   const size_t pixelStride = spec.channel_bytes() * 4;
-  
+
   auto readBuffer = m_device->newBuffer(
     pixelStride * spec.width * spec.height,
     MTL::ResourceStorageModeShared
