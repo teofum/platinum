@@ -193,10 +193,8 @@ namespace bsdf {
   		m_luts(luts) {}
     
   /*
-   * Evaluate the BSDF, given outgoing and incident light directions. BSDF lobe is selected based on
-   * the last sampled lobe, rather than blending them. This is a bit slower to converge, but simpler
-   * to implement.
-   * TODO: figure out why MIS+NEE is still losing some energy for dielectric lobes
+   * Evaluate the BSDF, given outgoing and incident light directions. Blends all BSDF lobes
+   * based on material parameters and the PDF for each.
    */
   Eval BSDF::eval(float3 wo, float3 wi) {
     if (wo.z < 1.5e-3f || wi.z < 1.5e-3f) return {};
@@ -211,7 +209,12 @@ namespace bsdf {
     if (opaque > 0.0) result += evalOpaqueDielectric(wo, wi) * opaque; // TODO glossy
 
     float coat = m_ctx.clearcoat;
-    // TODO clearcoat
+    if (coat > 0.0f) {
+      float coatFresnel_ss;
+      auto coatResult = evalClearcoat(wo, wi, coatFresnel_ss);
+      coat *= coatFresnel_ss;
+      result = result * (1.0 - coat) + coatResult * coat;
+    }
 
     return result;
   }
@@ -219,15 +222,14 @@ namespace bsdf {
   /*
    * Given an outgoing light direction, importance sample the
    */
-  Sample BSDF::sample(float3 wo, float4 r) {
+  Sample BSDF::sample(float3 wo, float4 r, float2 rc) {
     float c = m_ctx.clearcoat;
     float m = m_ctx.metallic;
     float t = m_ctx.transmission;
-    
-    // TODO: clearcoat sample should probably be uncorrelated
+
     float pClearcoat = c;
     if (pClearcoat > 0.0f) {
-      const float3 wmCoat = m_ggxCoat.isSmooth() ? float3(0, 0, 1) : m_ggxCoat.sampleVmdf(wo, r.xy);
+      const float3 wmCoat = m_ggxCoat.isSmooth() ? float3(0, 0, 1) : m_ggxCoat.sampleVmdf(wo, rc);
       pClearcoat *= fresnel(abs(dot(wo, wmCoat)), m_clearcoatIor);
     }
     
@@ -298,7 +300,6 @@ namespace bsdf {
     constexpr sampler s(address::clamp_to_edge, filter::linear);
     const auto E_wo = m_luts.E.sample(s, float2(wo.z, m_ctx.roughness)).r;
     const auto E_ms_wo = m_luts.EMs.sample(s, float3(wo.z, m_ctx.roughness, iorParam)).r;
-    const auto E_ms_avg = m_luts.EavgMs.sample(s, float2(iorParam, m_ctx.roughness)).r;
     
     const auto fresnel_ms = F_avg * F_avg * E_wo / (1.0f - F_avg * (1.0f - E_wo));
     const auto dielectricFactor = F_avg * E_ms_wo + fresnel_ms * (1.0f - E_ms_wo);
@@ -455,17 +456,17 @@ namespace bsdf {
     };
   }
   
-  Eval BSDF::evalClearcoat(float3 wo, float3 wi) {
+  Eval BSDF::evalClearcoat(float3 wo, float3 wi, thread float& fresnel_ss) {
     if (m_ggxCoat.isSmooth()) return {};
     
     auto wm = wo + wi;
     wm = normalize(wm * sign(wm.z));
     if (length_squared(wm) == 0.0f) return {};
     
-    const auto fresnel_ss = fresnel(dot(wo, wm), m_clearcoatIor);
+    fresnel_ss = fresnel(dot(wo, wm), m_clearcoatIor);
     return {
-      .f = float3(fresnel_ss * m_ggxCoat.singleScatterBRDF(wo, wi, wm)),
-      .pdf = fresnel_ss * m_ggxCoat.pdf(wo, wm),
+      .f = float3(m_ggxCoat.singleScatterBRDF(wo, wi, wm)),
+      .pdf = m_ggxCoat.pdf(wo, wm),
     };
   }
   

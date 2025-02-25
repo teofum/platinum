@@ -333,7 +333,7 @@ public:
 
   Eval eval(float3 wo, float3 wi);
 
-  Sample sample(float3 wo, float4 r);
+  Sample sample(float3 wo, float4 r, float2 rc);
 
 private:
   thread ShadingContext& m_ctx;
@@ -387,7 +387,7 @@ private:
 
   Sample sampleOpaqueDielectric(float3 wo, float3 r);
 
-  Eval evalClearcoat(float3 wo, float3 wi);
+  Eval evalClearcoat(float3 wo, float3 wi, thread float& fresnel_ss);
 
   Sample sampleClearcoat(float3 wo, float3 r);
 };
