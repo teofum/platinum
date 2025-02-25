@@ -49,6 +49,8 @@ public:
   void importGltf();
   void importTexture(loaders::texture::TextureType type);
 
+  Scene::Node createPrimitive(std::string_view name, Mesh&& mesh);
+
   void update();
 
   [[nodiscard]] constexpr std::optional<Scene::NodeID> selectedNode() const { return m_selectedNodeId; }
@@ -83,7 +85,6 @@ private:
   std::unique_ptr<Scene> m_scene;
   MTL::Device* m_device = nullptr;
   MTL::CommandQueue* m_commandQueue = nullptr;
-
 
   std::optional<Scene::NodeID> m_selectedNodeId, m_nextNodeId, m_actionNodeId;
   NodeAction m_nodeAction = NodeAction::None;

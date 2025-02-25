@@ -5,6 +5,8 @@
 
 namespace pt::primitives {
 
+[[nodiscard]] Mesh plane(MTL::Device* device, float side);
+
 [[nodiscard]] Mesh cube(MTL::Device* device, float side);
 
 [[nodiscard]] Mesh sphere(
@@ -13,6 +15,8 @@ namespace pt::primitives {
   uint32_t lat,
   uint32_t lng
 );
+
+[[nodiscard]] Mesh cornellBox(MTL::Device* device);
 
 }
 
