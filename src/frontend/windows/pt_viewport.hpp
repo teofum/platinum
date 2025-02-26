@@ -9,6 +9,7 @@
 #include <frontend/widgets.hpp>
 #include <renderer_pt/renderer_pt.hpp>
 #include <renderer_pt/pt_shader_defs.hpp>
+#include <renderer_pt/viewport.hpp>
 
 namespace pt::frontend::windows {
 
@@ -31,6 +32,12 @@ public:
   bool handleInputs(const SDL_Event& event);
 
   const uint8_t* keys = nullptr;
+
+  [[nodiscard]] Viewport viewport() const;
+
+  [[nodiscard]] const MTL::Texture* presentRenderTarget() const;
+
+  [[nodiscard]] constexpr bool visible() const { return m_visible; }
 
 private:
   // Renderer
@@ -60,6 +67,7 @@ private:
 
   // Viewport properties
   bool m_mouseInViewport = false;
+  bool m_visible = false;
   float2 m_viewportSize = {1, 1};
   float2 m_renderSize = {1, 1};
   float2 m_viewportTopLeft = {0, 0};

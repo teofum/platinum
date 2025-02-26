@@ -15,6 +15,7 @@ void RenderViewport::init(renderer_pt::Renderer* renderer) {
 }
 
 void RenderViewport::render() {
+  m_visible = false;
   updateScrollAndZoomState();
 
   /*
@@ -79,30 +80,19 @@ void RenderViewport::render() {
     /*
      * Render viewport
      */
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, (ImVec4) ImColor::HSV(0.0f, 0.0f, 0.5f));
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
-    ImGui::BeginChild(
+    if (ImGui::BeginChild(
       "RenderView",
       size,
-      ImGuiChildFlags_Borders,
+      ImGuiChildFlags_None,
       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
-    );
-    m_mouseInViewport = ImGui::IsWindowHovered();
+    )) {
+      m_visible = true;
+      m_mouseInViewport = ImGui::IsWindowHovered();
+    }
     ImGui::PopStyleVar();
     ImGui::PopStyleColor();
-
-    auto renderTarget = m_renderer->presentRenderTarget();
-    if (renderTarget != nullptr) {
-      ImGui::SetCursorPos({m_offset.x, m_offset.y});
-      ImGui::Image(
-        (ImTextureID) renderTarget,
-        {
-          m_renderSize.x * m_zoomFactor / m_dpiScaling,
-          m_renderSize.y * m_zoomFactor / m_dpiScaling
-        }
-      );
-    }
-
     ImGui::EndChild();
 
     /*
@@ -563,6 +553,19 @@ void RenderViewport::updateScrollAndZoomState() {
   m_maxOffset = max(float2{0, 0}, (m_viewportSize - displaySize) * 0.5f);
   m_minOffset = min(m_maxOffset, m_viewportSize - displaySize);
   m_offset = clamp(m_offset, m_minOffset, m_maxOffset);
+}
+
+Viewport RenderViewport::viewport() const {
+  return {
+    .displaySize = m_renderSize * m_zoomFactor,
+    .displayOffset = m_offset * m_dpiScaling,
+    .viewportSize = m_viewportSize * m_dpiScaling,
+    .viewportOffset = m_viewportTopLeft * m_dpiScaling,
+  };
+}
+
+const MTL::Texture* RenderViewport::presentRenderTarget() const {
+  return m_renderer->presentRenderTarget();
 }
 
 }

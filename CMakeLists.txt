@@ -109,6 +109,10 @@ build_shaders(loaders.metallib
         src/loaders/texture_converter.metal
 )
 
+build_shaders(viewport.metallib
+        src/renderer_pt/shaders/viewport.metal
+)
+
 # Main executable
 file(GLOB_RECURSE PLATINUM_SOURCES src/*.cpp)
 add_executable(platinum
@@ -119,6 +123,7 @@ add_executable(platinum
         renderer_pt.metallib
         tools.metallib
         loaders.metallib
+        viewport.metallib
 )
 
 target_include_directories(platinum PRIVATE src)

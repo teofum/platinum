@@ -1,5 +1,6 @@
 #include <Metal/Metal.h>
 #include <QuartzCore/QuartzCore.h>
+#include <print>
 
 #include "metal_utils.hpp"
 
@@ -142,6 +143,71 @@ NS::SharedPtr<MTL::ResidencySetDescriptor> makeResidencySetDescriptor(const char
   desc->setInitialCapacity(initialCapacity);
 
   return desc;
+}
+
+MTL::Library* createLibrary(MTL::Device* device, std::string_view name) {
+  NS::Error* error = nullptr;
+
+  auto libName = std::format("{}.metallib", name);
+  MTL::Library* lib = device->newLibrary(NS::String::string(libName.c_str(), NS::UTF8StringEncoding), &error);
+  if (!lib) {
+    std::println(
+      stderr,
+      "Failed to load shader library {}: {}",
+      name,
+      error->localizedDescription()->utf8String()
+    );
+    assert(false);
+  }
+
+  return lib;
+}
+
+MTL::ComputePipelineState* createComputePipeline(
+  MTL::Device* device,
+  std::string_view name,
+  const ComputePipelineParams& params
+) {
+  NS::Error* error = nullptr;
+
+  auto pipeline = device->newComputePipelineState(
+    makeComputePipelineDescriptor(params),
+    MTL::PipelineOptionNone,
+    nullptr,
+    &error
+  );
+  if (!pipeline) {
+    std::println(
+      stderr,
+      "Failed to create compute pipeline {}: {}",
+      name,
+      error->localizedDescription()->utf8String()
+    );
+    assert(false);
+  }
+
+  return pipeline;
+}
+
+MTL::RenderPipelineState* createRenderPipeline(
+  MTL::Device* device,
+  std::string_view name,
+  const RenderPipelineParams& params
+) {
+  NS::Error* error = nullptr;
+
+  auto pipeline = device->newRenderPipelineState(makeRenderPipelineDescriptor(params), &error);
+  if (!pipeline) {
+    std::println(
+      stderr,
+      "Failed to create render pipeline {}: {}",
+      name,
+      error->localizedDescription()->utf8String()
+    );
+    assert(false);
+  }
+
+  return pipeline;
 }
 
 }

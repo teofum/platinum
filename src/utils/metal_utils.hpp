@@ -124,6 +124,29 @@ void enableBlending(
 
 NS::SharedPtr<MTL::ResidencySetDescriptor> makeResidencySetDescriptor(const char* label, uint32_t initialCapacity = 1);
 
+/**
+ * Utility function to get a shader library and abort on fail
+ */
+MTL::Library* createLibrary(MTL::Device* device, std::string_view name);
+
+/**
+ * Utility function to create a compute pipeline and abort on fail
+ */
+MTL::ComputePipelineState* createComputePipeline(
+  MTL::Device* device,
+  std::string_view name,
+  const ComputePipelineParams& params
+);
+
+/**
+ * Utility function to create a render pipeline and abort on fail
+ */
+MTL::RenderPipelineState* createRenderPipeline(
+  MTL::Device* device,
+  std::string_view name,
+  const RenderPipelineParams& params
+);
+
 }
 
 #endif //PLATINUM_METAL_UTILS_HPP

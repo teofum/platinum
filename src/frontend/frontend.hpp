@@ -55,6 +55,7 @@ private:
 
   // Renderers
   std::unique_ptr<renderer_pt::Renderer> m_renderer;
+  MTL::RenderPipelineState* m_viewportPso = nullptr;
 
   // Windows
   windows::Properties m_properties;

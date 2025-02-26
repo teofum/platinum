@@ -282,16 +282,7 @@ void Renderer::buildPipelines() {
   /*
    * Load the shader library
    */
-  NS::Error* error = nullptr;
-  MTL::Library* lib = m_device->newLibrary("renderer_pt.metallib"_ns, &error);
-  if (!lib) {
-    std::println(
-      stderr,
-      "renderer_pt: Failed to load shader library: {}",
-      error->localizedDescription()->utf8String()
-    );
-    assert(false);
-  }
+  MTL::Library* lib = metal_utils::createLibrary(m_device, "renderer_pt");
 
   /*
    * Load the PT kernel functions and build the compute pipelines
@@ -299,33 +290,17 @@ void Renderer::buildPipelines() {
   auto alphaTestIntersectionFunction = metal_utils::getFunction(lib, "alphaTestIntersectionFunction");
 
   for (const auto& kernelName: m_pathtracingPipelineFunctions) {
-    auto desc = metal_utils::makeComputePipelineDescriptor(
-      {
+    auto* pipeline = metal_utils::createComputePipeline(
+      m_device, kernelName, {
         .function = metal_utils::getFunction(lib, kernelName.c_str()),
         .linkedFunctions = {alphaTestIntersectionFunction},
         .threadGroupSizeIsMultipleOfExecutionWidth = true,
       }
     );
 
-    auto pipeline = m_device->newComputePipelineState(
-      desc,
-      MTL::PipelineOptionNone,
-      nullptr,
-      &error
-    );
-    if (!pipeline) {
-      std::println(
-        stderr,
-        "renderer_pt: Failed to create pathtracing pipeline {}: {}",
-        kernelName,
-        error->localizedDescription()->utf8String()
-      );
-      assert(false);
-    }
-
-    auto iftDesc = MTL::IntersectionFunctionTableDescriptor::alloc()->init();
+    auto* iftDesc = MTL::IntersectionFunctionTableDescriptor::alloc()->init();
     iftDesc->setFunctionCount(1);
-    auto intersectionFunctionTable = pipeline->newIntersectionFunctionTable(iftDesc);
+    auto* intersectionFunctionTable = pipeline->newIntersectionFunctionTable(iftDesc);
     iftDesc->release();
 
     intersectionFunctionTable->setFunction(pipeline->functionHandle(alphaTestIntersectionFunction), 0);
@@ -337,26 +312,12 @@ void Renderer::buildPipelines() {
   /*
    * Build the GMoN accumulation pipeline
    */
-  auto desc = metal_utils::makeComputePipelineDescriptor(
-    {
+  m_gmonPipeline = metal_utils::createComputePipeline(
+    m_device, "gmon", {
       .function = metal_utils::getFunction(lib, "gmon"),
       .threadGroupSizeIsMultipleOfExecutionWidth = true,
     }
   );
-  m_gmonPipeline = m_device->newComputePipelineState(
-    desc,
-    MTL::PipelineOptionNone,
-    nullptr,
-    &error
-  );
-  if (!m_gmonPipeline) {
-    std::println(
-      stderr,
-      "renderer_pt: Failed to create GMoN accumulation pipeline: {}",
-      error->localizedDescription()->utf8String()
-    );
-    assert(false);
-  }
 
   /*
    * Build the post-process pipeline
