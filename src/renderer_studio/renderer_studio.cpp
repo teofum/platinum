@@ -323,30 +323,20 @@ void Renderer::buildPipelines() {
   /*
    * Load the shader library
    */
-  NS::Error* error = nullptr;
-  MTL::Library* lib = m_device->newLibrary("renderer_studio.metallib"_ns, &error);
-  if (!lib) {
-    std::println(
-      "renderer_studio: Failed to load shader library: {}\n",
-      error->localizedDescription()->utf8String()
-    );
-    assert(false);
-  }
-
+  MTL::Library* lib = metal_utils::createLibrary(m_device, "renderer_studio");
   /*
-   * Create the main render pass pipeline
+   * Create the main render pipeline state object
    */
-  auto desc = metal_utils::makeRenderPipelineDescriptor(
+  m_pso = metal_utils::createRenderPipeline(
+    m_device, "studio/main",
     {
       .vertexFunction = metal_utils::getFunction(lib, "vertexShader"),
       .fragmentFunction = metal_utils::getFunction(lib, "fragmentShader"),
       .colorAttachments = {MTL::PixelFormatRGBA8Unorm, MTL::PixelFormatR16Uint},
       .depthFormat = MTL::PixelFormatDepth32Float,
       .stencilFormat = MTL::PixelFormatStencil8,
-    }
-  );
-  auto vertexDesc = metal_utils::makeVertexDescriptor(
-    {
+    },
+    metal_utils::VertexParams{
       .attributes = {
         {
           .format = MTL::VertexFormatFloat3,
@@ -365,35 +355,19 @@ void Renderer::buildPipelines() {
     }
   );
 
-  desc->setVertexDescriptor(vertexDesc);
-
-  /*
-   * Create the main render pipeline state object
-   */
-  m_pso = m_device->newRenderPipelineState(desc, &error);
-  if (!m_pso) {
-    std::println(
-      "renderer_studio: Failed to create main render pass PSO: {}\n",
-      error->localizedDescription()->utf8String()
-    );
-    assert(false);
-  }
-
   /*
    * Create the camera pass pipeline state object
    */
-  desc = metal_utils::makeRenderPipelineDescriptor(
+  m_cameraPso = metal_utils::createRenderPipeline(
+    m_device, "studio/camera",
     {
       .vertexFunction = metal_utils::getFunction(lib, "cameraVertex"),
       .fragmentFunction = metal_utils::getFunction(lib, "cameraFragment"),
       .colorAttachments = {MTL::PixelFormatRGBA8Unorm},
       .depthFormat = MTL::PixelFormatDepth32Float,
       .stencilFormat = MTL::PixelFormatStencil8,
-    }
-  );
-
-  vertexDesc = metal_utils::makeVertexDescriptor(
-    {
+    },
+    metal_utils::VertexParams{
       .attributes = {
         {.format = MTL::VertexFormatFloat3},
       },
@@ -403,32 +377,20 @@ void Renderer::buildPipelines() {
     }
   );
 
-  desc->setVertexDescriptor(vertexDesc);
-
-  m_cameraPso = m_device->newRenderPipelineState(desc, &error);
-  if (!m_cameraPso) {
-    std::println(
-      "renderer_studio: Failed to create camera render pass PSO: {}\n",
-      error->localizedDescription()->utf8String()
-    );
-    assert(false);
-  }
-
   /*
    * Create the grid pass pipeline state object
    */
-  desc = metal_utils::makeRenderPipelineDescriptor(
+  m_gridPassPso = metal_utils::createRenderPipeline(
+    m_device, "studio/grid",
     {
       .vertexFunction = metal_utils::getFunction(lib, "gridVertex"),
       .fragmentFunction = metal_utils::getFunction(lib, "gridFragment"),
       .colorAttachments = {MTL::PixelFormatRGBA8Unorm},
       .depthFormat = MTL::PixelFormatDepth32Float,
       .stencilFormat = MTL::PixelFormatStencil8,
-    }
-  );
-
-  vertexDesc = metal_utils::makeVertexDescriptor(
-    {
+      .blending = true,
+    },
+    metal_utils::VertexParams{
       .attributes = {
         {.format = MTL::VertexFormatFloat2},
       },
@@ -437,32 +399,18 @@ void Renderer::buildPipelines() {
       }
     }
   );
-
-  desc->setVertexDescriptor(vertexDesc);
-  metal_utils::enableBlending(desc->colorAttachments()->object(0));
-
-  m_gridPassPso = m_device->newRenderPipelineState(desc, &error);
-  if (!m_gridPassPso) {
-    std::println(
-      "renderer_studio: Failed to create grid render pass PSO: {}\n",
-      error->localizedDescription()->utf8String()
-    );
-    assert(false);
-  }
 
   /*
    * Create the edge pass pipeline state object
    */
-  desc = metal_utils::makeRenderPipelineDescriptor(
+  m_postPassPso = metal_utils::createRenderPipeline(
+    m_device, "studio/edges",
     {
       .vertexFunction = metal_utils::getFunction(lib, "edgePassVertex"),
       .fragmentFunction = metal_utils::getFunction(lib, "edgePassFragment"),
       .colorAttachments = {MTL::PixelFormatRGBA8Unorm_sRGB},
-    }
-  );
-
-  vertexDesc = metal_utils::makeVertexDescriptor(
-    {
+    },
+    metal_utils::VertexParams{
       .attributes = {
         {.format = MTL::VertexFormatFloat2},
       },
@@ -471,17 +419,6 @@ void Renderer::buildPipelines() {
       }
     }
   );
-
-  desc->setVertexDescriptor(vertexDesc);
-
-  m_postPassPso = m_device->newRenderPipelineState(desc, &error);
-  if (!m_postPassPso) {
-    std::println(
-      "renderer_studio: Failed to create post process pass PSO: {}\n",
-      error->localizedDescription()->utf8String()
-    );
-    assert(false);
-  }
 
   auto samplerDesc = ns_shared<MTL::SamplerDescriptor>();
   samplerDesc->setMagFilter(MTL::SamplerMinMagFilterNearest);

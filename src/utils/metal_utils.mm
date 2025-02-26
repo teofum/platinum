@@ -93,7 +93,9 @@ NS::SharedPtr<MTL::RenderPipelineDescriptor> makeRenderPipelineDescriptor(const 
 
   uint32_t i = 0;
   for (auto format: params.colorAttachments) {
-    desc->colorAttachments()->object(i++)->setPixelFormat(format);
+    desc->colorAttachments()->object(i)->setPixelFormat(format);
+    if (params.blending) enableBlending(desc->colorAttachments()->object(i));
+    i++;
   }
 
   desc->setDepthAttachmentPixelFormat(params.depthFormat);
@@ -192,11 +194,16 @@ MTL::ComputePipelineState* createComputePipeline(
 MTL::RenderPipelineState* createRenderPipeline(
   MTL::Device* device,
   std::string_view name,
-  const RenderPipelineParams& params
+  const RenderPipelineParams& params,
+  std::optional<VertexParams> vertexParams
 ) {
   NS::Error* error = nullptr;
 
-  auto pipeline = device->newRenderPipelineState(makeRenderPipelineDescriptor(params), &error);
+  auto desc = makeRenderPipelineDescriptor(params);
+  if (vertexParams)
+    desc->setVertexDescriptor(makeVertexDescriptor(vertexParams.value()));
+
+  auto pipeline = device->newRenderPipelineState(desc, &error);
   if (!pipeline) {
     std::println(
       stderr,

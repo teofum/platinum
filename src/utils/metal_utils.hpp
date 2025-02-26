@@ -59,6 +59,7 @@ struct RenderPipelineParams {
   std::vector<MTL::PixelFormat> colorAttachments;
   MTL::PixelFormat depthFormat = MTL::PixelFormatInvalid;
   MTL::PixelFormat stencilFormat = MTL::PixelFormatInvalid;
+  bool blending = false;
 };
 
 /**
@@ -144,7 +145,8 @@ MTL::ComputePipelineState* createComputePipeline(
 MTL::RenderPipelineState* createRenderPipeline(
   MTL::Device* device,
   std::string_view name,
-  const RenderPipelineParams& params
+  const RenderPipelineParams& params,
+  std::optional<VertexParams> vertexParams = std::nullopt
 );
 
 }
