@@ -4,7 +4,9 @@
 #include <Metal/Metal.hpp>
 
 #include <core/store.hpp>
+#include <core/colorspace.hpp>
 #include <core/postprocessing.hpp>
+
 #include "pt_shader_defs.hpp"
 
 namespace pt::renderer_pt {
@@ -169,6 +171,9 @@ private:
   bool m_startRender = false;
   Scene::NodeID m_cameraNodeId = Scene::null;
   int m_flags = 0;
+
+  // Color management
+  color::Colorspace m_workingSpace = color::BT2020;
 
   /*
    * Postprocess pipeline

@@ -938,7 +938,8 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
       .apertureBlades = camera->apertureBlades,
       .apertureRoundness = camera->roundness,
       .bokehPower = camera->bokehPower,
-    }
+    },
+    .idt = color::transform(color::BT709, m_workingSpace), // Transform matrix for sRGB -> render space
   };
 }
 
