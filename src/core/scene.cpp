@@ -7,6 +7,7 @@ namespace pt {
 
 static size_t getTextureBytesPerPixel(MTL::PixelFormat format) {
   if (format == MTL::PixelFormatRGBA32Float) return 4 * sizeof(float);
+  if (format == MTL::PixelFormatRGBA8Unorm_sRGB) return 4 * sizeof(uint8_t);
   if (format == MTL::PixelFormatRGBA8Unorm) return 4 * sizeof(uint8_t);
   if (format == MTL::PixelFormatRG8Unorm) return 2 * sizeof(uint8_t);
   if (format == MTL::PixelFormatR8Unorm) return 1 * sizeof(uint8_t);
