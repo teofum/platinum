@@ -11,6 +11,10 @@ static size_t getTextureBytesPerPixel(MTL::PixelFormat format) {
   if (format == MTL::PixelFormatRGBA8Unorm) return 4 * sizeof(uint8_t);
   if (format == MTL::PixelFormatRG8Unorm) return 2 * sizeof(uint8_t);
   if (format == MTL::PixelFormatR8Unorm) return 1 * sizeof(uint8_t);
+
+  // Crash immediately if the texture format is invalid, this should never happen
+  std::println("getTextureBytesPerPixel: Invalid texture pixel format!");
+  assert(false);
   return 0;
 }
 
