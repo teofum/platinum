@@ -174,6 +174,7 @@ private:
 
   // Color management
   color::Colorspace m_workingSpace = color::BT2020;
+  color::Colorspace m_outputSpace = color::BT709;
 
   /*
    * Postprocess pipeline

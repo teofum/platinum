@@ -223,6 +223,7 @@ struct TonemapOptions {
   flim::Options flimOptions = flim::presets::flim;
 
   LiftGammaGain postTonemap;
+  float3x3 odt; // Colorspace transform from working -> display space
 };
 
 #ifndef __METAL_VERSION__
@@ -275,7 +276,7 @@ class BasicPostProcessPass : public PostProcessPass {
 public:
   using Options = T;
 
-  BasicPostProcessPass(MTL::Device* device, MTL::Library* lib) noexcept
+  [[maybe_unused]] BasicPostProcessPass(MTL::Device* device, MTL::Library* lib) noexcept
     : PostProcessPass(
     device,
     lib,

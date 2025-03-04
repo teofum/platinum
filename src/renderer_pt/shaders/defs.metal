@@ -294,7 +294,7 @@ struct ShadingContext {
 
   MaterialLobe lobe = Lobe_Invalid;
 
-  ShadingContext(device const MaterialGPU& mat, float2 uv, device Texture* textures);
+  ShadingContext(device const MaterialGPU& mat, float2 uv, float3x3 idt, device Texture* textures);
 };
 
 struct Sample {

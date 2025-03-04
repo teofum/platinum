@@ -171,6 +171,7 @@ void Renderer::render() {
     std::swap(m_postProcessBuffer[0], m_postProcessBuffer[1]);
   }
 
+  m_tonemapPass->options().tonemap->odt = color::transform(m_workingSpace, m_outputSpace);
   m_tonemapPass->apply(m_postProcessBuffer[0], m_renderTarget, cmd);
 
   cmd->commit();
@@ -927,6 +928,7 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
     .flags = flags,
     .totalLightPower = m_lightTotalPower,
     .size = {(uint32_t) m_currentRenderSize.x, (uint32_t) m_currentRenderSize.y},
+    .idt = color::transform(color::BT709, m_workingSpace), // Transform matrix for sRGB -> render space
     .camera = {
       .position = pos,
       .topLeft = pos - camera->focusDistance * w - (vu + vv) * 0.5f,
@@ -939,7 +941,6 @@ void Renderer::updateConstants(Scene::NodeID cameraNodeId, int flags) {
       .apertureRoundness = camera->roundness,
       .bokehPower = camera->bokehPower,
     },
-    .idt = color::transform(color::BT709, m_workingSpace), // Transform matrix for sRGB -> render space
   };
 }
 
