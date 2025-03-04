@@ -190,6 +190,28 @@ void RenderViewport::renderSettingsWindow(const std::vector<Scene::CameraInstanc
   }
   ImGui::Spacing();
 
+  ImGui::SeparatorText("Color Management");
+
+  ImGui::BeginDisabled(!(m_renderer->status() & renderer_pt::Renderer::Status_Ready));
+  if (widgets::combo("Working space", m_colorspaces.at(m_workingSpace).c_str())) {
+    for (const auto& [cs, name]: m_colorspaces) {
+      if (widgets::comboItem(name.c_str(), m_workingSpace == cs)) m_workingSpace = cs;
+      if (m_workingSpace == cs) ImGui::SetItemDefaultFocus();
+    }
+    ImGui::EndCombo();
+  }
+  ImGui::EndDisabled();
+
+  if (widgets::combo("Output space", m_colorspaces.at(m_outputSpace).c_str())) {
+    for (const auto& [cs, name]: m_colorspaces) {
+      if (widgets::comboItem(name.c_str(), m_outputSpace == cs)) m_outputSpace = cs;
+      if (m_outputSpace == cs) ImGui::SetItemDefaultFocus();
+    }
+    ImGui::EndCombo();
+  }
+
+  ImGui::Spacing();
+
   if (ImGui::CollapsingHeader("Post processing", ImGuiTreeNodeFlags_DefaultOpen)) {
     renderPostprocessSettings();
     ImGui::Spacing();
@@ -444,6 +466,7 @@ void RenderViewport::startRender() {
       m_renderSize,
       (uint32_t) m_nextRenderSampleCount,
       m_gmonBuckets,
+      color::getColorspace(m_workingSpace),
       m_renderFlags
     );
     m_store.setRendering(true);

@@ -71,7 +71,6 @@ private:
 
   // ImGui
   bool m_initialized = false;
-  float m_clearColor[4] = {0.45f, 0.55f, 0.6f, 1.0f};
   float m_dpiScaling = 1.0f;
 
   void drawImGui();

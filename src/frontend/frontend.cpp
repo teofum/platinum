@@ -133,6 +133,8 @@ Frontend::InitResult Frontend::init() {
    */
   m_layer = static_cast<CA::MetalLayer*>(SDL_RenderGetMetalLayer(m_sdlRenderer));
   m_layer->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+  metal_utils::setColorspace(m_layer, color::DisplayColorspace::DisplayP3);
+
   m_device = metal_utils::getDevice(m_layer);
 
   ImGui_ImplMetal_Init(m_device);
@@ -198,6 +200,11 @@ void Frontend::start() {
         handleInput(event);
       }
     }
+
+    // Set output color space
+    auto colorspace = m_renderViewport.outputSpace();
+    metal_utils::setColorspace(m_layer, colorspace);
+    m_renderer->outputColorspace() = color::getColorspace(colorspace);
 
     // PT Renderer
     m_renderer->render();

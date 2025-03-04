@@ -1,32 +1,54 @@
-#include <Metal/Metal.h>
-#include <QuartzCore/QuartzCore.h>
+#import <Metal/Metal.h>
+#import <QuartzCore/QuartzCore.h>
+#import <CoreGraphics/CoreGraphics.h>
+
 #include <print>
 
 #include "metal_utils.hpp"
 
 namespace pt::metal_utils {
 
-MTL::Device* getDevice(CA::MetalLayer* layer) noexcept {
+MTL::Device* getDevice(CA::MetalLayer* layer) {
   auto metalLayer = ( __bridge CAMetalLayer*) layer;
   auto* cppDevice = ( __bridge MTL::Device*) metalLayer.device;
   return cppDevice;
 }
 
-CA::MetalDrawable* nextDrawable(CA::MetalLayer* layer) noexcept {
+CA::MetalDrawable* nextDrawable(CA::MetalLayer* layer) {
   auto metalLayer = ( __bridge CAMetalLayer*) layer;
   id <CAMetalDrawable> metalDrawable = [metalLayer nextDrawable];
   auto* cppDrawable = ( __bridge CA::MetalDrawable*) metalDrawable;
   return cppDrawable;
 }
 
-void setupLayer(CA::MetalLayer* layer) noexcept {
+void setupLayer(CA::MetalLayer* layer) {
   auto metalLayer = ( __bridge CAMetalLayer*) layer;
   metalLayer.pixelFormat = MTLPixelFormatRGBA8Unorm_sRGB;
 }
 
-void setDrawableSize(CA::MetalLayer* layer, int width, int height) noexcept {
+void setDrawableSize(CA::MetalLayer* layer, int width, int height) {
   auto metalLayer = ( __bridge CAMetalLayer*) layer;
   metalLayer.drawableSize = CGSize{float(width), float(height)};
+}
+
+void setColorspace(CA::MetalLayer* layer, color::DisplayColorspace colorspace) {
+  auto metalLayer = ( __bridge CAMetalLayer*) layer;
+
+  switch (colorspace) {
+    case color::DisplayColorspace::sRGB: {
+      metalLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+      break;
+    }
+    case color::DisplayColorspace::DisplayP3: {
+      metalLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
+      break;
+    }
+    case color::DisplayColorspace::BT2020: {
+      metalLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_2020);
+      break;
+    }
+  }
+
 }
 
 NS::SharedPtr<MTL::VertexDescriptor> makeVertexDescriptor(const VertexParams& params) {

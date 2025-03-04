@@ -44,4 +44,12 @@ Colorspace makeAgXInset(const Colorspace& base) {
   return {r, g, b, w};
 }
 
+Colorspace getColorspace(DisplayColorspace cs) {
+  switch (cs) {
+    case DisplayColorspace::sRGB: return BT709;
+    case DisplayColorspace::DisplayP3: return DisplayP3;
+    case DisplayColorspace::BT2020: return BT2020;
+  }
+}
+
 }

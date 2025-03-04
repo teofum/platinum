@@ -40,6 +40,7 @@ public:
     float2 viewportSize,
     uint32_t sampleCount,
     uint32_t gmonBuckets,
+    const color::Colorspace& workingSpace,
     int flags = 0
   );
 
@@ -68,6 +69,8 @@ public:
   }
 
   [[nodiscard]] constexpr shaders_pt::GmonOptions& gmonOptions() { return m_gmonOptions; }
+
+  color::Colorspace& outputColorspace();
 
 private:
   // Store
@@ -174,7 +177,7 @@ private:
 
   // Color management
   color::Colorspace m_workingSpace = color::BT2020;
-  color::Colorspace m_outputSpace = color::BT709;
+  color::Colorspace m_outputSpace = color::DisplayP3;
 
   /*
    * Postprocess pipeline

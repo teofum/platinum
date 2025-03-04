@@ -39,6 +39,8 @@ public:
 
   [[nodiscard]] constexpr bool visible() const { return m_visible; }
 
+  [[nodiscard]] constexpr color::DisplayColorspace outputSpace() const { return m_outputSpace; }
+
 private:
   // Renderer
   renderer_pt::Renderer* m_renderer = nullptr;
@@ -87,6 +89,15 @@ private:
     {postprocess::Tonemapper::AgX,        "AgX"},
     {postprocess::Tonemapper::KhronosPBR, "Khronos PBR Neutral"},
     {postprocess::Tonemapper::flim,       "flim"},
+  };
+
+  // Color management settings
+  color::DisplayColorspace m_workingSpace = color::DisplayColorspace::BT2020;
+  color::DisplayColorspace m_outputSpace = color::DisplayColorspace::sRGB;
+  const hashmap<color::DisplayColorspace, std::string> m_colorspaces = {
+    {color::DisplayColorspace::sRGB,      "Rec. 709 (sRGB)"},
+    {color::DisplayColorspace::DisplayP3, "Display P3"},
+    {color::DisplayColorspace::BT2020,    "Rec. 2020"},
   };
 
   void updateScrollAndZoomState();

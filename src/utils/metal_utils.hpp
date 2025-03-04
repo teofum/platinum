@@ -4,6 +4,8 @@
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
 
+#include <core/colorspace.hpp>
+
 namespace pt::metal_utils {
 
 [[nodiscard]] constexpr NS::String* operator ""_ns(
@@ -18,13 +20,15 @@ constexpr NS::SharedPtr<T> ns_shared() {
   return NS::TransferPtr(T::alloc()->init());
 }
 
-MTL::Device* getDevice(CA::MetalLayer* layer) noexcept;
+MTL::Device* getDevice(CA::MetalLayer* layer);
 
-CA::MetalDrawable* nextDrawable(CA::MetalLayer* layer) noexcept;
+CA::MetalDrawable* nextDrawable(CA::MetalLayer* layer);
 
-void setupLayer(CA::MetalLayer* layer) noexcept;
+void setupLayer(CA::MetalLayer* layer);
 
-void setDrawableSize(CA::MetalLayer* layer, int width, int height) noexcept;
+void setDrawableSize(CA::MetalLayer* layer, int width, int height);
+
+void setColorspace(CA::MetalLayer* layer, color::DisplayColorspace colorspace);
 
 struct FunctionConstantParams {
   void* value;

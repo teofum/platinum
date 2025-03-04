@@ -8,6 +8,15 @@ using namespace simd;
 namespace pt::color {
 
 /*
+ * Helper enum to identify a display colorspace
+ */
+enum class DisplayColorspace {
+  sRGB,
+  DisplayP3,
+  BT2020
+};
+
+/*
  * Representation of an RGB colorspace
  */
 class Colorspace {
@@ -44,6 +53,7 @@ extern Colorspace DisplayP3;
 extern Colorspace BT2020;
 
 [[nodiscard]] Colorspace makeAgXInset(const Colorspace& base);
+[[nodiscard]] Colorspace getColorspace(DisplayColorspace cs);
 
 /*
  * Get a transformation matrix from one colorspace to another

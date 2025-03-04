@@ -182,6 +182,7 @@ void Renderer::startRender(
   float2 viewportSize,
   uint32_t sampleCount,
   uint32_t gmonBuckets,
+  const color::Colorspace& workingSpace,
   int flags
 ) {
   if (!equal(viewportSize, m_currentRenderSize)) {
@@ -195,6 +196,8 @@ void Renderer::startRender(
   m_cameraNodeId = cameraNodeId;
   m_flags = flags;
   m_gmonBuckets = gmonBuckets;
+
+  m_workingSpace = workingSpace;
 
   m_startRender = true;
 }
@@ -994,6 +997,10 @@ Material* Renderer::getMaterialOrDefault(std::optional<Scene::AssetID> id) {
   if (material == nullptr) material = &m_store.scene().defaultMaterial();
 
   return material;
+}
+
+color::Colorspace& Renderer::outputColorspace() {
+  return m_outputSpace;
 }
 
 }
