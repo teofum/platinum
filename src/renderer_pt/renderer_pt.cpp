@@ -4,6 +4,7 @@
 #include <cstring>
 #include <filesystem>
 
+#include <print>
 #include <utils/metal_utils.hpp>
 #include <utils/utils.hpp>
 
@@ -390,18 +391,24 @@ void Renderer::loadGgxLutTextures() {
                                 lut.depth > 1 ? "_0" : "");
     auto path = fs::current_path() / filename;
 
-    auto image = loaders::exr::load(path.string()).value();
+    int32_t width, height;
+    float *data;
+    const char *err;
+    int r = LoadEXR(&data, &width, &height, path.c_str(), &err);
+    assert(r >= 0);
 
     // Create temp buffer for reading the image to
-    auto buffer =
-        m_device->newBuffer(sizeof(float) * image.width * image.height,
-                            MTL::ResourceStorageModeShared);
-    memcpy(buffer->contents(), image.images, buffer->length());
+    auto buffer = m_device->newBuffer(sizeof(float) * width * height,
+                                      MTL::ResourceStorageModeShared);
+    float *bufferData = (float *)buffer->contents();
+    for (int i = 0; i < width * height; i++) {
+      bufferData[i] = data[i * 4 + 3];
+    }
 
     // Create the texture
     auto texd = metal_utils::makeTextureDescriptor({
-        .width = (uint32_t)image.width,
-        .height = (uint32_t)image.height,
+        .width = (uint32_t)width,
+        .height = (uint32_t)height,
         .depth = (uint32_t)lut.depth,
         .type = lut.type,
         .format = MTL::PixelFormatR32Float,
@@ -409,9 +416,9 @@ void Renderer::loadGgxLutTextures() {
     auto texture = m_device->newTexture(texd);
 
     // Load the first slice
-    auto region = MTL::Region(0, 0, 0, image.width, image.height, 1);
+    auto region = MTL::Region(0, 0, 0, width, height, 1);
     texture->replaceRegion(region, 0, buffer->contents(),
-                           sizeof(float) * image.width);
+                           sizeof(float) * width);
 
     /*
      * For 3d LUTs, load each subsequent slice and copy it to the texture
@@ -420,17 +427,19 @@ void Renderer::loadGgxLutTextures() {
       filename = std::format("resource/lut/{}_{}.exr", lut.filename, zSlice);
       path = fs::current_path() / filename;
 
-      auto sliceImage = loaders::exr::load(path.string()).value();
-      memcpy(buffer->contents(), image.images, buffer->length());
+      int r = LoadEXR(&data, &width, &height, path.c_str(), &err);
+      assert(r >= 0);
+      for (int i = 0; i < width * height; i++) {
+        bufferData[i] = data[i * 4 + 3];
+      }
 
-      auto sliceRegion =
-          MTL::Region(0, 0, zSlice, sliceImage.width, sliceImage.height, 1);
+      auto sliceRegion = MTL::Region(0, 0, zSlice, width, height, 1);
       texture->replaceRegion(sliceRegion, 0, buffer->contents(),
-                             sizeof(float) * sliceImage.width);
+                             sizeof(float) * width);
     }
 
     m_luts.push_back(texture);
-    m_lutSizes.push_back(image.width);
+    m_lutSizes.push_back(width);
     buffer->release();
   }
 }

@@ -42,7 +42,9 @@ private:
   static std::tuple<MTL::PixelFormat, std::vector<uint8_t>>
   getAttributesForTexture(TextureType type);
 
-  Scene::AssetID load(std::string_view name, TextureType type);
+  Scene::AssetID load(uint8_t *data, std::string_view name, TextureType type,
+                      uint32_t width, uint32_t height, size_t pixelStride,
+                      bool hasAlphaChannel);
 };
 
 } // namespace pt::loaders::texture

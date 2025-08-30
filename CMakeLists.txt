@@ -99,6 +99,20 @@ add_library(tinyexr STATIC
 target_include_directories(tinyexr PUBLIC deps/tinyexr)
 target_link_libraries(tinyexr PRIVATE miniz)
 
+# lodepng
+add_library(lodepng STATIC
+        deps/lodepng/lodepng.cpp
+)
+
+target_include_directories(lodepng PUBLIC deps/lodepng)
+
+# stb_image
+add_library(stb_image STATIC
+        deps/stb_image/stb_image.cpp
+)
+
+target_include_directories(stb_image PUBLIC deps/stb_image)
+
 # Main executable
 file(GLOB_RECURSE PLATINUM_SOURCES src/*.cpp)
 add_executable(platinum
@@ -126,6 +140,8 @@ target_link_libraries(platinum PRIVATE ImGui)
 target_link_libraries(platinum PRIVATE ImPlot)
 target_link_libraries(platinum PRIVATE mikktspace)
 target_link_libraries(platinum PRIVATE tinyexr)
+target_link_libraries(platinum PRIVATE lodepng)
+target_link_libraries(platinum PRIVATE stb_image)
 target_link_libraries(platinum PRIVATE ${fastgltf}/libfastgltf)
 target_link_libraries(platinum PRIVATE ${NFD}/libnfd)
 
