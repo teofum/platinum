@@ -84,9 +84,6 @@ add_library(mikktspace STATIC
 
 target_include_directories(mikktspace PUBLIC deps/mikkt)
 
-# Homebrew dir (for OIIO)
-set(HOMEBREW_OIIO /opt/homebrew/Cellar/openimageio/3.0.1.0)
-
 # Build shaders
 build_shaders(renderer_studio.metallib
         src/renderer_studio/shaders/main.metal
@@ -136,7 +133,6 @@ target_include_directories(platinum PRIVATE deps/fastgltf/include)
 target_include_directories(platinum PRIVATE deps/nfd)
 target_include_directories(platinum PRIVATE deps/entt)
 target_include_directories(platinum PRIVATE deps/json)
-target_include_directories(platinum PRIVATE ${HOMEBREW_OIIO}/include)
 
 target_link_libraries(platinum PRIVATE METAL_CPP)
 target_link_libraries(platinum PRIVATE ${SDL2}/SDL2)
@@ -145,8 +141,6 @@ target_link_libraries(platinum PRIVATE ImPlot)
 target_link_libraries(platinum PRIVATE mikktspace)
 target_link_libraries(platinum PRIVATE ${fastgltf}/libfastgltf)
 target_link_libraries(platinum PRIVATE ${NFD}/libnfd)
-target_link_libraries(platinum PRIVATE ${HOMEBREW_OIIO}/lib/libOpenImageIO.dylib)
-target_link_libraries(platinum PRIVATE ${HOMEBREW_OIIO}/lib/libOpenImageIO_Util.dylib)
 
 # Copy resource files
 add_custom_command(

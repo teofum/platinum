@@ -3,8 +3,6 @@
 
 #include <filesystem>
 #include <simd/simd.h>
-#include <OpenImageIO/imageio.h>
-#include <OpenImageIO/filesystem.h>
 
 #include <core/scene.hpp>
 
@@ -23,25 +21,30 @@ enum class TextureType {
 
 class TextureLoader {
 public:
-  explicit TextureLoader(MTL::Device* device, MTL::CommandQueue* commandQueue, Scene& scene) noexcept;
+  explicit TextureLoader(MTL::Device *device, MTL::CommandQueue *commandQueue,
+                         Scene &scene) noexcept;
 
-  Scene::AssetID loadFromFile(const fs::path& path, std::string_view name, TextureType type);
+  Scene::AssetID loadFromFile(const fs::path &path, std::string_view name,
+                              TextureType type);
 
-  Scene::AssetID loadFromMemory(const uint8_t* data, uint32_t len, std::string_view name, TextureType type);
+  Scene::AssetID loadFromMemory(const uint8_t *data, uint32_t len,
+                                std::string_view name, TextureType type);
 
 private:
-  MTL::Device* m_device;
-  MTL::CommandQueue* m_commandQueue;
-  MTL::ComputePipelineState* m_textureConverterPso = nullptr;
+  MTL::Device *m_device;
+  MTL::CommandQueue *m_commandQueue;
+  MTL::ComputePipelineState *m_textureConverterPso = nullptr;
 
-  Scene& m_scene;
+  Scene &m_scene;
 
-  static MTL::PixelFormat getSourceTextureFormat(TextureType type, OIIO::TypeDesc format);
-  static std::tuple<MTL::PixelFormat, std::vector<uint8_t>> getAttributesForTexture(TextureType type);
+  static MTL::PixelFormat getSourceTextureFormat(TextureType type,
+                                                 int format); // TODO fix this
+  static std::tuple<MTL::PixelFormat, std::vector<uint8_t>>
+  getAttributesForTexture(TextureType type);
 
-  Scene::AssetID load(const std::unique_ptr<OIIO::ImageInput>& in, std::string_view name, TextureType type);
+  Scene::AssetID load(std::string_view name, TextureType type);
 };
 
-}
+} // namespace pt::loaders::texture
 
 #endif
