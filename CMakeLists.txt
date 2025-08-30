@@ -38,6 +38,9 @@ endfunction()
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_FLAGS "-Wall -fno-objc-arc")
 
+# Export compile_commands.json for clangd
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Build metal-cpp library
 add_subdirectory(deps/metal-cmake)
 

@@ -1,0 +1,248 @@
+[
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/ImGui.dir/deps/imgui/imgui.cpp.o -c /Users/teo/dev/platinum/deps/imgui/imgui.cpp",
+  "file": "/Users/teo/dev/platinum/deps/imgui/imgui.cpp",
+  "output": "CMakeFiles/ImGui.dir/deps/imgui/imgui.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/ImGui.dir/deps/imgui/imgui_demo.cpp.o -c /Users/teo/dev/platinum/deps/imgui/imgui_demo.cpp",
+  "file": "/Users/teo/dev/platinum/deps/imgui/imgui_demo.cpp",
+  "output": "CMakeFiles/ImGui.dir/deps/imgui/imgui_demo.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/ImGui.dir/deps/imgui/imgui_draw.cpp.o -c /Users/teo/dev/platinum/deps/imgui/imgui_draw.cpp",
+  "file": "/Users/teo/dev/platinum/deps/imgui/imgui_draw.cpp",
+  "output": "CMakeFiles/ImGui.dir/deps/imgui/imgui_draw.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/ImGui.dir/deps/imgui/imgui_tables.cpp.o -c /Users/teo/dev/platinum/deps/imgui/imgui_tables.cpp",
+  "file": "/Users/teo/dev/platinum/deps/imgui/imgui_tables.cpp",
+  "output": "CMakeFiles/ImGui.dir/deps/imgui/imgui_tables.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/ImGui.dir/deps/imgui/imgui_widgets.cpp.o -c /Users/teo/dev/platinum/deps/imgui/imgui_widgets.cpp",
+  "file": "/Users/teo/dev/platinum/deps/imgui/imgui_widgets.cpp",
+  "output": "CMakeFiles/ImGui.dir/deps/imgui/imgui_widgets.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/ImGui.dir/deps/imgui/backends/imgui_impl_sdl2.cpp.o -c /Users/teo/dev/platinum/deps/imgui/backends/imgui_impl_sdl2.cpp",
+  "file": "/Users/teo/dev/platinum/deps/imgui/backends/imgui_impl_sdl2.cpp",
+  "output": "CMakeFiles/ImGui.dir/deps/imgui/backends/imgui_impl_sdl2.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/ImGui.dir/deps/imgui/backends/imgui_impl_metal.mm.o -c /Users/teo/dev/platinum/deps/imgui/backends/imgui_impl_metal.mm",
+  "file": "/Users/teo/dev/platinum/deps/imgui/backends/imgui_impl_metal.mm",
+  "output": "CMakeFiles/ImGui.dir/deps/imgui/backends/imgui_impl_metal.mm.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/ImGui.dir/deps/imgui/misc/cpp/imgui_stdlib.cpp.o -c /Users/teo/dev/platinum/deps/imgui/misc/cpp/imgui_stdlib.cpp",
+  "file": "/Users/teo/dev/platinum/deps/imgui/misc/cpp/imgui_stdlib.cpp",
+  "output": "CMakeFiles/ImGui.dir/deps/imgui/misc/cpp/imgui_stdlib.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/imgui -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/ImPlot.dir/deps/implot/implot.cpp.o -c /Users/teo/dev/platinum/deps/implot/implot.cpp",
+  "file": "/Users/teo/dev/platinum/deps/implot/implot.cpp",
+  "output": "CMakeFiles/ImPlot.dir/deps/implot/implot.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/imgui -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/ImPlot.dir/deps/implot/implot_items.cpp.o -c /Users/teo/dev/platinum/deps/implot/implot_items.cpp",
+  "file": "/Users/teo/dev/platinum/deps/implot/implot_items.cpp",
+  "output": "CMakeFiles/ImPlot.dir/deps/implot/implot_items.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc  -I/Users/teo/dev/platinum/deps/mikkt -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/mikktspace.dir/deps/mikkt/mikktspace.c.o -c /Users/teo/dev/platinum/deps/mikkt/mikktspace.c",
+  "file": "/Users/teo/dev/platinum/deps/mikkt/mikktspace.c",
+  "output": "CMakeFiles/mikktspace.dir/deps/mikkt/mikktspace.c.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/core/colorspace.cpp.o -c /Users/teo/dev/platinum/src/core/colorspace.cpp",
+  "file": "/Users/teo/dev/platinum/src/core/colorspace.cpp",
+  "output": "CMakeFiles/platinum.dir/src/core/colorspace.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/core/environment.cpp.o -c /Users/teo/dev/platinum/src/core/environment.cpp",
+  "file": "/Users/teo/dev/platinum/src/core/environment.cpp",
+  "output": "CMakeFiles/platinum.dir/src/core/environment.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/core/mesh.cpp.o -c /Users/teo/dev/platinum/src/core/mesh.cpp",
+  "file": "/Users/teo/dev/platinum/src/core/mesh.cpp",
+  "output": "CMakeFiles/platinum.dir/src/core/mesh.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/core/postprocessing.cpp.o -c /Users/teo/dev/platinum/src/core/postprocessing.cpp",
+  "file": "/Users/teo/dev/platinum/src/core/postprocessing.cpp",
+  "output": "CMakeFiles/platinum.dir/src/core/postprocessing.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/core/primitives.cpp.o -c /Users/teo/dev/platinum/src/core/primitives.cpp",
+  "file": "/Users/teo/dev/platinum/src/core/primitives.cpp",
+  "output": "CMakeFiles/platinum.dir/src/core/primitives.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/core/scene.cpp.o -c /Users/teo/dev/platinum/src/core/scene.cpp",
+  "file": "/Users/teo/dev/platinum/src/core/scene.cpp",
+  "output": "CMakeFiles/platinum.dir/src/core/scene.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/core/store.cpp.o -c /Users/teo/dev/platinum/src/core/store.cpp",
+  "file": "/Users/teo/dev/platinum/src/core/store.cpp",
+  "output": "CMakeFiles/platinum.dir/src/core/store.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/core/texture.cpp.o -c /Users/teo/dev/platinum/src/core/texture.cpp",
+  "file": "/Users/teo/dev/platinum/src/core/texture.cpp",
+  "output": "CMakeFiles/platinum.dir/src/core/texture.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/frontend/frontend.cpp.o -c /Users/teo/dev/platinum/src/frontend/frontend.cpp",
+  "file": "/Users/teo/dev/platinum/src/frontend/frontend.cpp",
+  "output": "CMakeFiles/platinum.dir/src/frontend/frontend.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/frontend/theme.cpp.o -c /Users/teo/dev/platinum/src/frontend/theme.cpp",
+  "file": "/Users/teo/dev/platinum/src/frontend/theme.cpp",
+  "output": "CMakeFiles/platinum.dir/src/frontend/theme.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/frontend/widgets.cpp.o -c /Users/teo/dev/platinum/src/frontend/widgets.cpp",
+  "file": "/Users/teo/dev/platinum/src/frontend/widgets.cpp",
+  "output": "CMakeFiles/platinum.dir/src/frontend/widgets.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/frontend/windows/asset_manager.cpp.o -c /Users/teo/dev/platinum/src/frontend/windows/asset_manager.cpp",
+  "file": "/Users/teo/dev/platinum/src/frontend/windows/asset_manager.cpp",
+  "output": "CMakeFiles/platinum.dir/src/frontend/windows/asset_manager.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/frontend/windows/common/material_props.cpp.o -c /Users/teo/dev/platinum/src/frontend/windows/common/material_props.cpp",
+  "file": "/Users/teo/dev/platinum/src/frontend/windows/common/material_props.cpp",
+  "output": "CMakeFiles/platinum.dir/src/frontend/windows/common/material_props.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/frontend/windows/properties.cpp.o -c /Users/teo/dev/platinum/src/frontend/windows/properties.cpp",
+  "file": "/Users/teo/dev/platinum/src/frontend/windows/properties.cpp",
+  "output": "CMakeFiles/platinum.dir/src/frontend/windows/properties.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/frontend/windows/pt_viewport.cpp.o -c /Users/teo/dev/platinum/src/frontend/windows/pt_viewport.cpp",
+  "file": "/Users/teo/dev/platinum/src/frontend/windows/pt_viewport.cpp",
+  "output": "CMakeFiles/platinum.dir/src/frontend/windows/pt_viewport.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/frontend/windows/scene_explorer.cpp.o -c /Users/teo/dev/platinum/src/frontend/windows/scene_explorer.cpp",
+  "file": "/Users/teo/dev/platinum/src/frontend/windows/scene_explorer.cpp",
+  "output": "CMakeFiles/platinum.dir/src/frontend/windows/scene_explorer.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/frontend/windows/studio_viewport.cpp.o -c /Users/teo/dev/platinum/src/frontend/windows/studio_viewport.cpp",
+  "file": "/Users/teo/dev/platinum/src/frontend/windows/studio_viewport.cpp",
+  "output": "CMakeFiles/platinum.dir/src/frontend/windows/studio_viewport.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/frontend/windows/tools/ms_lut_gen.cpp.o -c /Users/teo/dev/platinum/src/frontend/windows/tools/ms_lut_gen.cpp",
+  "file": "/Users/teo/dev/platinum/src/frontend/windows/tools/ms_lut_gen.cpp",
+  "output": "CMakeFiles/platinum.dir/src/frontend/windows/tools/ms_lut_gen.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/loaders/gltf.cpp.o -c /Users/teo/dev/platinum/src/loaders/gltf.cpp",
+  "file": "/Users/teo/dev/platinum/src/loaders/gltf.cpp",
+  "output": "CMakeFiles/platinum.dir/src/loaders/gltf.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/loaders/texture.cpp.o -c /Users/teo/dev/platinum/src/loaders/texture.cpp",
+  "file": "/Users/teo/dev/platinum/src/loaders/texture.cpp",
+  "output": "CMakeFiles/platinum.dir/src/loaders/texture.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/main.cpp.o -c /Users/teo/dev/platinum/src/main.cpp",
+  "file": "/Users/teo/dev/platinum/src/main.cpp",
+  "output": "CMakeFiles/platinum.dir/src/main.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/renderer_pt/renderer_pt.cpp.o -c /Users/teo/dev/platinum/src/renderer_pt/renderer_pt.cpp",
+  "file": "/Users/teo/dev/platinum/src/renderer_pt/renderer_pt.cpp",
+  "output": "CMakeFiles/platinum.dir/src/renderer_pt/renderer_pt.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/renderer_studio/renderer_studio.cpp.o -c /Users/teo/dev/platinum/src/renderer_studio/renderer_studio.cpp",
+  "file": "/Users/teo/dev/platinum/src/renderer_studio/renderer_studio.cpp",
+  "output": "CMakeFiles/platinum.dir/src/renderer_studio/renderer_studio.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/renderer_studio/studio_camera.cpp.o -c /Users/teo/dev/platinum/src/renderer_studio/studio_camera.cpp",
+  "file": "/Users/teo/dev/platinum/src/renderer_studio/studio_camera.cpp",
+  "output": "CMakeFiles/platinum.dir/src/renderer_studio/studio_camera.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/utils/matrices.cpp.o -c /Users/teo/dev/platinum/src/utils/matrices.cpp",
+  "file": "/Users/teo/dev/platinum/src/utils/matrices.cpp",
+  "output": "CMakeFiles/platinum.dir/src/utils/matrices.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/utils/utils.cpp.o -c /Users/teo/dev/platinum/src/utils/utils.cpp",
+  "file": "/Users/teo/dev/platinum/src/utils/utils.cpp",
+  "output": "CMakeFiles/platinum.dir/src/utils/utils.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/utils/cocoa_utils.mm.o -c /Users/teo/dev/platinum/src/utils/cocoa_utils.mm",
+  "file": "/Users/teo/dev/platinum/src/utils/cocoa_utils.mm",
+  "output": "CMakeFiles/platinum.dir/src/utils/cocoa_utils.mm.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/src -I/Users/teo/dev/platinum/deps/sdl2/SDL2.framework/Headers -I/Users/teo/dev/platinum/deps/ankerl -I/Users/teo/dev/platinum/deps/fastgltf/include -I/Users/teo/dev/platinum/deps/nfd -I/Users/teo/dev/platinum/deps/entt -I/Users/teo/dev/platinum/deps/json -I/opt/homebrew/Cellar/openimageio/3.0.1.0/include -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -I/Users/teo/dev/platinum/deps/imgui -I/Users/teo/dev/platinum/deps/implot -I/Users/teo/dev/platinum/deps/mikkt -F/Users/teo/dev/platinum/deps/sdl2 -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/platinum.dir/src/utils/metal_utils.mm.o -c /Users/teo/dev/platinum/src/utils/metal_utils.mm",
+  "file": "/Users/teo/dev/platinum/src/utils/metal_utils.mm",
+  "output": "CMakeFiles/platinum.dir/src/utils/metal_utils.mm.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ -DMETAL_FUNC=\"\" -D__HAVE_INDIRECT_ARGUMENT_BUFFER__ -D__HAVE_MESH__ -D__HAVE_RAYTRACING_CURVES__ -D__HAVE_RAYTRACING_INDIRECT_INSTANCE_BUILD__ -D__HAVE_RAYTRACING_INTERSECTION_QUERY__ -D__HAVE_RAYTRACING_MOTION__ -D__HAVE_RAYTRACING_MULTI_LEVEL_INSTANCING__ -D__HAVE_RAYTRACING_USER_INSTANCE_ID__ -D__HAVE_RAYTRACING__ -D__METAL_VERSION__=\"\" -D__METAL__ -Dconstant=\"\" -Ddevice=\"\" -Dobject_data=\"\" -Dray_data=\"\" -Dthread=\"\" -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/metal/32023/lib/clang/32023.404/include/metal -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/metal_dummy.dir/src/main.cpp.o -c /Users/teo/dev/platinum/src/main.cpp",
+  "file": "/Users/teo/dev/platinum/src/main.cpp",
+  "output": "CMakeFiles/metal_dummy.dir/src/main.cpp.o"
+},
+{
+  "directory": "/Users/teo/dev/platinum/build/deps/metal-cmake",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp -I/Users/teo/dev/platinum/deps/metal-cmake/metal-cpp-extensions -Wall -fno-objc-arc -std=gnu++2b -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/METAL_CPP.dir/definition.cpp.o -c /Users/teo/dev/platinum/deps/metal-cmake/definition.cpp",
+  "file": "/Users/teo/dev/platinum/deps/metal-cmake/definition.cpp",
+  "output": "deps/metal-cmake/CMakeFiles/METAL_CPP.dir/definition.cpp.o"
+}
+]

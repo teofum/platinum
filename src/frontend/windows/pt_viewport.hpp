@@ -93,7 +93,7 @@ private:
 
   // Color management settings
   color::DisplayColorspace m_workingSpace = color::DisplayColorspace::BT2020;
-  color::DisplayColorspace m_outputSpace = color::DisplayColorspace::sRGB;
+  color::DisplayColorspace m_outputSpace = color::DisplayColorspace::DisplayP3;
   const hashmap<color::DisplayColorspace, std::string> m_colorspaces = {
     {color::DisplayColorspace::sRGB,      "Rec. 709 (sRGB)"},
     {color::DisplayColorspace::DisplayP3, "Display P3"},
