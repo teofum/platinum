@@ -89,6 +89,7 @@ Scene::AssetID TextureLoader::loadFromFile(const fs::path &path,
                                            TextureType type) {
   if (type == TextureType::HDR) {
     if (path.extension().string() == ".exr") {
+      // Use tinyexr for EXR file support
       int32_t width, height;
       float *rgba;
       const char *err;
@@ -97,6 +98,7 @@ Scene::AssetID TextureLoader::loadFromFile(const fs::path &path,
 
       return load((uint8_t *)rgba, name, type, width, height, 16, false);
     } else {
+      // Otherwise assume Radiance HDR and use stb_image
       int32_t width, height;
       const float *pixels =
           stbi_loadf(path.c_str(), &width, &height, nullptr, 4);
@@ -104,33 +106,25 @@ Scene::AssetID TextureLoader::loadFromFile(const fs::path &path,
       return load((uint8_t *)pixels, name, type, width, height, 16, false);
     }
   } else {
-    std::vector<uint8_t> imageBytes;
-    uint32_t width, height;
-    uint32_t error = lodepng::decode(imageBytes, width, height, path.string());
-    assert(!error); // TODO handle error
+    int32_t width, height;
+    const uint8_t *pixels =
+        stbi_load(path.c_str(), &width, &height, nullptr, 4);
 
-    return load(imageBytes.data(), name, type, width, height, 4, true);
+    return load(pixels, name, type, width, height, 4, true);
   }
 }
 
 Scene::AssetID TextureLoader::loadFromMemory(const uint8_t *data, uint32_t len,
                                              std::string_view name,
                                              TextureType type) {
-  /*
-   * Create a temporary read buffer and decode the image from memory
-   * This assumes the image is in PNG format as that is usually the
-   * case for glTF, which is currently the only use case.
-   */
-  std::vector<uint8_t> imageBytes;
-  uint32_t width, height;
-  uint32_t error =
-      lodepng::decode(imageBytes, width, height, std::vector(data, data + len));
-  assert(!error); // TODO handle error
+  int32_t width, height;
+  const uint8_t *pixels =
+      stbi_load_from_memory(data, len, &width, &height, nullptr, 4);
 
-  return load(imageBytes.data(), name, type, width, height, 4, true);
+  return load(pixels, name, type, width, height, 4, true);
 }
 
-Scene::AssetID TextureLoader::load(uint8_t *data, std::string_view name,
+Scene::AssetID TextureLoader::load(const uint8_t *data, std::string_view name,
                                    TextureType type, uint32_t width,
                                    uint32_t height, size_t pixelStride,
                                    bool hasAlphaChannel) {
