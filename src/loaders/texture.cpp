@@ -1,13 +1,10 @@
 #include "texture.hpp"
 
 #include <cassert>
-#include <cstring>
 
-#include <lodepng.h>
-#include <print>
 #include <stb_image.h>
+#include <tinyexr.h>
 
-#include <loaders/exr.hpp>
 #include <utils/metal_utils.hpp>
 
 namespace pt::loaders::texture {

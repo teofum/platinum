@@ -1,8 +1,11 @@
 #include "pt_viewport.hpp"
+#include "lodepng.h"
+#include "utils/icc.hpp"
 
 #include <implot.h>
 
 #include <utils/utils.hpp>
+#include <vector>
 
 namespace pt::frontend::windows {
 
@@ -556,17 +559,58 @@ bool RenderViewport::hasImage() const {
 void RenderViewport::exportImage() const {
   const auto savePath = utils::fileSave("../out", "png");
   if (savePath) {
-    // auto out = OIIO::ImageOutput::create(savePath->string());
-    //
-    // if (out) {
-    //   uint2 size;
-    //   auto readbackBuffer = m_renderer->readbackRenderTarget(&size);
-    //
-    //   OIIO::ImageSpec spec(int(size.x), int(size.y), 4,
-    //   OIIO::TypeDesc::UINT8); out->open(savePath->string(), spec);
-    //   out->write_image(OIIO::TypeDesc::UINT8, readbackBuffer->contents());
-    //   out->close();
-    // }
+    uint2 size;
+    auto readbackBuffer = m_renderer->readbackRenderTarget(&size);
+
+    const icc::ICCProfile *icc;
+    const color::Colorspace *colorspace;
+
+    switch (m_outputSpace) {
+    case color::DisplayColorspace::sRGB:
+      icc = &icc::sRGB;
+      colorspace = &color::BT709;
+      break;
+
+    case color::DisplayColorspace::DisplayP3:
+      icc = &icc::DisplayP3;
+      colorspace = &color::DisplayP3;
+      break;
+
+    case color::DisplayColorspace::BT2020:
+      icc = nullptr;
+      colorspace = &color::BT2020;
+      break;
+    }
+
+    auto state = lodepng::State();
+
+    // Set ICC profile, if available
+    if (icc) {
+      lodepng_set_icc(&state.info_png, icc->name.data(), icc->data.data(),
+                      icc->data.size());
+    }
+
+    // Set fallback data
+    // state.info_png.chrm_defined = 1;
+    // state.info_png.chrm_red_x = (uint32_t)colorspace->red().x * 100000;
+    // state.info_png.chrm_red_y = (uint32_t)colorspace->red().y * 100000;
+    // state.info_png.chrm_green_x = (uint32_t)colorspace->green().x * 100000;
+    // state.info_png.chrm_green_y = (uint32_t)colorspace->green().y * 100000;
+    // state.info_png.chrm_blue_x = (uint32_t)colorspace->blue().x * 100000;
+    // state.info_png.chrm_blue_y = (uint32_t)colorspace->blue().y * 100000;
+    // state.info_png.gama_defined = 1;
+    // state.info_png.gama_gamma = 220000;
+
+    std::vector<uint8_t> data;
+    lodepng::encode(data, (uint8_t *)readbackBuffer->contents(), size.x, size.y,
+                    state);
+
+    auto file = fopen(savePath->c_str(), "wb");
+    if (!file)
+      return;
+
+    fwrite(data.data(), 1, data.size(), file);
+    fclose(file);
   }
 }
 

@@ -1,10 +1,11 @@
 #include "renderer_pt.hpp"
-#include "loaders/exr.hpp"
 
 #include <cstring>
 #include <filesystem>
-
 #include <print>
+
+#include <tinyexr.h>
+
 #include <utils/metal_utils.hpp>
 #include <utils/utils.hpp>
 
@@ -812,7 +813,8 @@ void Renderer::rebuildRenderTargets() {
       .width = uint32_t(m_currentRenderSize.x),
       .height = uint32_t(m_currentRenderSize.y),
       .format = MTL::PixelFormatRGBA32Float,
-      .usage = MTL::TextureUsageShaderWrite | MTL::TextureUsageShaderRead,
+      .usage = MTL::TextureUsageShaderWrite | MTL::TextureUsageShaderRead |
+               MTL::TextureUsageRenderTarget,
   });
 
   // Create accumulator and post process RTs
@@ -917,11 +919,13 @@ void Renderer::rebuildLightData() {
    * Create and fill the lights buffer
    */
   size_t lightBufSize = sizeof(shaders_pt::AreaLight) * lights.size();
-  m_lightDataBuffer =
-      m_device->newBuffer(lightBufSize, MTL::ResourceStorageModeShared);
-  memcpy(m_lightDataBuffer->contents(), lights.data(), lightBufSize);
-  if (m_lightDataBuffer)
-    m_pathtracingResidencySet->addAllocation(m_lightDataBuffer);
+  if (lightBufSize) {
+    m_lightDataBuffer =
+        m_device->newBuffer(lightBufSize, MTL::ResourceStorageModeShared);
+    memcpy(m_lightDataBuffer->contents(), lights.data(), lightBufSize);
+    if (m_lightDataBuffer)
+      m_pathtracingResidencySet->addAllocation(m_lightDataBuffer);
+  }
 
   /*
    * Load environment lights into the argument buffer.
