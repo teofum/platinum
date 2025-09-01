@@ -551,7 +551,7 @@ kernel void misKernel(
       /*
        * Calculate direct lighting contribution
        */
-      if (!(sample.flags & (bsdf::Sample_Emitted | bsdf::Sample_Specular))) {
+      if (ctx.roughness > 0.0 || ctx.metallic + ctx.transmission < 1.0) {
         auto r = float3(halton.sample2d(), halton.sample1d());
         
         LightSample lightSample;

@@ -1,14 +1,13 @@
 #ifndef PLATINUM_MATERIAL_HPP
 #define PLATINUM_MATERIAL_HPP
 
+#ifndef __METAL_VERSION__
 #include <simd/simd.h>
 #include <unordered_dense.h>
 
 using namespace simd;
 
 namespace pt {
-
-#ifndef __METAL_VERSION__
 
 /*
  * Material struct used for the scene representation
@@ -49,8 +48,7 @@ struct Material {
   }
 };
 
-#endif
-
 } // namespace pt
 
+#endif
 #endif // PLATINUM_MATERIAL_HPP
