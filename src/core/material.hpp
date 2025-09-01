@@ -2,6 +2,7 @@
 #define PLATINUM_MATERIAL_HPP
 
 #include <simd/simd.h>
+#include <unordered_dense.h>
 
 using namespace simd;
 
@@ -37,17 +38,19 @@ struct Material {
   ankerl::unordered_dense::map<TextureSlot, uint64_t> textures;
 
   constexpr std::optional<uint64_t> getTexture(TextureSlot slot) const {
-    if (textures.contains(slot)) return textures.at(slot);
+    if (textures.contains(slot))
+      return textures.at(slot);
     return std::nullopt;
   }
 
   constexpr bool isEmissive() const {
-    return length_squared(emission * emissionStrength) > 0.0 || textures.contains(TextureSlot::Emission);
+    return length_squared(emission * emissionStrength) > 0.0 ||
+           textures.contains(TextureSlot::Emission);
   }
 };
 
 #endif
 
-}
+} // namespace pt
 
 #endif // PLATINUM_MATERIAL_HPP
