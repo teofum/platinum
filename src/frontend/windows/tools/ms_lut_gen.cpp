@@ -1,5 +1,7 @@
 #include "ms_lut_gen.hpp"
 
+#include <tinyexr.h>
+
 #include <utils/metal_utils.hpp>
 #include <utils/utils.hpp>
 
@@ -283,93 +285,74 @@ void MultiscatterLutGenerator::generate() {
 void MultiscatterLutGenerator::exportToFile() {
   const auto savePath = utils::fileSave("../out", "exr");
   if (savePath) {
-    //   auto out = OIIO::ImageOutput::create(savePath->string());
-    //
-    //   if (out) {
-    //     auto cmd = m_commandQueue->commandBuffer();
-    //     auto benc = cmd->blitCommandEncoder();
-    //
-    //     uint3 size{
-    //       (uint32_t) m_accumulator[0]->width(),
-    //       (uint32_t) m_accumulator[0]->height(),
-    //       (uint32_t) m_accumulator[0]->depth(),
-    //     };
-    //
-    //     const auto bytesPerRow = sizeof(float) * size.x;
-    //     const auto bytesPerImage = bytesPerRow * size.y;
-    //
-    //     const auto readbackBuffer = m_device->newBuffer(bytesPerImage *
-    //     size.z, MTL::ResourceStorageModeShared); benc->copyFromTexture(
-    //       m_accumulator[0],
-    //       0,
-    //       0,
-    //       MTL::Origin(0, 0, 0),
-    //       MTL::Size(size.x, size.y, size.z),
-    //       readbackBuffer,
-    //       0,
-    //       bytesPerRow,
-    //       bytesPerImage
-    //     );
-    //     benc->endEncoding();
-    //     cmd->commit();
-    //     cmd->waitUntilCompleted();
-    //
-    //     std::println("buffer length {}", readbackBuffer->length());
-    //
-    //     for (uint32_t i = 0; i < size.z; i++) {
-    //       OIIO::ImageSpec spec(size.x, size.y, 1, OIIO::TypeDesc::FLOAT);
-    //
-    //       auto path = size.z > 1
-    //                   ? std::format("{}/{}_{}.exr",
-    //                   savePath->parent_path().string(),
-    //                   savePath->stem().string(), i) : savePath->string();
-    //       out->open(path, spec);
-    //       out->write_image(
-    //         OIIO::TypeDesc::FLOAT,
-    //         ((float*) readbackBuffer->contents()) + (size.x * size.y * i)
-    //       );
-    //       out->close();
-    //     }
-    //   }
+    auto cmd = m_commandQueue->commandBuffer();
+    auto benc = cmd->blitCommandEncoder();
+
+    uint3 size{
+        (uint32_t)m_accumulator[0]->width(),
+        (uint32_t)m_accumulator[0]->height(),
+        (uint32_t)m_accumulator[0]->depth(),
+    };
+
+    const auto bytesPerRow = sizeof(float) * size.x;
+    const auto bytesPerImage = bytesPerRow * size.y;
+
+    const auto readbackBuffer = m_device->newBuffer(
+        bytesPerImage * size.z, MTL::ResourceStorageModeShared);
+    benc->copyFromTexture(m_accumulator[0], 0, 0, MTL::Origin(0, 0, 0),
+                          MTL::Size(size.x, size.y, size.z), readbackBuffer, 0,
+                          bytesPerRow, bytesPerImage);
+    benc->endEncoding();
+    cmd->commit();
+    cmd->waitUntilCompleted();
+
+    std::println("buffer length {}", readbackBuffer->length());
+
+    for (uint32_t i = 0; i < size.z; i++) {
+      auto path = size.z > 1 ? std::format("{}/{}_{}.exr",
+                                           savePath->parent_path().string(),
+                                           savePath->stem().string(), i)
+                             : savePath->string();
+
+      const char *err;
+      int r = SaveEXR((float *)readbackBuffer->contents(), size.x, size.y, 1, 0,
+                      path.c_str(), &err);
+      assert(r >= 0);
+    }
   }
 }
 
 void MultiscatterLutGenerator::loadGgxLutTextures() {
-  // m_luts.reserve(m_lutInfo.size());
-  // for (auto lut: m_lutInfo) {
-  //   auto path = fs::current_path() / std::format("resource/lut/{}",
-  //   lut.filename); auto in = OIIO::ImageInput::open(path.string()); if (!in)
-  //   {
-  //     std::println(stderr, "renderer_pt: Failed to open file {}",
-  //     path.string()); assert(false);
-  //   }
-  //
-  //   const auto& spec = in->spec();
-  //
-  //   auto buffer = m_device->newBuffer(
-  //     sizeof(float) * spec.width * spec.height * spec.depth,
-  //     MTL::ResourceStorageModeShared
-  //   );
-  //   in->read_image(0, 0, 0, -1, spec.format, buffer->contents());
-  //
-  //   auto texd = metal_utils::makeTextureDescriptor(
-  //     {
-  //       .type = lut.type,
-  //       .format = MTL::PixelFormatR32Float,
-  //       .width = (uint32_t) spec.width,
-  //       .height = (uint32_t) spec.height,
-  //       .depth = (uint32_t) spec.depth,
-  //     }
-  //   );
-  //   auto texture = m_device->newTexture(texd);
-  //   auto region = MTL::Region(0, 0, 0, spec.width, spec.height, spec.depth);
-  //   texture->replaceRegion(region, 0, buffer->contents(), sizeof(float) *
-  //   spec.width);
-  //
-  //   m_luts.push_back(texture);
-  //   m_lutSizes.push_back(spec.width);
-  //   buffer->release();
-  // }
+  m_luts.reserve(m_lutInfo.size());
+  for (auto lut : m_lutInfo) {
+    auto path =
+        fs::current_path() / std::format("resource/lut/{}", lut.filename);
+
+    int32_t width, height;
+    float *data;
+    const char *err;
+    int r = LoadEXR(&data, &width, &height, path.c_str(), &err);
+    assert(r >= 0);
+
+    auto buffer = m_device->newBuffer(sizeof(float) * width * height,
+                                      MTL::ResourceStorageModeShared);
+
+    auto texd = metal_utils::makeTextureDescriptor({
+        .width = (uint32_t)width,
+        .height = (uint32_t)height,
+        .depth = 1,
+        .type = lut.type,
+        .format = MTL::PixelFormatR32Float,
+    });
+    auto texture = m_device->newTexture(texd);
+    auto region = MTL::Region(0, 0, 0, width, height, 1);
+    texture->replaceRegion(region, 0, buffer->contents(),
+                           sizeof(float) * width);
+
+    m_luts.push_back(texture);
+    m_lutSizes.push_back(width);
+    buffer->release();
+  }
 }
 
 } // namespace pt::frontend::windows
