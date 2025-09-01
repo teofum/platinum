@@ -18,7 +18,7 @@ function(build_shaders LIB_NAME)
 
         list(APPEND SHADER_AIRS ${SHADER_AIR})
         add_custom_command(
-                OUTPUT ${SHADER_AIR}
+                TARGET platinum POST_BUILD
                 COMMAND xcrun -sdk macosx metal -o ${SHADER_AIR} -c ${SHADER_SRC} -I "${CMAKE_CURRENT_SOURCE_DIR}/src"
                 DEPENDS ${SHADER_SRC}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
@@ -27,8 +27,8 @@ function(build_shaders LIB_NAME)
 
     message(STATUS "  Building: ${SHADER_AIRS}")
     add_custom_command(
-            OUTPUT ${LIB_NAME} ___${LIB_NAME} # generate dummy target, this causes cmake to always run the command
-            COMMAND xcrun -sdk macosx metallib -o ${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME} ${SHADER_AIRS}
+            TARGET platinum POST_BUILD
+            COMMAND xcrun -sdk macosx metallib -o ${LIB_NAME} ${SHADER_AIRS}
             DEPENDS ${SHADER_AIRS}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
@@ -37,6 +37,9 @@ endfunction()
 # Set compiler flags
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_FLAGS "-Wall -fno-objc-arc")
+
+# Export compile_commands.json for clangd
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Build metal-cpp library
 add_subdirectory(deps/metal-cmake)
@@ -81,8 +84,66 @@ add_library(mikktspace STATIC
 
 target_include_directories(mikktspace PUBLIC deps/mikkt)
 
-# Homebrew dir (for OIIO)
-set(HOMEBREW_OIIO /opt/homebrew/Cellar/openimageio/3.0.1.0)
+# miniz
+add_library(miniz STATIC
+        deps/miniz/miniz.c
+)
+
+target_include_directories(miniz PUBLIC deps/miniz)
+
+# tinyexr
+add_library(tinyexr STATIC
+        deps/tinyexr/tinyexr.cpp
+)
+
+target_include_directories(tinyexr PUBLIC deps/tinyexr)
+target_link_libraries(tinyexr PRIVATE miniz)
+
+# lodepng
+add_library(lodepng STATIC
+        deps/lodepng/lodepng.cpp
+)
+
+target_include_directories(lodepng PUBLIC deps/lodepng)
+
+# stb_image
+add_library(stb_image STATIC
+        deps/stb_image/stb_image.cpp
+)
+
+target_include_directories(stb_image PUBLIC deps/stb_image)
+
+# Main executable
+file(GLOB_RECURSE PLATINUM_SOURCES src/*.cpp)
+add_executable(platinum
+        ${PLATINUM_SOURCES}
+        src/utils/cocoa_utils.mm
+        src/utils/metal_utils.mm
+        # renderer_studio.metallib
+        # renderer_pt.metallib
+        # tools.metallib
+        # loaders.metallib
+        # viewport.metallib
+)
+
+target_include_directories(platinum PRIVATE src)
+target_include_directories(platinum PRIVATE ${SDL2}/Headers)
+target_include_directories(platinum PRIVATE deps/ankerl)
+target_include_directories(platinum PRIVATE deps/fastgltf/include)
+target_include_directories(platinum PRIVATE deps/nfd)
+target_include_directories(platinum PRIVATE deps/entt)
+target_include_directories(platinum PRIVATE deps/json)
+
+target_link_libraries(platinum PRIVATE METAL_CPP)
+target_link_libraries(platinum PRIVATE ${SDL2}/SDL2)
+target_link_libraries(platinum PRIVATE ImGui)
+target_link_libraries(platinum PRIVATE ImPlot)
+target_link_libraries(platinum PRIVATE mikktspace)
+target_link_libraries(platinum PRIVATE tinyexr)
+target_link_libraries(platinum PRIVATE lodepng)
+target_link_libraries(platinum PRIVATE stb_image)
+target_link_libraries(platinum PRIVATE ${fastgltf}/libfastgltf)
+target_link_libraries(platinum PRIVATE ${NFD}/libnfd)
 
 # Build shaders
 build_shaders(renderer_studio.metallib
@@ -109,36 +170,9 @@ build_shaders(loaders.metallib
         src/loaders/texture_converter.metal
 )
 
-# Main executable
-file(GLOB_RECURSE PLATINUM_SOURCES src/*.cpp)
-add_executable(platinum
-        ${PLATINUM_SOURCES}
-        src/utils/cocoa_utils.mm
-        src/utils/metal_utils.mm
-        renderer_studio.metallib
-        renderer_pt.metallib
-        tools.metallib
-        loaders.metallib
+build_shaders(viewport.metallib
+        src/renderer_pt/shaders/viewport.metal
 )
-
-target_include_directories(platinum PRIVATE src)
-target_include_directories(platinum PRIVATE ${SDL2}/Headers)
-target_include_directories(platinum PRIVATE deps/ankerl)
-target_include_directories(platinum PRIVATE deps/fastgltf/include)
-target_include_directories(platinum PRIVATE deps/nfd)
-target_include_directories(platinum PRIVATE deps/entt)
-target_include_directories(platinum PRIVATE deps/json)
-target_include_directories(platinum PRIVATE ${HOMEBREW_OIIO}/include)
-
-target_link_libraries(platinum PRIVATE METAL_CPP)
-target_link_libraries(platinum PRIVATE ${SDL2}/SDL2)
-target_link_libraries(platinum PRIVATE ImGui)
-target_link_libraries(platinum PRIVATE ImPlot)
-target_link_libraries(platinum PRIVATE mikktspace)
-target_link_libraries(platinum PRIVATE ${fastgltf}/libfastgltf)
-target_link_libraries(platinum PRIVATE ${NFD}/libnfd)
-target_link_libraries(platinum PRIVATE ${HOMEBREW_OIIO}/lib/libOpenImageIO.dylib)
-target_link_libraries(platinum PRIVATE ${HOMEBREW_OIIO}/lib/libOpenImageIO_Util.dylib)
 
 # Copy resource files
 add_custom_command(
@@ -148,13 +182,13 @@ add_custom_command(
         ${CMAKE_CURRENT_BINARY_DIR}/resource
 )
 
-#test
-file(GLOB_RECURSE METAL_SOURCES src/*.metal)
-add_library(metal_dummy
-        src/main.cpp
-        ${METAL_SOURCES}
-)
-
-#set_target_properties(metal_dummy PROPERTIES LINKER_LANGUAGE CXX)
-target_include_directories(metal_dummy PRIVATE /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/metal/32023/lib/clang/32023.404/include/metal)
-target_compile_definitions(metal_dummy PUBLIC device= constant= thread= ray_data= object_data= __METAL__ __HAVE_RAYTRACING__ __HAVE_RAYTRACING_MULTI_LEVEL_INSTANCING__ __HAVE_RAYTRACING_INTERSECTION_QUERY__ __HAVE_RAYTRACING_USER_INSTANCE_ID__ __HAVE_RAYTRACING_MOTION__ __HAVE_RAYTRACING_INDIRECT_INSTANCE_BUILD__ __HAVE_RAYTRACING_CURVES__ __HAVE_INDIRECT_ARGUMENT_BUFFER__ __HAVE_MESH__ __METAL_VERSION__= METAL_FUNC=)
+# #test
+# file(GLOB_RECURSE METAL_SOURCES src/*.metal)
+# add_library(metal_dummy
+#         src/main.cpp
+#         ${METAL_SOURCES}
+# )
+#
+# #set_target_properties(metal_dummy PROPERTIES LINKER_LANGUAGE CXX)
+# target_include_directories(metal_dummy PRIVATE /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/metal/32023/lib/clang/32023.404/include/metal)
+# target_compile_definitions(metal_dummy PUBLIC device= constant= thread= ray_data= object_data= __METAL__ __HAVE_RAYTRACING__ __HAVE_RAYTRACING_MULTI_LEVEL_INSTANCING__ __HAVE_RAYTRACING_INTERSECTION_QUERY__ __HAVE_RAYTRACING_USER_INSTANCE_ID__ __HAVE_RAYTRACING_MOTION__ __HAVE_RAYTRACING_INDIRECT_INSTANCE_BUILD__ __HAVE_RAYTRACING_CURVES__ __HAVE_INDIRECT_ARGUMENT_BUFFER__ __HAVE_MESH__ __METAL_VERSION__= METAL_FUNC=)

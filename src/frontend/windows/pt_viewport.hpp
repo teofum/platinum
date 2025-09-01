@@ -9,6 +9,7 @@
 #include <frontend/widgets.hpp>
 #include <renderer_pt/renderer_pt.hpp>
 #include <renderer_pt/pt_shader_defs.hpp>
+#include <renderer_pt/viewport.hpp>
 
 namespace pt::frontend::windows {
 
@@ -31,6 +32,14 @@ public:
   bool handleInputs(const SDL_Event& event);
 
   const uint8_t* keys = nullptr;
+
+  [[nodiscard]] Viewport viewport() const;
+
+  [[nodiscard]] const MTL::Texture* presentRenderTarget() const;
+
+  [[nodiscard]] constexpr bool visible() const { return m_visible; }
+
+  [[nodiscard]] constexpr color::DisplayColorspace outputSpace() const { return m_outputSpace; }
 
 private:
   // Renderer
@@ -60,6 +69,7 @@ private:
 
   // Viewport properties
   bool m_mouseInViewport = false;
+  bool m_visible = false;
   float2 m_viewportSize = {1, 1};
   float2 m_renderSize = {1, 1};
   float2 m_viewportTopLeft = {0, 0};
@@ -79,6 +89,15 @@ private:
     {postprocess::Tonemapper::AgX,        "AgX"},
     {postprocess::Tonemapper::KhronosPBR, "Khronos PBR Neutral"},
     {postprocess::Tonemapper::flim,       "flim"},
+  };
+
+  // Color management settings
+  color::DisplayColorspace m_workingSpace = color::DisplayColorspace::BT2020;
+  color::DisplayColorspace m_outputSpace = color::DisplayColorspace::DisplayP3;
+  const hashmap<color::DisplayColorspace, std::string> m_colorspaces = {
+    {color::DisplayColorspace::sRGB,      "Rec. 709 (sRGB)"},
+    {color::DisplayColorspace::DisplayP3, "Display P3"},
+    {color::DisplayColorspace::BT2020,    "Rec. 2020"},
   };
 
   void updateScrollAndZoomState();

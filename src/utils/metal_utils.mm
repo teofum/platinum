@@ -1,31 +1,54 @@
-#include <Metal/Metal.h>
-#include <QuartzCore/QuartzCore.h>
+#import <Metal/Metal.h>
+#import <QuartzCore/QuartzCore.h>
+#import <CoreGraphics/CoreGraphics.h>
+
+#include <print>
 
 #include "metal_utils.hpp"
 
 namespace pt::metal_utils {
 
-MTL::Device* getDevice(CA::MetalLayer* layer) noexcept {
+MTL::Device* getDevice(CA::MetalLayer* layer) {
   auto metalLayer = ( __bridge CAMetalLayer*) layer;
   auto* cppDevice = ( __bridge MTL::Device*) metalLayer.device;
   return cppDevice;
 }
 
-CA::MetalDrawable* nextDrawable(CA::MetalLayer* layer) noexcept {
+CA::MetalDrawable* nextDrawable(CA::MetalLayer* layer) {
   auto metalLayer = ( __bridge CAMetalLayer*) layer;
   id <CAMetalDrawable> metalDrawable = [metalLayer nextDrawable];
   auto* cppDrawable = ( __bridge CA::MetalDrawable*) metalDrawable;
   return cppDrawable;
 }
 
-void setupLayer(CA::MetalLayer* layer) noexcept {
+void setupLayer(CA::MetalLayer* layer) {
   auto metalLayer = ( __bridge CAMetalLayer*) layer;
   metalLayer.pixelFormat = MTLPixelFormatRGBA8Unorm_sRGB;
 }
 
-void setDrawableSize(CA::MetalLayer* layer, int width, int height) noexcept {
+void setDrawableSize(CA::MetalLayer* layer, int width, int height) {
   auto metalLayer = ( __bridge CAMetalLayer*) layer;
   metalLayer.drawableSize = CGSize{float(width), float(height)};
+}
+
+void setColorspace(CA::MetalLayer* layer, color::DisplayColorspace colorspace) {
+  auto metalLayer = ( __bridge CAMetalLayer*) layer;
+
+  switch (colorspace) {
+    case color::DisplayColorspace::sRGB: {
+      metalLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+      break;
+    }
+    case color::DisplayColorspace::DisplayP3: {
+      metalLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
+      break;
+    }
+    case color::DisplayColorspace::BT2020: {
+      metalLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_2020);
+      break;
+    }
+  }
+
 }
 
 NS::SharedPtr<MTL::VertexDescriptor> makeVertexDescriptor(const VertexParams& params) {
@@ -92,7 +115,9 @@ NS::SharedPtr<MTL::RenderPipelineDescriptor> makeRenderPipelineDescriptor(const 
 
   uint32_t i = 0;
   for (auto format: params.colorAttachments) {
-    desc->colorAttachments()->object(i++)->setPixelFormat(format);
+    desc->colorAttachments()->object(i)->setPixelFormat(format);
+    if (params.blending) enableBlending(desc->colorAttachments()->object(i));
+    i++;
   }
 
   desc->setDepthAttachmentPixelFormat(params.depthFormat);
@@ -142,6 +167,76 @@ NS::SharedPtr<MTL::ResidencySetDescriptor> makeResidencySetDescriptor(const char
   desc->setInitialCapacity(initialCapacity);
 
   return desc;
+}
+
+MTL::Library* createLibrary(MTL::Device* device, std::string_view name) {
+  NS::Error* error = nullptr;
+
+  auto libName = std::format("{}.metallib", name);
+  MTL::Library* lib = device->newLibrary(NS::String::string(libName.c_str(), NS::UTF8StringEncoding), &error);
+  if (!lib) {
+    std::println(
+      stderr,
+      "Failed to load shader library {}: {}",
+      name,
+      error->localizedDescription()->utf8String()
+    );
+    assert(false);
+  }
+
+  return lib;
+}
+
+MTL::ComputePipelineState* createComputePipeline(
+  MTL::Device* device,
+  std::string_view name,
+  const ComputePipelineParams& params
+) {
+  NS::Error* error = nullptr;
+
+  auto pipeline = device->newComputePipelineState(
+    makeComputePipelineDescriptor(params),
+    MTL::PipelineOptionNone,
+    nullptr,
+    &error
+  );
+  if (!pipeline) {
+    std::println(
+      stderr,
+      "Failed to create compute pipeline {}: {}",
+      name,
+      error->localizedDescription()->utf8String()
+    );
+    assert(false);
+  }
+
+  return pipeline;
+}
+
+MTL::RenderPipelineState* createRenderPipeline(
+  MTL::Device* device,
+  std::string_view name,
+  const RenderPipelineParams& params,
+  std::optional<VertexParams> vertexParams
+) {
+  NS::Error* error = nullptr;
+
+  auto desc = makeRenderPipelineDescriptor(params);
+  if (vertexParams)
+    desc->setVertexDescriptor(makeVertexDescriptor(vertexParams.value()));
+
+  auto pipeline = device->newRenderPipelineState(desc, &error);
+  if (!pipeline) {
+    std::println(
+      stderr,
+      "Failed to create render pipeline {}: {}",
+      name,
+      error->localizedDescription()->utf8String()
+    );
+    assert(false);
+  }
+
+  return pipeline;
 }
 
 }

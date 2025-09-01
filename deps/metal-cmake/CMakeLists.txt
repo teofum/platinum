@@ -16,4 +16,5 @@ target_link_libraries(METAL_CPP
         "-framework AppKit"
         "-framework Foundation"
         "-framework QuartzCore"
+        "-framework CoreGraphics"
 )

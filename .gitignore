@@ -3,7 +3,7 @@ profile.json
 .DS_Store
 *.metallib
 assets/
-build
-platinum.xcodeproj/xcuserdata/
-platinum.xcodeproj/project.xcworkspace/xcuserdata/
+build/
+build_*/
 xcuserdata/
+.cache/

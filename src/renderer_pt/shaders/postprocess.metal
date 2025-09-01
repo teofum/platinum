@@ -564,18 +564,14 @@ fragment float4 tonemap(
   switch (options.tonemapper) {
     case pp::Tonemapper::AgX:
       color = agx::apply(color, options.agxOptions);
-      // No sRGB conversion; AgX has it built in
+      color = powr(color, 2.2); // Linearize AgX output
       break;
     case pp::Tonemapper::KhronosPBR:
       color = khronos_pbr::apply(color, options.khrOptions);
-      color = sRGB(color);
       break;
     case pp::Tonemapper::flim:
       color = flim::apply(color, options.flimOptions);
-      color = sRGB(color);
-    default:
-      color = sRGB(color);
-      break;
+    default: break;
   }
 
   // Apply final grading (lift/gamma/gain)
@@ -594,6 +590,11 @@ fragment float4 tonemap(
 
   float3 t = saturate(powr(color, 1.0 / gamma));
   color = mix(lift, gain, t);
+
+  color = options.odt * color;
+
+  // Apply sRGB EOTF
+  color = sRGB(color);
   
   return float4(color, 1.0);
 }

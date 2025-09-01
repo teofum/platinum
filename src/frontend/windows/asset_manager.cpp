@@ -7,12 +7,12 @@ namespace pt::frontend::windows {
 
 static const char* getTextureFormatName(MTL::Texture* texture) {
   switch (texture->pixelFormat()) {
-    case MTL::PixelFormatRGBA8Unorm:return "Linear RGBA 8bpc";
-    case MTL::PixelFormatRGBA8Unorm_sRGB:return "sRGB RGBA 8bpc";
-    case MTL::PixelFormatRG8Unorm:return "Roughness/Metallic (RG 8bpc)";
-    case MTL::PixelFormatR8Unorm:return "Single channel";
-    case MTL::PixelFormatRGBA32Float:return "HDR (RGBA 32bpc)";
-    default:return "Unknown format";
+    case MTL::PixelFormatRGBA8Unorm: return "Linear RGBA 8bpc";
+    case MTL::PixelFormatRGBA8Unorm_sRGB: return "sRGB RGBA 8bpc";
+    case MTL::PixelFormatRG8Unorm: return "Roughness/Metallic (RG 8bpc)";
+    case MTL::PixelFormatR8Unorm: return "Grayscale 8bit";
+    case MTL::PixelFormatRGBA32Float: return "HDR (RGBA 32bpc)";
+    default: return "Unknown format";
   }
 }
 
@@ -73,14 +73,14 @@ void AssetManager::render() {
 
 void AssetManager::updateLayoutSizes(float availableWidth) {
   m_layoutItemSpacing = float(m_spacing);
-  m_layoutSelectableSpacing = max(0.0f, m_layoutItemSpacing - m_hitSpacing);
+  m_layoutSelectableSpacing = max(0.0f, m_layoutItemSpacing - float(m_hitSpacing));
   m_layoutItemSize = {float(m_iconSize), float(m_iconSize)};
   m_layoutItemStep = {m_layoutItemSize.x + m_layoutItemSpacing, m_layoutItemSize.y + m_layoutItemSpacing};
 
   m_layoutColumnCount = MAX(1u, uint32_t(availableWidth / m_layoutItemStep.x));
   m_layoutRowCount = (uint32_t(m_assetCount) + m_layoutColumnCount - 1) / m_layoutColumnCount;
 
-  m_layoutOuterPadding = m_spacing * 0.5f;
+  m_layoutOuterPadding = float(m_spacing) * 0.5f;
 }
 
 void AssetManager::renderAssetsPanel() {
@@ -110,7 +110,7 @@ void AssetManager::renderAssetsPanel() {
 
     // Draw grid
     ImGuiListClipper clipper;
-    clipper.Begin(m_layoutRowCount, m_layoutItemStep.y);
+    clipper.Begin(int(m_layoutRowCount), m_layoutItemStep.y);
 
     while (clipper.Step()) {
       for (uint32_t rowIdx = clipper.DisplayStart; rowIdx < clipper.DisplayEnd; rowIdx++) {
@@ -124,13 +124,13 @@ void AssetManager::renderAssetsPanel() {
 
           // Calculate item position in grid
           ImVec2 pos(
-            startPos.x + m_layoutItemStep.x * (itemIdx % m_layoutColumnCount),
-            startPos.y + m_layoutItemStep.y * rowIdx
+            startPos.x + m_layoutItemStep.x * float(itemIdx % m_layoutColumnCount),
+            startPos.y + m_layoutItemStep.y * float(rowIdx)
           );
           ImGui::SetCursorScreenPos(pos);
 
           // Draw the actual selectable
-          ImGui::SetNextItemSelectionUserData(asset.id);
+          ImGui::SetNextItemSelectionUserData(ImGuiSelectionUserData(asset.id));
           bool isSelected = m_selection.Contains(ImGuiID(asset.id));
           bool isVisible = ImGui::IsRectVisible(m_layoutItemSize);
 
@@ -186,8 +186,8 @@ void AssetManager::renderAssetsPanel() {
                   color = theme::imguiU32(theme::sRGB(theme->viewportAxisX));
                 }
                 imguiDrawList->AddRectFilled(
-                  {boxMax.x - m_padding - 8, boxMin.y + m_padding},
-                  {boxMax.x - m_padding, boxMin.y + m_padding + 8},
+                  {boxMax.x - float(m_padding) - 8, boxMin.y + float(m_padding)},
+                  {boxMax.x - float(m_padding), boxMin.y + float(m_padding) + 8},
                   color,
                   2
                 );
@@ -198,8 +198,8 @@ void AssetManager::renderAssetsPanel() {
             // TODO: replace this with an icon
             if (m_store.scene().assetRetained(asset.id)) {
               imguiDrawList->AddRectFilled(
-                {boxMin.x + m_padding, boxMin.y + m_padding},
-                {boxMin.x + m_padding + 8, boxMin.y + m_padding + 8},
+                {boxMin.x + float(m_padding), boxMin.y + float(m_padding)},
+                {boxMin.x + float(m_padding) + 8, boxMin.y + float(m_padding) + 8},
                 theme::imguiU32(theme->primary),
                 2
               );
@@ -209,7 +209,7 @@ void AssetManager::renderAssetsPanel() {
             auto labelColor = ImGui::GetColorU32(isSelected ? ImGuiCol_Text : ImGuiCol_TextDisabled);
             auto label = std::format("{}", asset.id);
             imguiDrawList->AddText(
-              {boxMin.x + m_padding, boxMax.y - m_padding - ImGui::GetFontSize()},
+              {boxMin.x + float(m_padding), boxMax.y - float(m_padding) - ImGui::GetFontSize()},
               labelColor,
               label.data()
             );
@@ -286,7 +286,7 @@ void AssetManager::renderTextureProperties(Scene::AnyAsset& texture, Scene::Asse
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
   ImGui::BeginChild(
     "TextureView",
-    {width, width * asset->texture()->height() / asset->texture()->width()},
+    {width, width * float(asset->texture()->height()) / float(asset->texture()->width())},
     ImGuiChildFlags_Borders,
     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
   );
@@ -295,7 +295,7 @@ void AssetManager::renderTextureProperties(Scene::AnyAsset& texture, Scene::Asse
 
   ImGui::Image(
     (ImTextureID) asset->texture(),
-    {width, width * asset->texture()->height() / asset->texture()->width()}
+    {width, width * float(asset->texture()->height()) / float(asset->texture()->width())}
   );
 
   ImGui::EndChild();

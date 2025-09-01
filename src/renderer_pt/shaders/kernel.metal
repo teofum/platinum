@@ -299,7 +299,7 @@ kernel void pathtracingKernel(
        */
       auto r = float4(halton.sample2d(), halton.sample1d(), halton.sample1d());
       
-      bsdf::ShadingContext ctx(*hit.material, hit.uv, args.textures);
+      bsdf::ShadingContext ctx(*hit.material, hit.uv, args.constants.idt, args.textures);
       auto bsdf = bsdf::BSDF(ctx, args.constants, args.luts);
       auto sample = bsdf.sample(hit.wo, r, halton.sample2d());
       
@@ -520,7 +520,7 @@ kernel void misKernel(
        */
       auto r = float4(halton.sample2d(), halton.sample1d(), halton.sample1d());
       
-      bsdf::ShadingContext ctx(*hit.material, hit.uv, args.textures);
+      bsdf::ShadingContext ctx(*hit.material, hit.uv, args.constants.idt, args.textures);
       auto bsdf = bsdf::BSDF(ctx, args.constants, args.luts);
       auto sample = bsdf.sample(hit.wo, r, halton.sample2d());
       

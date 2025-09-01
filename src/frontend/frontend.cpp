@@ -133,6 +133,8 @@ Frontend::InitResult Frontend::init() {
    */
   m_layer = static_cast<CA::MetalLayer*>(SDL_RenderGetMetalLayer(m_sdlRenderer));
   m_layer->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+  metal_utils::setColorspace(m_layer, color::DisplayColorspace::DisplayP3);
+
   m_device = metal_utils::getDevice(m_layer);
 
   ImGui_ImplMetal_Init(m_device);
@@ -162,6 +164,19 @@ Frontend::InitResult Frontend::init() {
   m_renderViewport.init(m_renderer.get());
   m_multiscatterLutGenerator.init(m_device, m_commandQueue);
 
+  /*
+   * Initialize viewport pipeline
+   */
+  auto* lib = metal_utils::createLibrary(m_device, "viewport");
+  m_viewportPso = metal_utils::createRenderPipeline(
+    m_device, "viewport", {
+      .vertexFunction = metal_utils::getFunction(lib, "viewportVertex"),
+      .fragmentFunction = metal_utils::getFunction(lib, "viewportFragment"),
+      .colorAttachments = {m_layer->pixelFormat()}
+    }
+  );
+  lib->release();
+
   return Frontend::InitResult_Ok;
 }
 
@@ -186,6 +201,11 @@ void Frontend::start() {
       }
     }
 
+    // Set output color space
+    auto colorspace = m_renderViewport.outputSpace();
+    metal_utils::setColorspace(m_layer, colorspace);
+    m_renderer->outputColorspace() = color::getColorspace(colorspace);
+
     // PT Renderer
     m_renderer->render();
 
@@ -198,14 +218,6 @@ void Frontend::start() {
 
     auto rpd = metal_utils::ns_shared<MTL::RenderPassDescriptor>();
     auto colorAttachment = rpd->colorAttachments()->object(0);
-    colorAttachment->setClearColor(
-      MTL::ClearColor::Make(
-        m_clearColor[0] * m_clearColor[3],
-        m_clearColor[1] * m_clearColor[3],
-        m_clearColor[2] * m_clearColor[3],
-        m_clearColor[3]
-      )
-    );
     colorAttachment->setTexture(drawable->texture());
     colorAttachment->setLoadAction(MTL::LoadActionClear);
     colorAttachment->setStoreAction(MTL::StoreActionStore);
@@ -226,6 +238,26 @@ void Frontend::start() {
     enc->popDebugGroup();
     enc->endEncoding();
 
+    // Render PT viewport
+    auto* renderTarget = m_renderViewport.presentRenderTarget();
+    if (m_renderViewport.visible() && renderTarget != nullptr) {
+      colorAttachment->setLoadAction(MTL::LoadActionLoad);
+      auto encViewport = cmd->renderCommandEncoder(rpd);
+      encViewport->pushDebugGroup("Render Viewport"_ns);
+
+      auto viewport = m_renderViewport.viewport();
+      float2 screenSize{float(m_layer->drawableSize().width), float(m_layer->drawableSize().height)};
+      encViewport->setRenderPipelineState(m_viewportPso);
+      encViewport->setVertexBytes(&viewport, sizeof(Viewport), 0);
+      encViewport->setVertexBytes(&screenSize, sizeof(float2), 1);
+      encViewport->setFragmentTexture(renderTarget, 0);
+
+      encViewport->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger) 0, 6);
+
+      encViewport->popDebugGroup();
+      encViewport->endEncoding();
+    }
+
     cmd->presentDrawable(drawable);
     cmd->commit();
 
@@ -240,6 +272,8 @@ void Frontend::start() {
   /*
    * Cleanup
    */
+  m_viewportPso->release();
+
   ImGui_ImplMetal_Shutdown();
   ImGui_ImplSDL2_Shutdown();
   ImPlot::DestroyContext();

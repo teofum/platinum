@@ -1,21 +1,21 @@
 #ifndef PLATINUM_FRONTEND_HPP
 #define PLATINUM_FRONTEND_HPP
 
-#include <string>
-#include <optional>
-#include <SDL.h>
-#include <imgui.h>
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
+#include <SDL.h>
+#include <imgui.h>
+#include <optional>
+#include <string>
 
 #include <core/store.hpp>
-#include <renderer_pt/renderer_pt.hpp>
-#include <frontend/windows/properties.hpp>
-#include <frontend/windows/scene_explorer.hpp>
 #include <frontend/windows/asset_manager.hpp>
-#include <frontend/windows/studio_viewport.hpp>
+#include <frontend/windows/properties.hpp>
 #include <frontend/windows/pt_viewport.hpp>
+#include <frontend/windows/scene_explorer.hpp>
+#include <frontend/windows/studio_viewport.hpp>
 #include <frontend/windows/tools/ms_lut_gen.hpp>
+#include <renderer_pt/renderer_pt.hpp>
 
 namespace pt::frontend {
 
@@ -28,7 +28,7 @@ public:
     InitResult_SDLCreateRendererFailed,
   };
 
-  explicit Frontend(Store& store) noexcept;
+  explicit Frontend(Store &store) noexcept;
 
   ~Frontend();
 
@@ -40,21 +40,22 @@ private:
   static constexpr const std::string m_defaultTitle = "Pt [SDL2 | Metal]";
 
   // SDL
-  SDL_Window* m_sdlWindow = nullptr;
-  SDL_Renderer* m_sdlRenderer = nullptr;
-  const uint8_t* m_keys = nullptr;
+  SDL_Window *m_sdlWindow = nullptr;
+  SDL_Renderer *m_sdlRenderer = nullptr;
+  const uint8_t *m_keys = nullptr;
 
   // Metal
-  CA::MetalLayer* m_layer = nullptr;
-  MTL::Device* m_device = nullptr;
-  MTL::CommandQueue* m_commandQueue = nullptr;
+  CA::MetalLayer *m_layer = nullptr;
+  MTL::Device *m_device = nullptr;
+  MTL::CommandQueue *m_commandQueue = nullptr;
   dispatch_semaphore_t m_semaphore;
 
   // Store and frontend shared state
-  Store& m_store;
+  Store &m_store;
 
   // Renderers
   std::unique_ptr<renderer_pt::Renderer> m_renderer;
+  MTL::RenderPipelineState *m_viewportPso = nullptr;
 
   // Windows
   windows::Properties m_properties;
@@ -70,18 +71,17 @@ private:
 
   // ImGui
   bool m_initialized = false;
-  float m_clearColor[4] = {0.45f, 0.55f, 0.6f, 1.0f};
   float m_dpiScaling = 1.0f;
 
   void drawImGui();
 
-  void handleInput(const SDL_Event& event);
+  void handleInput(const SDL_Event &event);
 
   void mainDockSpace();
 
   void renderMenuBar();
 };
 
-}
+} // namespace pt::frontend
 
-#endif //PLATINUM_FRONTEND_HPP
+#endif // PLATINUM_FRONTEND_HPP

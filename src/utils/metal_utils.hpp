@@ -4,6 +4,8 @@
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
 
+#include <core/colorspace.hpp>
+
 namespace pt::metal_utils {
 
 [[nodiscard]] constexpr NS::String* operator ""_ns(
@@ -18,13 +20,15 @@ constexpr NS::SharedPtr<T> ns_shared() {
   return NS::TransferPtr(T::alloc()->init());
 }
 
-MTL::Device* getDevice(CA::MetalLayer* layer) noexcept;
+MTL::Device* getDevice(CA::MetalLayer* layer);
 
-CA::MetalDrawable* nextDrawable(CA::MetalLayer* layer) noexcept;
+CA::MetalDrawable* nextDrawable(CA::MetalLayer* layer);
 
-void setupLayer(CA::MetalLayer* layer) noexcept;
+void setupLayer(CA::MetalLayer* layer);
 
-void setDrawableSize(CA::MetalLayer* layer, int width, int height) noexcept;
+void setDrawableSize(CA::MetalLayer* layer, int width, int height);
+
+void setColorspace(CA::MetalLayer* layer, color::DisplayColorspace colorspace);
 
 struct FunctionConstantParams {
   void* value;
@@ -59,6 +63,7 @@ struct RenderPipelineParams {
   std::vector<MTL::PixelFormat> colorAttachments;
   MTL::PixelFormat depthFormat = MTL::PixelFormatInvalid;
   MTL::PixelFormat stencilFormat = MTL::PixelFormatInvalid;
+  bool blending = false;
 };
 
 /**
@@ -123,6 +128,30 @@ void enableBlending(
 );
 
 NS::SharedPtr<MTL::ResidencySetDescriptor> makeResidencySetDescriptor(const char* label, uint32_t initialCapacity = 1);
+
+/**
+ * Utility function to get a shader library and abort on fail
+ */
+MTL::Library* createLibrary(MTL::Device* device, std::string_view name);
+
+/**
+ * Utility function to create a compute pipeline and abort on fail
+ */
+MTL::ComputePipelineState* createComputePipeline(
+  MTL::Device* device,
+  std::string_view name,
+  const ComputePipelineParams& params
+);
+
+/**
+ * Utility function to create a render pipeline and abort on fail
+ */
+MTL::RenderPipelineState* createRenderPipeline(
+  MTL::Device* device,
+  std::string_view name,
+  const RenderPipelineParams& params,
+  std::optional<VertexParams> vertexParams = std::nullopt
+);
 
 }
 

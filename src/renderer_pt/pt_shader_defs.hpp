@@ -103,14 +103,15 @@ struct MaterialGPU {
 };
 
 struct Constants {
-  uint32_t frameIdx, spp, gmonBuckets;
-  uint32_t lightCount;
-  uint32_t envLightCount;
-  uint32_t lutSizeE, lutSizeEavg;
-  int flags;
-  float totalLightPower;
-  uint2 size;
-  CameraData camera;
+  uint32_t frameIdx{}, spp{}, gmonBuckets{};
+  uint32_t lightCount{};
+  uint32_t envLightCount{};
+  uint32_t lutSizeE{}, lutSizeEavg{};
+  int flags{};
+  float totalLightPower{};
+  uint2 size{};
+  float3x3 idt{};
+  CameraData camera{};
 };
 
 struct VertexResource {
@@ -146,7 +147,6 @@ struct Texture {
 #endif
 
 struct Arguments {
-  Constants constants;
   metal_ptr(VertexResource, device) vertexResources;
   metal_ptr(PrimitiveResource, device) primitiveResources;
   metal_ptr(InstanceResource, device) instanceResources;
@@ -158,6 +158,7 @@ struct Arguments {
   metal_ptr(Texture, device) textures;
 
   Luts luts;
+  Constants constants;
 };
 
 struct GmonOptions {
