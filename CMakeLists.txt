@@ -20,7 +20,6 @@ function(build_shaders LIB_NAME)
         add_custom_command(
                 TARGET platinum POST_BUILD
                 COMMAND xcrun -sdk macosx metal -o ${SHADER_AIR} -c ${SHADER_SRC} -I "${CMAKE_CURRENT_SOURCE_DIR}/src"
-                DEPENDS ${SHADER_SRC}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         )
     endforeach ()
@@ -29,7 +28,6 @@ function(build_shaders LIB_NAME)
     add_custom_command(
             TARGET platinum POST_BUILD
             COMMAND xcrun -sdk macosx metallib -o ${LIB_NAME} ${SHADER_AIRS}
-            DEPENDS ${SHADER_AIRS}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
 endfunction()

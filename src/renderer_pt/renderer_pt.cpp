@@ -892,8 +892,9 @@ void Renderer::rebuildLightData() {
           const auto edge2 = v2 - v0;
           const auto area = length(cross(edge1, edge2)) * 0.5f;
 
-          const auto emission =
-              material.asset->emission * material.asset->emissionStrength;
+          const auto emission = color::transform(color::BT709, m_workingSpace) *
+                                material.asset->emission *
+                                material.asset->emissionStrength;
           const auto lightPower =
               dot(emission, float3{0, 1, 0}) * area * std::numbers::pi_v<float>;
           m_lightTotalPower += lightPower;
