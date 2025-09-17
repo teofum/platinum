@@ -197,6 +197,11 @@ BSDF::BSDF(thread ShadingContext &ctx, constant Constants &constants,
  * BSDF lobes based on material parameters and the PDF for each.
  */
 Eval BSDF::eval(float3 wo, float3 wi) {
+  return {
+      .f = m_ctx.albedo / M_PI_F,
+      .pdf = abs(wi.z) / M_PI_F,
+  };
+
   if (wo.z < 1.5e-3f || wi.z < 1.5e-3f)
     return {};
 
@@ -224,9 +229,25 @@ Eval BSDF::eval(float3 wo, float3 wi) {
 }
 
 /*
- * Given an outgoing light direction, importance sample the
+ * Given an outgoing light direction, importance sample the BSDF for an
+ * incident light direction
  */
 Sample BSDF::sample(float3 wo, float4 r, float2 rc) {
+  auto wi = samplers::sampleCosineHemisphere(r.xy);
+  if (wo.z < 0.0f)
+    wi *= -1.0f;
+
+  auto flags = Sample_Reflected | Sample_Diffuse;
+  if (m_ctx.flags & MaterialGPU::Material_Emissive)
+    flags |= Sample_Emitted;
+  return {
+      .flags = flags,
+      .wi = wi,
+      .f = m_ctx.albedo / M_PI_F,
+      .Le = m_ctx.emission,
+      .pdf = abs(wi.z) / M_PI_F,
+  };
+
   float c = m_ctx.clearcoat;
   float m = m_ctx.metallic;
   float t = m_ctx.transmission;

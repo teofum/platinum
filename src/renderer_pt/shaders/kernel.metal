@@ -618,7 +618,8 @@ kernel void misKernel(uint2 tid [[thread_position_in_grid]],
         const float3 wi = hit.frame.worldToLocal(lightSample.wi);
         const auto bsdfEval = bsdf.eval(hit.wo, wi);
 
-        if (length_squared(bsdfEval.f) > 0.0f) {
+        if (dot(lightSample.wi, hit.geometricNormal) > 0.0 &&
+            length_squared(bsdfEval.f) > 0.0) {
           ray.direction = lightSample.wi;
           ray.max_distance = length(lightSample.pos - hit.pos) - 1e-3f;
           i.accept_any_intersection(true);
@@ -646,15 +647,20 @@ kernel void misKernel(uint2 tid [[thread_position_in_grid]],
 
       /*
        * Update attenuation
+       * Clamp cos/pdf term to 1 to prevent fireflies from numerical instability
+       * with an abnormally small pdf
        */
-      attenuation *= sample.f * abs(sample.wi.z) / sample.pdf;
+      attenuation *= sample.f * min(1.0, abs(sample.wi.z) / sample.pdf);
 
       /*
        * Russian roulette
+       * Clamp termination probability to 99.9% to prevent numerical instability
+       * on the divide
        */
       if (bounce > 0) {
-        float q = max(
-            0.0, 1.0 - max(attenuation.r, max(attenuation.g, attenuation.b)));
+        float q =
+            clamp(1.0 - max(attenuation.r, max(attenuation.g, attenuation.b)),
+                  0.0, 1.0 - 1e-3);
         if (halton.sample1d() < q)
           break;
         attenuation /= 1.0 - q;
