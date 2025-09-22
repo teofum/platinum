@@ -1,6 +1,7 @@
 #ifndef PLATINUM_UTILS_HPP
 #define PLATINUM_UTILS_HPP
 
+#include <algorithm>
 #include <cstddef>
 #include <filesystem>
 #include <nfd.h>

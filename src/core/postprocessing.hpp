@@ -9,8 +9,8 @@
 
 #ifndef __METAL_VERSION__
 
-#include <simd/simd.h>
 #include <Metal/Metal.hpp>
+#include <simd/simd.h>
 
 #include <utils/metal_utils.hpp>
 #include <utils/utils.hpp>
@@ -36,33 +36,33 @@ struct Look {
 namespace looks {
 
 address_space(constant) constexpr const Look none = {
-  .offset = float3(0.0),
-  .slope = float3(1.0),
-  .power = float3(1.0),
-  .saturation = 1.0,
+    .offset = float3(0.0),
+    .slope = float3(1.0),
+    .power = float3(1.0),
+    .saturation = 1.0,
 };
 
 address_space(constant) constexpr const Look golden = {
-  .offset = float3(0.0),
-  .slope = float3{1.0, 0.9, 0.5},
-  .power = float3(0.8),
-  .saturation = 0.8,
+    .offset = float3(0.0),
+    .slope = float3{1.0, 0.9, 0.5},
+    .power = float3(0.8),
+    .saturation = 0.8,
 };
 
 address_space(constant) constexpr const Look punchy = {
-  .offset = float3(0.0),
-  .slope = float3(1.0),
-  .power = float3(1.35),
-  .saturation = 1.4,
+    .offset = float3(0.0),
+    .slope = float3(1.0),
+    .power = float3(1.35),
+    .saturation = 1.4,
 };
 
-}
+} // namespace looks
 
 struct Options {
   Look look = looks::none;
 };
 
-}
+} // namespace agx
 
 namespace khronos_pbr {
 
@@ -71,7 +71,7 @@ struct Options {
   float desaturation = 0.15;
 };
 
-}
+} // namespace khronos_pbr
 
 namespace flim {
 
@@ -107,66 +107,66 @@ struct Options {
 namespace presets {
 
 address_space(constant) constexpr const Options flim{
-  .preExposure = 4.3,
-  .preFormationFilter = {1.0, 1.0, 1.0},
-  .preFormationFilterStrength = 0.0,
+    .preExposure = 4.3,
+    .preFormationFilter = {1.0, 1.0, 1.0},
+    .preFormationFilterStrength = 0.0,
 
-  .extendedGamutScale = {1.05, 1.12, 1.045},
-  .extendedGamutRotation = {0.5, 2.0, 0.1},
-  .extendedGamutMul = {1.0, 1.0, 1.0},
+    .extendedGamutScale = {1.05, 1.12, 1.045},
+    .extendedGamutRotation = {0.5, 2.0, 0.1},
+    .extendedGamutMul = {1.0, 1.0, 1.0},
 
-  .sigmoidLog2Min = -10.0,
-  .sigmoidLog2Max = 22.0,
-  .sigmoidToe = {0.440, 0.280},
-  .sigmoidShoulder = {0.591, 0.779},
+    .sigmoidLog2Min = -10.0,
+    .sigmoidLog2Max = 22.0,
+    .sigmoidToe = {0.440, 0.280},
+    .sigmoidShoulder = {0.591, 0.779},
 
-  .negativeExposure = 6.0,
-  .negativeDensity = 5.0,
+    .negativeExposure = 6.0,
+    .negativeDensity = 5.0,
 
-  .printBacklight = {1.0, 1.0, 1.0},
-  .printExposure = 6.0,
-  .printDensity = 27.5,
+    .printBacklight = {1.0, 1.0, 1.0},
+    .printExposure = 6.0,
+    .printDensity = 27.5,
 
-  .blackPoint = 0.0,
-  .autoBlackPoint = true,
-  .postFormationFilter = {1.0, 1.0, 1.0},
-  .postFormationFilterStrength = 0.0,
+    .blackPoint = 0.0,
+    .autoBlackPoint = true,
+    .postFormationFilter = {1.0, 1.0, 1.0},
+    .postFormationFilterStrength = 0.0,
 
-  .midtoneSaturation = 1.02,
+    .midtoneSaturation = 1.02,
 };
 
 address_space(constant) constexpr const Options silver{
-  .preExposure = 3.9,
-  .preFormationFilter = {0.0, 0.5, 1.0},
-  .preFormationFilterStrength = 0.05,
+    .preExposure = 3.9,
+    .preFormationFilter = {0.0, 0.5, 1.0},
+    .preFormationFilterStrength = 0.05,
 
-  .extendedGamutScale = {1.05, 1.12, 1.045},
-  .extendedGamutRotation = {0.5, 2.0, 0.1},
-  .extendedGamutMul = {1.0, 1.0, 1.06},
+    .extendedGamutScale = {1.05, 1.12, 1.045},
+    .extendedGamutRotation = {0.5, 2.0, 0.1},
+    .extendedGamutMul = {1.0, 1.0, 1.06},
 
-  .sigmoidLog2Min = -10.0,
-  .sigmoidLog2Max = 22.0,
-  .sigmoidToe = {0.440, 0.280},
-  .sigmoidShoulder = {0.591, 0.779},
+    .sigmoidLog2Min = -10.0,
+    .sigmoidLog2Max = 22.0,
+    .sigmoidToe = {0.440, 0.280},
+    .sigmoidShoulder = {0.591, 0.779},
 
-  .negativeExposure = 4.7,
-  .negativeDensity = 7.0,
+    .negativeExposure = 4.7,
+    .negativeDensity = 7.0,
 
-  .printBacklight = {0.9992, 0.99, 1.0},
-  .printExposure = 4.7,
-  .printDensity = 30.0,
+    .printBacklight = {0.9992, 0.99, 1.0},
+    .printExposure = 4.7,
+    .printDensity = 30.0,
 
-  .blackPoint = 0.5,
-  .autoBlackPoint = false,
-  .postFormationFilter = {1.0, 1.0, 0.0},
-  .postFormationFilterStrength = 0.04,
+    .blackPoint = 0.5,
+    .autoBlackPoint = false,
+    .postFormationFilter = {1.0, 1.0, 0.0},
+    .postFormationFilterStrength = 0.04,
 
-  .midtoneSaturation = 1.0,
+    .midtoneSaturation = 1.0,
 };
 
-}
+} // namespace presets
 
-}
+} // namespace flim
 
 enum class Tonemapper {
   None,
@@ -242,54 +242,52 @@ public:
   struct Options {
     Type type = Type::Exposure;
     union {
-      ExposureOptions* exposure = nullptr;
-      ToneCurveOptions* toneCurve;
-      VignetteOptions* vignette;
-      ChromaticAberrationOptions* chromaticAberration;
-      ContrastSaturationOptions* contrastSaturation;
-      TonemapOptions* tonemap;
+      ExposureOptions *exposure = nullptr;
+      ToneCurveOptions *toneCurve;
+      VignetteOptions *vignette;
+      ChromaticAberrationOptions *chromaticAberration;
+      ContrastSaturationOptions *contrastSaturation;
+      TonemapOptions *tonemap;
     };
   };
 
-  PostProcessPass(
-    MTL::Device* device,
-    MTL::Library* lib,
-    const char* functionName,
-    MTL::PixelFormat rtFormat
-  ) noexcept;
+  PostProcessPass(MTL::Device *device, MTL::Library *lib,
+                  const char *functionName, MTL::PixelFormat rtFormat) noexcept;
 
   virtual ~PostProcessPass();
 
-  virtual void apply(MTL::Texture* src, MTL::Texture* dst, MTL::CommandBuffer* cmd) = 0;
+  virtual void apply(MTL::Texture *src, MTL::Texture *dst,
+                     MTL::CommandBuffer *cmd) = 0;
 
   virtual Options options() = 0;
 
 protected:
-  MTL::Device* m_device;
-  MTL::RenderPipelineState* m_pso;
+  MTL::Device *m_device;
+  MTL::RenderPipelineState *m_pso;
 
   std::string m_name;
 };
 
-template<typename T, PostProcessPass::Type PassType, utils::StringLiteral FunctionName, bool IsFinal = false>
+template <typename T, PostProcessPass::Type PassType,
+          utils::StringLiteral FunctionName, bool IsFinal = false>
 class BasicPostProcessPass : public PostProcessPass {
 public:
   using Options = T;
 
-  [[maybe_unused]] BasicPostProcessPass(MTL::Device* device, MTL::Library* lib) noexcept
-    : PostProcessPass(
-    device,
-    lib,
-    FunctionName.value,
-    IsFinal ? MTL::PixelFormatRGBA8Unorm : MTL::PixelFormatRGBA32Float
-  ) {}
+  [[maybe_unused]] BasicPostProcessPass(MTL::Device *device,
+                                        MTL::Library *lib) noexcept
+      : PostProcessPass(device, lib, FunctionName.value,
+                        IsFinal ? MTL::PixelFormatRGBA8Unorm
+                                : MTL::PixelFormatRGBA32Float) {}
 
-  void apply(MTL::Texture* src, MTL::Texture* dst, MTL::CommandBuffer* cmd) final {
+  void apply(MTL::Texture *src, MTL::Texture *dst,
+             MTL::CommandBuffer *cmd) final {
     auto rpd = ns_shared<MTL::RenderPassDescriptor>();
 
     rpd->colorAttachments()->object(0)->setTexture(dst);
     rpd->colorAttachments()->object(0)->setLoadAction(MTL::LoadActionClear);
-    rpd->colorAttachments()->object(0)->setClearColor(MTL::ClearColor::Make(0.0f, 0.0f, 0.0f, 1.0f));
+    rpd->colorAttachments()->object(0)->setClearColor(
+        MTL::ClearColor::Make(0.0f, 0.0f, 0.0f, 1.0f));
 
     auto postEnc = cmd->renderCommandEncoder(rpd);
 
@@ -297,14 +295,14 @@ public:
     postEnc->setFragmentTexture(src, 0);
     postEnc->setFragmentBytes(&m_options, sizeof(Options), 0);
 
-    postEnc->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger) 0, 6);
+    postEnc->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger)0, 6);
     postEnc->endEncoding();
   }
 
   PostProcessPass::Options options() final {
     return {
-      PassType,
-      {(ExposureOptions*) ((void*) &m_options)},
+        PassType,
+        {(ExposureOptions *)((void *)&m_options)},
     };
   }
 
@@ -312,16 +310,30 @@ private:
   Options m_options;
 };
 
-using Exposure = BasicPostProcessPass<ExposureOptions, PostProcessPass::Type::Exposure, "exposure">;
-using Vignette = BasicPostProcessPass<VignetteOptions, PostProcessPass::Type::Vignette, "vignette">;
-using ChromaticAberration = BasicPostProcessPass<ChromaticAberrationOptions, PostProcessPass::Type::ChromaticAberration, "chromaticAberration">;
-using ContrastSaturation = BasicPostProcessPass<ContrastSaturationOptions, PostProcessPass::Type::ContrastSaturation, "contrastSaturation">;
-using ToneCurve = BasicPostProcessPass<ToneCurveOptions, PostProcessPass::Type::ToneCurve, "toneCurve">;
-using Tonemap = BasicPostProcessPass<TonemapOptions, PostProcessPass::Type::Tonemap, "tonemap", true>;
+using Exposure =
+    BasicPostProcessPass<ExposureOptions, PostProcessPass::Type::Exposure,
+                         "exposure">;
+using Vignette =
+    BasicPostProcessPass<VignetteOptions, PostProcessPass::Type::Vignette,
+                         "vignette">;
+using ChromaticAberration =
+    BasicPostProcessPass<ChromaticAberrationOptions,
+                         PostProcessPass::Type::ChromaticAberration,
+                         "chromaticAberration">;
+using ContrastSaturation =
+    BasicPostProcessPass<ContrastSaturationOptions,
+                         PostProcessPass::Type::ContrastSaturation,
+                         "contrastSaturation">;
+using ToneCurve =
+    BasicPostProcessPass<ToneCurveOptions, PostProcessPass::Type::ToneCurve,
+                         "toneCurve">;
+using Tonemap =
+    BasicPostProcessPass<TonemapOptions, PostProcessPass::Type::Tonemap,
+                         "tonemap", true>;
 
 #endif
 
-}
-}
+} // namespace postprocess
+} // namespace pt
 
-#endif //PLATINUM_POSTPROCESSING_HPP
+#endif // PLATINUM_POSTPROCESSING_HPP

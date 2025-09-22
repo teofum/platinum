@@ -619,6 +619,7 @@ kernel void misKernel(uint2 tid [[thread_position_in_grid]],
         const auto bsdfEval = bsdf.eval(hit.wo, wi);
 
         if (dot(lightSample.wi, hit.geometricNormal) > 0.0 &&
+            dot(lightSample.wi, lightSample.normal) < 0.0 &&
             length_squared(bsdfEval.f) > 0.0) {
           ray.direction = lightSample.wi;
           ray.max_distance = length(lightSample.pos - hit.pos) - 1e-3f;
@@ -645,12 +646,13 @@ kernel void misKernel(uint2 tid [[thread_position_in_grid]],
       if (!(sample.flags & (bsdf::Sample_Reflected | bsdf::Sample_Transmitted)))
         break;
 
+      if (sample.wi.z < 1e-4)
+        break;
+
       /*
        * Update attenuation
-       * Clamp cos/pdf term to 1 to prevent fireflies from numerical instability
-       * with an abnormally small pdf
        */
-      attenuation *= sample.f * min(1.0, abs(sample.wi.z) / sample.pdf);
+      attenuation *= sample.f * abs(sample.wi.z) / sample.pdf;
 
       /*
        * Russian roulette

@@ -1,36 +1,32 @@
 #include "frontend.hpp"
 
-#include <print>
 #include <Foundation/Foundation.hpp>
+#include <backends/imgui_impl_metal.h>
+#include <backends/imgui_impl_sdl2.h>
 #include <imgui_internal.h>
 #include <implot.h>
-#include <backends/imgui_impl_sdl2.h>
-#include <backends/imgui_impl_metal.h>
+#include <print>
 
-#include <utils/metal_utils.hpp>
 #include <utils/cocoa_utils.h>
+#include <utils/metal_utils.hpp>
 
 #include "theme.hpp"
 
 namespace pt::frontend {
-using metal_utils::operator ""_ns;
+using metal_utils::operator""_ns;
 
-static bool isExitEvent(const SDL_Event& event, uint32_t windowID) {
-  return event.type == SDL_QUIT || (
-    event.type == SDL_WINDOWEVENT &&
-    event.window.event == SDL_WINDOWEVENT_CLOSE &&
-    event.window.windowID == windowID
-  );
+static bool isExitEvent(const SDL_Event &event, uint32_t windowID) {
+  return event.type == SDL_QUIT ||
+         (event.type == SDL_WINDOWEVENT &&
+          event.window.event == SDL_WINDOWEVENT_CLOSE &&
+          event.window.windowID == windowID);
 }
 
-Frontend::Frontend(Store& store) noexcept
-  : m_store(store),
-    m_properties(m_store),
-    m_sceneExplorer(m_store),
-    m_assetManager(m_store),
-    m_studioViewport(m_store, m_dpiScaling),
-    m_renderViewport(m_store, m_dpiScaling),
-    m_multiscatterLutGenerator(m_store, &m_toolMultiscatterLutGeneratorOpen) {
+Frontend::Frontend(Store &store) noexcept
+    : m_store(store), m_properties(m_store), m_sceneExplorer(m_store),
+      m_assetManager(m_store), m_studioViewport(m_store, m_dpiScaling),
+      m_renderViewport(m_store, m_dpiScaling),
+      m_multiscatterLutGenerator(m_store, &m_toolMultiscatterLutGeneratorOpen) {
   m_semaphore = dispatch_semaphore_create(1);
 }
 
@@ -46,12 +42,12 @@ Frontend::InitResult Frontend::init() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImPlot::CreateContext();
-  ImGuiIO& io = ImGui::GetIO();
+  ImGuiIO &io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
   ImGui::StyleColorsLight();
-  auto& style = ImGui::GetStyle();
+  auto &style = ImGui::GetStyle();
   style.FrameRounding = 4.0f;
   style.PopupRounding = 4.0f;
   style.WindowRounding = 4.0f;
@@ -63,7 +59,8 @@ Frontend::InitResult Frontend::init() {
   style.GrabMinSize = 0.0f;
   style.WindowMenuButtonPosition = ImGuiDir_None;
 
-  theme::apply(style, isSystemDarkModeEnabled() ? theme::platinumDark : theme::platinumLight);
+  theme::apply(style, isSystemDarkModeEnabled() ? theme::platinumDark
+                                                : theme::platinumLight);
 
   SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
   SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
@@ -81,13 +78,8 @@ Frontend::InitResult Frontend::init() {
    * Set up SDL window and renderer
    */
   m_sdlWindow = SDL_CreateWindow(
-    m_defaultTitle.c_str(),
-    SDL_WINDOWPOS_CENTERED,
-    SDL_WINDOWPOS_CENTERED,
-    1200,
-    800,
-    SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI
-  );
+      m_defaultTitle.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+      1200, 800, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
   if (!m_sdlWindow) {
     std::println(stderr, "SDL create window failed: {}", SDL_GetError());
     return Frontend::InitResult_SDLCreateWindowFailed;
@@ -96,10 +88,7 @@ Frontend::InitResult Frontend::init() {
   setupWindowStyle(m_sdlWindow);
 
   m_sdlRenderer = SDL_CreateRenderer(
-    m_sdlWindow,
-    -1,
-    SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
-  );
+      m_sdlWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
   if (!m_sdlRenderer) {
     std::println(stderr, "SDL create renderer failed: {}", SDL_GetError());
     return Frontend::InitResult_SDLCreateRendererFailed;
@@ -118,20 +107,20 @@ Frontend::InitResult Frontend::init() {
   SDL_GetRendererOutputSize(m_sdlRenderer, &renderWidth, nullptr);
   SDL_GetWindowSize(m_sdlWindow, &windowWidth, nullptr);
   m_dpiScaling =
-    static_cast<float>(renderWidth) / static_cast<float>(windowWidth);
+      static_cast<float>(renderWidth) / static_cast<float>(windowWidth);
 
   // FIXME use a consistent directory for font files!
-  //   We can't redistribute these, but we can tell users where to put them in the README
+  //   We can't redistribute these, but we can tell users where to put them in
+  //   the README
   io.Fonts->AddFontFromFileTTF(
-    "/Users/teo/Library/Fonts/SF-Pro-Text-Regular.otf",
-    14.0f * m_dpiScaling
-  );
+      "/Users/teo/Library/Fonts/SF-Pro-Text-Regular.otf", 14.0f * m_dpiScaling);
   io.FontGlobalScale = 1.0f / m_dpiScaling;
 
   /*
    * Set up Metal/SDL2 renderer/platform backend
    */
-  m_layer = static_cast<CA::MetalLayer*>(SDL_RenderGetMetalLayer(m_sdlRenderer));
+  m_layer =
+      static_cast<CA::MetalLayer *>(SDL_RenderGetMetalLayer(m_sdlRenderer));
   m_layer->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
   metal_utils::setColorspace(m_layer, color::DisplayColorspace::DisplayP3);
 
@@ -151,11 +140,8 @@ Frontend::InitResult Frontend::init() {
   /*
    * Initialize PT renderer
    */
-  m_renderer = std::make_unique<renderer_pt::Renderer>(
-    m_device,
-    m_commandQueue,
-    m_store
-  );
+  m_renderer = std::make_unique<renderer_pt::Renderer>(m_device, m_commandQueue,
+                                                       m_store);
 
   /*
    * Initialize windows that need it
@@ -167,14 +153,12 @@ Frontend::InitResult Frontend::init() {
   /*
    * Initialize viewport pipeline
    */
-  auto* lib = metal_utils::createLibrary(m_device, "viewport");
+  auto *lib = metal_utils::createLibrary(m_device, "viewport");
   m_viewportPso = metal_utils::createRenderPipeline(
-    m_device, "viewport", {
-      .vertexFunction = metal_utils::getFunction(lib, "viewportVertex"),
-      .fragmentFunction = metal_utils::getFunction(lib, "viewportFragment"),
-      .colorAttachments = {m_layer->pixelFormat()}
-    }
-  );
+      m_device, "viewport",
+      {.vertexFunction = metal_utils::getFunction(lib, "viewportVertex"),
+       .fragmentFunction = metal_utils::getFunction(lib, "viewportFragment"),
+       .colorAttachments = {m_layer->pixelFormat()}});
   lib->release();
 
   return Frontend::InitResult_Ok;
@@ -186,7 +170,7 @@ void Frontend::start() {
    */
   bool exit = false;
   while (!exit) {
-    NS::AutoreleasePool* autoreleasePool = NS::AutoreleasePool::alloc()->init();
+    NS::AutoreleasePool *autoreleasePool = NS::AutoreleasePool::alloc()->init();
 
     // Event polling and input
     SDL_Event event;
@@ -212,7 +196,9 @@ void Frontend::start() {
     // Rendering
     auto cmd = m_commandQueue->commandBuffer();
     dispatch_semaphore_wait(m_semaphore, DISPATCH_TIME_FOREVER);
-    cmd->addCompletedHandler([&](MTL::CommandBuffer* cmd) { dispatch_semaphore_signal(m_semaphore); });
+    cmd->addCompletedHandler([&](MTL::CommandBuffer *cmd) {
+      dispatch_semaphore_signal(m_semaphore);
+    });
 
     auto drawable = metal_utils::nextDrawable(m_layer);
 
@@ -239,20 +225,22 @@ void Frontend::start() {
     enc->endEncoding();
 
     // Render PT viewport
-    auto* renderTarget = m_renderViewport.presentRenderTarget();
+    auto *renderTarget = m_renderViewport.presentRenderTarget();
     if (m_renderViewport.visible() && renderTarget != nullptr) {
       colorAttachment->setLoadAction(MTL::LoadActionLoad);
       auto encViewport = cmd->renderCommandEncoder(rpd);
       encViewport->pushDebugGroup("Render Viewport"_ns);
 
       auto viewport = m_renderViewport.viewport();
-      float2 screenSize{float(m_layer->drawableSize().width), float(m_layer->drawableSize().height)};
+      float2 screenSize{float(m_layer->drawableSize().width),
+                        float(m_layer->drawableSize().height)};
       encViewport->setRenderPipelineState(m_viewportPso);
       encViewport->setVertexBytes(&viewport, sizeof(Viewport), 0);
       encViewport->setVertexBytes(&screenSize, sizeof(float2), 1);
       encViewport->setFragmentTexture(renderTarget, 0);
 
-      encViewport->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger) 0, 6);
+      encViewport->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger)0,
+                                  6);
 
       encViewport->popDebugGroup();
       encViewport->endEncoding();
@@ -262,8 +250,9 @@ void Frontend::start() {
     cmd->commit();
 
     // Update frontend shared state
-    //  We do this after the frame has been drawn to avoid issues with deleted assets being added
-    //  to drawlists. This introduces a 1-frame delay to see changes reflected in the viewport.
+    //  We do this after the frame has been drawn to avoid issues with deleted
+    //  assets being added to drawlists. This introduces a 1-frame delay to see
+    //  changes reflected in the viewport.
     m_store.update();
 
     autoreleasePool->release();
@@ -284,9 +273,11 @@ void Frontend::start() {
   SDL_Quit();
 }
 
-void Frontend::handleInput(const SDL_Event& event) {
-  if (m_studioViewport.handleInputs(event)) return;
-  if (m_renderViewport.handleInputs(event)) return;
+void Frontend::handleInput(const SDL_Event &event) {
+  if (m_studioViewport.handleInputs(event))
+    return;
+  if (m_renderViewport.handleInputs(event))
+    return;
 }
 
 void Frontend::drawImGui() {
@@ -299,17 +290,18 @@ void Frontend::drawImGui() {
   m_properties.render();
 
   // Additional windows
-  if (m_toolMultiscatterLutGeneratorOpen) m_multiscatterLutGenerator.render();
+  if (m_toolMultiscatterLutGeneratorOpen)
+    m_multiscatterLutGenerator.render();
 
   // Render view windows
   m_studioViewport.render();
   m_renderViewport.render();
 
-//  ImGui::Text(
-//    "Application average %.3f ms/frame (%.1f FPS)",
-//    1000.0f / io.Framerate,
-//    io.Framerate
-//  );
+  //  ImGui::Text(
+  //    "Application average %.3f ms/frame (%.1f FPS)",
+  //    1000.0f / io.Framerate,
+  //    io.Framerate
+  //  );
 }
 
 void Frontend::mainDockSpace() {
@@ -317,7 +309,7 @@ void Frontend::mainDockSpace() {
   windowFlags |= ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration;
   windowFlags |= ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_MenuBar;
   windowFlags |=
-    ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+      ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
   auto viewport = ImGui::GetMainViewport();
   ImGui::SetNextWindowPos(viewport->Pos);
@@ -326,13 +318,13 @@ void Frontend::mainDockSpace() {
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 7.0f));
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 8.5f));
   ImGui::Begin("DockSpace", nullptr, windowFlags);
   ImGui::PopStyleVar(4);
 
   renderMenuBar();
 
-  ImGuiIO& io = ImGui::GetIO();
+  ImGuiIO &io = ImGui::GetIO();
   if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
     auto dockSpaceId = ImGui::GetID("MainDockSpace");
     m_initialized |= ImGui::DockBuilderGetNode(dockSpaceId) != nullptr;
@@ -344,32 +336,20 @@ void Frontend::mainDockSpace() {
       m_initialized = true;
 
       ImGui::DockBuilderRemoveNode(dockSpaceId);
-      ImGui::DockBuilderAddNode(
-        dockSpaceId,
-        dockspaceFlags | ImGuiDockNodeFlags_DockSpace
-      );
+      ImGui::DockBuilderAddNode(dockSpaceId,
+                                dockspaceFlags | ImGuiDockNodeFlags_DockSpace);
       ImGui::DockBuilderSetNodeSize(dockSpaceId, viewport->Size);
 
       auto dockIdLeft = ImGui::DockBuilderSplitNode(
-        dockSpaceId, ImGuiDir_Left, 0.25f,
-        nullptr, &dockSpaceId
-      );
+          dockSpaceId, ImGuiDir_Left, 0.25f, nullptr, &dockSpaceId);
       auto dockIdLeftLower = ImGui::DockBuilderSplitNode(
-        dockIdLeft, ImGuiDir_Down, 0.4f,
-        nullptr, &dockIdLeft
-      );
+          dockIdLeft, ImGuiDir_Down, 0.4f, nullptr, &dockIdLeft);
       auto dockIdRight = ImGui::DockBuilderSplitNode(
-        dockSpaceId, ImGuiDir_Right, 0.35f,
-        nullptr, &dockSpaceId
-      );
+          dockSpaceId, ImGuiDir_Right, 0.35f, nullptr, &dockSpaceId);
       auto dockIdRightLower = ImGui::DockBuilderSplitNode(
-        dockIdRight, ImGuiDir_Down, 0.6f,
-        nullptr, &dockIdRight
-      );
+          dockIdRight, ImGuiDir_Down, 0.6f, nullptr, &dockIdRight);
       auto dockIdBottom = ImGui::DockBuilderSplitNode(
-        dockSpaceId, ImGuiDir_Down, 0.25f,
-        nullptr, &dockSpaceId
-      );
+          dockSpaceId, ImGuiDir_Down, 0.25f, nullptr, &dockSpaceId);
 
       ImGui::DockBuilderDockWindow("Scene Explorer", dockIdLeft);
       ImGui::DockBuilderDockWindow("Properties", dockIdLeftLower);
@@ -386,8 +366,8 @@ void Frontend::mainDockSpace() {
 
 void Frontend::renderMenuBar() {
   /*
-   * Process global keyboard shortcuts. We do this here since it keeps the handling code close to
-   * the UI where the shortcuts are displayed
+   * Process global keyboard shortcuts. We do this here since it keeps the
+   * handling code close to the UI where the shortcuts are displayed
    */
   if (!ImGui::IsItemActive()) {
     // File
@@ -411,7 +391,7 @@ void Frontend::renderMenuBar() {
   /*
    * Render menu bar
    */
-  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 7.0f));
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 8.5f));
   bool menubar = ImGui::BeginMenuBar();
   ImGui::PopStyleVar();
   if (menubar) {
@@ -423,21 +403,28 @@ void Frontend::renderMenuBar() {
 
     ImGui::SetNextWindowSize({160, 0});
     if (widgets::menu("File")) {
-      if (widgets::menuItem("Open", "Cmd + O")) m_store.open();
-      if (widgets::menuItem("Save As...", "Cmd + S")) m_store.saveAs();
+      if (widgets::menuItem("Open", "Cmd + O"))
+        m_store.open();
+      if (widgets::menuItem("Save As...", "Cmd + S"))
+        m_store.saveAs();
 
       ImGui::Separator();
 
       if (widgets::menu("Import")) {
-        if (widgets::menuItem("glTF", "Cmd + I")) m_store.importGltf();
+        if (widgets::menuItem("glTF", "Cmd + I"))
+          m_store.importGltf();
 
         ImGui::Separator();
 
         if (widgets::menu("Texture")) {
-          if (widgets::menuItem("Color")) m_store.importTexture(loaders::texture::TextureType::sRGB);
-          if (widgets::menuItem("Normal map")) m_store.importTexture(loaders::texture::TextureType::LinearRGB);
-          if (widgets::menuItem("HDR/Env map")) m_store.importTexture(loaders::texture::TextureType::HDR);
-          if (widgets::menuItem("Grayscale")) m_store.importTexture(loaders::texture::TextureType::Mono);
+          if (widgets::menuItem("Color"))
+            m_store.importTexture(loaders::texture::TextureType::sRGB);
+          if (widgets::menuItem("Normal map"))
+            m_store.importTexture(loaders::texture::TextureType::LinearRGB);
+          if (widgets::menuItem("HDR/Env map"))
+            m_store.importTexture(loaders::texture::TextureType::HDR);
+          if (widgets::menuItem("Grayscale"))
+            m_store.importTexture(loaders::texture::TextureType::Mono);
           ImGui::EndMenu();
         }
 
@@ -450,10 +437,14 @@ void Frontend::renderMenuBar() {
     ImGui::SetNextWindowSize({160, 0});
     if (widgets::menu("View")) {
       if (widgets::menu("Theme")) {
-        if (widgets::menuItem("Light", nullptr, theme::Theme::currentTheme == &theme::platinumLight)) {
+        if (widgets::menuItem("Light", nullptr,
+                              theme::Theme::currentTheme ==
+                                  &theme::platinumLight)) {
           theme::apply(ImGui::GetStyle(), theme::platinumLight);
         }
-        if (widgets::menuItem("Dark", nullptr, theme::Theme::currentTheme == &theme::platinumDark)) {
+        if (widgets::menuItem("Dark", nullptr,
+                              theme::Theme::currentTheme ==
+                                  &theme::platinumDark)) {
           theme::apply(ImGui::GetStyle(), theme::platinumDark);
         }
 
@@ -466,13 +457,15 @@ void Frontend::renderMenuBar() {
     ImGui::SetNextWindowSize({160, 0});
     if (widgets::menu("Render")) {
       ImGui::BeginDisabled(!m_renderViewport.canRender());
-      if (widgets::menuItem("Render", "Space")) m_renderViewport.startRender();
+      if (widgets::menuItem("Render", "Space"))
+        m_renderViewport.startRender();
       ImGui::EndDisabled();
 
       ImGui::Separator();
 
       ImGui::BeginDisabled(!m_renderViewport.hasImage());
-      if (widgets::menuItem("Export to PNG", "Cmd + E")) m_renderViewport.exportImage();
+      if (widgets::menuItem("Export to PNG", "Cmd + E"))
+        m_renderViewport.exportImage();
       ImGui::EndDisabled();
 
       ImGui::EndMenu();
@@ -480,7 +473,8 @@ void Frontend::renderMenuBar() {
 
     ImGui::SetNextWindowSize({160, 0});
     if (widgets::menu("Tools")) {
-      if (widgets::menuItem("Multiscatter GGX LUTs")) m_toolMultiscatterLutGeneratorOpen = true;
+      if (widgets::menuItem("Multiscatter GGX LUTs"))
+        m_toolMultiscatterLutGeneratorOpen = true;
 
       ImGui::EndMenu();
     }
@@ -490,4 +484,4 @@ void Frontend::renderMenuBar() {
   }
 }
 
-}
+} // namespace pt::frontend

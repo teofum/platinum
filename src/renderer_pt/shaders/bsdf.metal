@@ -244,7 +244,7 @@ Sample BSDF::sample(float3 wo, float4 r, float2 rc) {
       .flags = flags,
       .wi = wi,
       .f = m_ctx.albedo / M_PI_F,
-      .Le = m_ctx.emission,
+      .Le = wo.z > 0.0 ? m_ctx.emission : 0.0,
       .pdf = abs(wi.z) / M_PI_F,
   };
 
@@ -698,7 +698,7 @@ Sample BSDF::sampleOpaqueDielectric(float3 wo, float3 r) {
         .flags = flags,
         .wi = wi,
         .f = m_ctx.albedo * cDiffuse,
-        .Le = m_ctx.emission / (1.0f - blendingFactor),
+        .Le = wo.z > 0.0 ? m_ctx.emission / (1.0f - blendingFactor) : 0.0,
         .pdf = abs(wi.z) / M_PI_F * (1.0f - blendingFactor),
     };
   }
